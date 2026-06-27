@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:task_management_system/features/teams/cubit/teams_cubit.dart';
+import 'package:task_management_system/features/teams/ui/screens/teams_dashboard_screen.dart';
 import '../../features/auth/pages/login_page.dart';
 import '../../features/auth/pages/forget_password_page.dart';
 import '../../features/auth/pages/verify_email_page.dart';
 import '../../features/auth/pages/create_new_password_page.dart';
 import '../../features/dashboard/pages/dashboard_page.dart';
-import '../../features/team/pages/team_page.dart';
 import '../../features/tasks/pages/tasks_page.dart';
 import '../../features/users/pages/users_page.dart';
 import '../../features/profile/cubit/profile_cubit.dart';
@@ -30,8 +31,8 @@ class AppRouter {
   static const String settings = '/settings';
   static const String usersRoles = '/users-roles';
 
-  static final GoRouter router = GoRouter(
-    initialLocation: login,
+  static GoRouter get router => GoRouter(
+    initialLocation: dashboard, // تغيير الصفحة الابتدائية إلى لوحة التحكم بعد تسجيل الدخول
     routes: [
       // Auth Routes
       GoRoute(
@@ -65,7 +66,8 @@ class AppRouter {
         path: dashboard,
         name: 'dashboard',
         builder: (context, state) {
-          final showMyTasks = state.uri.queryParameters['showMyTasks'] == 'true';
+          final showMyTasks =
+              state.uri.queryParameters['showMyTasks'] == 'true';
           return MainLayout(
             title: 'Dashboard',
             child: DashboardPage(showMyTasks: showMyTasks),
@@ -75,10 +77,8 @@ class AppRouter {
       GoRoute(
         path: tasks,
         name: 'tasks',
-        builder: (context, state) => const MainLayout(
-          title: 'Tasks',
-          child: TasksPage(),
-        ),
+        builder: (context, state) =>
+            const MainLayout(title: 'Tasks', child: TasksPage()),
       ),
       GoRoute(
         path: taskDetails,
@@ -87,18 +87,21 @@ class AppRouter {
           final taskId = state.pathParameters['id'] ?? '';
           return MainLayout(
             title: 'Task Details',
-            child: Scaffold(
-              body: Center(child: Text('Task: $taskId')),
-            ),
+            child: Scaffold(body: Center(child: Text('Task: $taskId'))),
           );
         },
       ),
       GoRoute(
         path: team,
         name: 'team',
-        builder: (context, state) => const MainLayout(
+        builder: (context, state) => MainLayout(
           title: 'Team',
-          child: TeamPage(),
+          child: BlocProvider(
+            create: (context) =>
+                getIt<TeamsCubit>()
+                  ..fetchTeams(), // استدعاء البيانات تلقائياً عند فتح الشاشة
+            child: TeamsDashboardScreen(),
+          ),
         ),
       ),
       GoRoute(
@@ -106,9 +109,7 @@ class AppRouter {
         name: 'projects',
         builder: (context, state) => const MainLayout(
           title: 'Projects',
-          child: Scaffold(
-            body: Center(child: Text('Projects Page')),
-          ),
+          child: Scaffold(body: Center(child: Text('Projects Page'))),
         ),
       ),
       GoRoute(
@@ -116,9 +117,7 @@ class AppRouter {
         name: 'reports',
         builder: (context, state) => const MainLayout(
           title: 'Reports',
-          child: Scaffold(
-            body: Center(child: Text('Reports Page')),
-          ),
+          child: Scaffold(body: Center(child: Text('Reports Page'))),
         ),
       ),
       GoRoute(
@@ -135,10 +134,8 @@ class AppRouter {
       GoRoute(
         path: usersRoles,
         name: 'usersRoles',
-        builder: (context, state) => const MainLayout(
-          title: 'Users & Roles',
-          child: UsersPage(),
-        ),
+        builder: (context, state) =>
+            const MainLayout(title: 'Users & Roles', child: UsersPage()),
       ),
     ],
   );
