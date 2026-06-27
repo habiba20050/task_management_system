@@ -24,4 +24,40 @@ class AuthApi {
       message: 'Login failed with status code: ${response.statusCode}',
     );
   }
+
+  Future<void> logout(String token) async {
+    await _dio.post(
+      ApiConstants.logoutEndpoint,
+      data: {},
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+  }
+
+  Future<void> forgotPassword(String email) async {
+    await _dio.post(
+      ApiConstants.forgotPasswordEndpoint,
+      data: {
+        "email": email,
+      },
+    );
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    await _dio.post(
+      ApiConstants.resetPasswordEndpoint,
+      data: {
+        "email": email,
+        "otp": otp,
+        "newPassword": newPassword,
+      },
+    );
+  }
 }

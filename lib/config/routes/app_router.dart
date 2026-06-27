@@ -56,8 +56,10 @@ class AppRouter {
         path: createNewPassword,
         name: 'createNewPassword',
         builder: (context, state) {
-          final email = state.extra as String? ?? '';
-          return CreateNewPasswordPage(email: email);
+          final args = state.extra as Map<String, dynamic>? ?? {};
+          final email = args['email'] as String? ?? '';
+          final otp = args['otp'] as String? ?? '';
+          return CreateNewPasswordPage(email: email, otp: otp);
         },
       ),
       // App Routes

@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../model/login_request.dart';
-import '../models/user_model.dart';
+import '../model/user_model.dart';
 import '../repository/auth_repository.dart';
 
 abstract class AuthState extends Equatable {
@@ -86,8 +86,11 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> forgotPassword(String email) async {
     emit(const AuthLoading());
     try {
-      await Future.delayed(const Duration(seconds: 1));
+      await _authRepository.forgotPassword(email);
       emit(const OtpSent());
+    } on DioException catch (e) {
+      final message = _extractErrorMessage(e);
+      emit(AuthError(message));
     } catch (e) {
       emit(AuthError(e.toString()));
     }
@@ -105,18 +108,29 @@ class AuthCubit extends Cubit<AuthState> {
 
   Future<void> resetPassword({
     required String email,
+    required String otp,
     required String newPassword,
   }) async {
     emit(const AuthLoading());
     try {
-      await Future.delayed(const Duration(seconds: 1));
+      await _authRepository.resetPassword(
+        email: email,
+        otp: otp,
+        newPassword: newPassword,
+      );
       emit(const AuthUnauthenticated());
+    } on DioException catch (e) {
+      final message = _extractErrorMessage(e);
+      emit(AuthError(message));
     } catch (e) {
       emit(AuthError(e.toString()));
     }
   }
 
-  void logout() {
+  Future<void> logout() async {
+    try {
+      await _authRepository.logout();
+    } catch (_) {}
     emit(const AuthUnauthenticated());
   }
 

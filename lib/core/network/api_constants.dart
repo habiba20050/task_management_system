@@ -11,6 +11,9 @@ class ApiConstants {
 
   // Auth endpoints
   static const String loginEndpoint = '/api/Auth/login';
+  static const String logoutEndpoint = '/api/Auth/logout';
+  static const String forgotPasswordEndpoint = '/api/Auth/forgot-password';
+  static const String resetPasswordEndpoint = '/api/Auth/reset-password';
 
   // Profile endpoints
   static const String profileEndpoint = '/api/Profile';

@@ -12,8 +12,9 @@ import '../cubit/auth_cubit.dart';
 
 class CreateNewPasswordPage extends StatefulWidget {
   final String email;
+  final String otp;
 
-  const CreateNewPasswordPage({super.key, required this.email});
+  const CreateNewPasswordPage({super.key, required this.email, required this.otp});
 
   @override
   State<CreateNewPasswordPage> createState() => _CreateNewPasswordPageState();
@@ -46,6 +47,7 @@ class _CreateNewPasswordPageState extends State<CreateNewPasswordPage> {
       }
       context.read<AuthCubit>().resetPassword(
         email: widget.email,
+        otp: widget.otp,
         newPassword: _newPasswordController.text,
       );
     }

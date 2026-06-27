@@ -162,7 +162,11 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
         BlocConsumer<AuthCubit, AuthState>(
           listener: (context, state) {
             if (state is PasswordResetRequested) {
-              context.push('/create-new-password', extra: widget.email);
+              final otp = _otpControllers.map((c) => c.text).join();
+              context.push('/create-new-password', extra: {
+                'email': widget.email,
+                'otp': otp,
+              });
             } else if (state is AuthError) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

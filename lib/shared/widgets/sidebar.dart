@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/colors/app_colors.dart';
+import '../../features/auth/cubit/auth_cubit.dart';
 import '../../responsive/responsive_layout.dart';
 
 class Sidebar extends StatelessWidget {
@@ -212,6 +214,7 @@ class Sidebar extends StatelessWidget {
                     size: ResponsiveLayout.isTablet(context) ? 16.sp : 18.sp,
                   ),
                   onPressed: () {
+                    context.read<AuthCubit>().logout();
                     context.pushReplacement('/login');
                   },
                 ),

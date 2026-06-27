@@ -28,4 +28,34 @@ class AuthRepositoryImpl implements AuthRepository {
 
     return response;
   }
+
+  @override
+  Future<void> logout() async {
+    final token = await _secureStorage.read(key: 'access_token');
+    if (token != null && token.isNotEmpty) {
+      try {
+        await _authApi.logout(token);
+      } catch (_) {}
+    }
+    await _secureStorage.delete(key: 'access_token');
+    await _secureStorage.delete(key: 'refresh_token');
+  }
+
+  @override
+  Future<void> forgotPassword(String email) async {
+    await _authApi.forgotPassword(email);
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    await _authApi.resetPassword(
+      email: email,
+      otp: otp,
+      newPassword: newPassword,
+    );
+  }
 }
