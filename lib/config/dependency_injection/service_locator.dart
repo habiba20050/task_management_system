@@ -12,6 +12,7 @@ import '../../features/profile/repository/profile_repository_impl.dart';
 import '../../features/profile/service/profile_api.dart';
 import '../../features/teams/cubit/teams_cubit.dart';
 import '../../features/teams/repository/teams_repository.dart';
+import '../../features/users/cubit/users_cubit.dart';
 
 final getIt = GetIt.instance;
 
@@ -61,6 +62,11 @@ class ServiceLocator {
     );
     getIt.registerFactory<TeamsCubit>(
       () => TeamsCubit(getIt<TeamsRepository>()),
+    );
+
+    // Users
+    getIt.registerFactory<UsersCubit>(
+      () => UsersCubit(),
     );
   }
 }

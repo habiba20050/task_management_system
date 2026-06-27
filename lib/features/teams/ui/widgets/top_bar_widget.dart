@@ -10,9 +10,16 @@ class TopBarWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    // استخدام Wrap بدلاً من Row لجعل الشريط متجاوباً مع أحجام الشاشات المختلفة
+    // وينزل لسطر جديد عند الحاجة لمنع الـ Overflow.
+    return Wrap(
+      spacing: 20.0, // المسافة الأفقية بين العناصر
+      runSpacing: 16.0, // المسافة العمودية بين الأسطر
+      crossAxisAlignment: WrapCrossAlignment.center, // محاذاة العناصر في المنتصف عمودياً
       children: [
-        Expanded(
+        // استخدام SizedBox مع عرض محدد بدلاً من Expanded ليتناسب مع Wrap
+        SizedBox(
+          width: 350,
           child: Container(
             height: 48,
             decoration: BoxDecoration(
@@ -34,9 +41,7 @@ class TopBarWidget extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 20),
         Text('$teamCount of $teamCount teams', style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
-        const SizedBox(width: 20),
         ElevatedButton.icon(
           onPressed: () {
             CreateTeamDialogWidget.show(context);
@@ -45,7 +50,8 @@ class TopBarWidget extends StatelessWidget {
           label: const Text('Add New Team', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0F4C81),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            // تعديل الـ padding ليتناسب مع ارتفاع حقل البحث
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
