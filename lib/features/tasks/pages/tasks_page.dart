@@ -37,9 +37,7 @@ class KanbanTask {
     this.isOverdue = false,
   });
 
-  KanbanTask copyWith({
-    KanbanStatus? status,
-  }) {
+  KanbanTask copyWith({KanbanStatus? status}) {
     return KanbanTask(
       id: id,
       title: title,
@@ -67,16 +65,15 @@ class TasksPage extends StatefulWidget {
 class _TasksPageState extends State<TasksPage> {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _boardSearchController = TextEditingController();
-  
+
   bool _filterOverdueOnly = false;
-
-
 
   final List<KanbanTask> _tasks = [
     KanbanTask(
       id: '1',
       title: 'Annual Budget Report',
-      description: 'Prepare and submit the annual financial report for academic year 2025-20...',
+      description:
+          'Prepare and submit the annual financial report for academic year 2025-20...',
       priority: 'HIGH',
       status: KanbanStatus.pending,
       department: 'Business',
@@ -90,7 +87,8 @@ class _TasksPageState extends State<TasksPage> {
     KanbanTask(
       id: '2',
       title: 'Network Infrastructure Audit',
-      description: 'Comprehensive review of campus network infrastructure and security proto...',
+      description:
+          'Comprehensive review of campus network infrastructure and security proto...',
       priority: 'HIGH',
       status: KanbanStatus.todo,
       department: 'IT Services',
@@ -103,7 +101,8 @@ class _TasksPageState extends State<TasksPage> {
     KanbanTask(
       id: '3',
       title: 'Website Redesign Proposal',
-      description: 'Create wireframes and design proposal for the new AITU public-facing...',
+      description:
+          'Create wireframes and design proposal for the new AITU public-facing...',
       priority: 'MEDIUM',
       status: KanbanStatus.todo,
       author: 'Karim',
@@ -112,7 +111,8 @@ class _TasksPageState extends State<TasksPage> {
     KanbanTask(
       id: '4',
       title: 'Course Management Portal',
-      description: 'Development of the new LMS course management and enrollment tracking sys...',
+      description:
+          'Development of the new LMS course management and enrollment tracking sys...',
       priority: 'HIGH',
       status: KanbanStatus.inProgress,
       department: 'CS Dept',
@@ -125,7 +125,8 @@ class _TasksPageState extends State<TasksPage> {
     KanbanTask(
       id: '5',
       title: 'Security Vulnerability Assessment',
-      description: 'Q2 security audit and patching of critical system vulnerabilities across...',
+      description:
+          'Q2 security audit and patching of critical system vulnerabilities across...',
       priority: 'HIGH',
       status: KanbanStatus.inProgress,
       department: 'IT Services',
@@ -138,7 +139,8 @@ class _TasksPageState extends State<TasksPage> {
     KanbanTask(
       id: '6',
       title: 'API Integration Review',
-      description: 'Review and optimize third-party API integrations across the student port...',
+      description:
+          'Review and optimize third-party API integrations across the student port...',
       priority: 'MEDIUM',
       status: KanbanStatus.complete,
       department: 'CS Dept',
@@ -151,7 +153,8 @@ class _TasksPageState extends State<TasksPage> {
     KanbanTask(
       id: '7',
       title: 'Semester Exam Scheduling',
-      description: 'Coordinate with faculty departments to finalize the final examination ti...',
+      description:
+          'Coordinate with faculty departments to finalize the final examination ti...',
       priority: 'MEDIUM',
       status: KanbanStatus.complete,
       department: 'Math Dept',
@@ -182,7 +185,7 @@ class _TasksPageState extends State<TasksPage> {
   @override
   Widget build(BuildContext context) {
     final isDesktop = ResponsiveLayout.isDesktop(context);
-    
+
     return Scaffold(
       backgroundColor: AppColors.dashboardBg,
       endDrawer: const NotificationDrawer(),
@@ -192,31 +195,64 @@ class _TasksPageState extends State<TasksPage> {
           children: [
             // Top Header (Fixed at top)
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: isDesktop ? 32.w : 16.w, vertical: 16.h),
+              padding: EdgeInsets.symmetric(
+                horizontal: isDesktop ? 32.w : 16.w,
+                vertical: 16.h,
+              ),
               child: _buildHeader(context),
             ),
-            
+
             // Sub-Header (Fixed below header)
             Padding(
-              padding: EdgeInsets.symmetric(horizontal: isDesktop ? 32.w : 16.w, vertical: 8.h),
+              padding: EdgeInsets.symmetric(
+                horizontal: isDesktop ? 32.w : 16.w,
+                vertical: 8.h,
+              ),
               child: _buildSubHeader(context),
             ),
-            
+
             // Kanban Board Columns (Scrollable area)
             Expanded(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                padding: EdgeInsets.symmetric(horizontal: isDesktop ? 32.w : 16.w, vertical: 16.h),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isDesktop ? 32.w : 16.w,
+                  vertical: 16.h,
+                ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildKanbanColumn(context, KanbanStatus.pending, 'Pending', const Color(0xFF757575), const Color(0xFFF5F5F5)),
+                    _buildKanbanColumn(
+                      context,
+                      KanbanStatus.pending,
+                      'Pending',
+                      const Color(0xFF757575),
+                      const Color(0xFFF5F5F5),
+                    ),
                     SizedBox(width: 20.w),
-                    _buildKanbanColumn(context, KanbanStatus.todo, 'To Do', const Color(0xFFF2C94C), const Color(0xFFFFF9E6)),
+                    _buildKanbanColumn(
+                      context,
+                      KanbanStatus.todo,
+                      'To Do',
+                      const Color(0xFFF2C94C),
+                      const Color(0xFFFFF9E6),
+                    ),
                     SizedBox(width: 20.w),
-                    _buildKanbanColumn(context, KanbanStatus.inProgress, 'In Progress', const Color(0xFF2F80ED), const Color(0xFFEAF2FF)),
+                    _buildKanbanColumn(
+                      context,
+                      KanbanStatus.inProgress,
+                      'In Progress',
+                      const Color(0xFF2F80ED),
+                      const Color(0xFFEAF2FF),
+                    ),
                     SizedBox(width: 20.w),
-                    _buildKanbanColumn(context, KanbanStatus.complete, 'Complete', const Color(0xFF27AE60), const Color(0xFFE8F8EE)),
+                    _buildKanbanColumn(
+                      context,
+                      KanbanStatus.complete,
+                      'Complete',
+                      const Color(0xFF27AE60),
+                      const Color(0xFFE8F8EE),
+                    ),
                   ],
                 ),
               ),
@@ -229,7 +265,7 @@ class _TasksPageState extends State<TasksPage> {
 
   Widget _buildHeader(BuildContext context) {
     final isDesktop = ResponsiveLayout.isDesktop(context);
-    
+
     return Row(
       children: [
         Expanded(
@@ -279,7 +315,7 @@ class _TasksPageState extends State<TasksPage> {
             ],
           ),
         ),
-        
+
         if (!ResponsiveLayout.isMobile(context)) ...[
           Container(
             width: isDesktop ? 260.w : 180.w,
@@ -300,7 +336,11 @@ class _TasksPageState extends State<TasksPage> {
               decoration: InputDecoration(
                 hintText: 'Search tasks, teams...',
                 hintStyle: TextStyle(color: Colors.grey[400], fontSize: 12.sp),
-                prefixIcon: Icon(Icons.search, size: 16.sp, color: Colors.grey[400]),
+                prefixIcon: Icon(
+                  Icons.search,
+                  size: 16.sp,
+                  color: Colors.grey[400],
+                ),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
@@ -310,57 +350,57 @@ class _TasksPageState extends State<TasksPage> {
             ),
           ),
           SizedBox(width: 16.w),
-          
+
           Builder(
             builder: (context) => GestureDetector(
               onTap: () => Scaffold.of(context).openEndDrawer(),
               child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  padding: EdgeInsets.all(8.w),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.notifications_outlined,
-                    size: 20.sp,
-                    color: const Color(0xFF0A448C),
-                  ),
-                ),
-                Positioned(
-                  right: -2.w,
-                  top: -2.h,
-                  child: Container(
-                    padding: EdgeInsets.all(4.w),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFF3B30),
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8.w),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
                       shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.02),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      '3',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 8.sp,
-                        fontWeight: FontWeight.bold,
+                    child: Icon(
+                      Icons.notifications_outlined,
+                      size: 20.sp,
+                      color: const Color(0xFF0A448C),
+                    ),
+                  ),
+                  Positioned(
+                    right: -2.w,
+                    top: -2.h,
+                    child: Container(
+                      padding: EdgeInsets.all(4.w),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFF3B30),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '3',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 8.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-        SizedBox(width: 20.w),
-          
+          SizedBox(width: 20.w),
+
           GestureDetector(
             onTap: () => _showUserProfileDialog(context),
             child: Row(
@@ -414,7 +454,7 @@ class _TasksPageState extends State<TasksPage> {
 
   Widget _buildSubHeader(BuildContext context) {
     final isDesktop = ResponsiveLayout.isDesktop(context);
-    
+
     Widget searchBar = Container(
       width: isDesktop ? 300.w : double.infinity,
       height: 40.h,
@@ -455,14 +495,19 @@ class _TasksPageState extends State<TasksPage> {
             foregroundColor: Colors.grey[700],
             side: BorderSide(color: Colors.grey[300]!, width: 1.2),
             padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.r),
+            ),
             backgroundColor: Colors.white,
           ),
           child: Row(
             children: [
               Icon(Icons.filter_list, size: 16.sp),
               SizedBox(width: 6.w),
-              Text('Filter', style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600)),
+              Text(
+                'Filter',
+                style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600),
+              ),
             ],
           ),
         ),
@@ -477,16 +522,24 @@ class _TasksPageState extends State<TasksPage> {
           child: Container(
             padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
             decoration: BoxDecoration(
-              color: _filterOverdueOnly ? const Color(0xFFFFECEB) : Colors.white,
+              color: _filterOverdueOnly
+                  ? const Color(0xFFFFECEB)
+                  : Colors.white,
               border: Border.all(
-                color: _filterOverdueOnly ? const Color(0xFFEB5757) : Colors.grey[300]!,
+                color: _filterOverdueOnly
+                    ? const Color(0xFFEB5757)
+                    : Colors.grey[300]!,
                 width: 1.2,
               ),
               borderRadius: BorderRadius.circular(8.r),
             ),
             child: Row(
               children: [
-                Icon(Icons.warning_amber_rounded, size: 16.sp, color: const Color(0xFFEB5757)),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  size: 16.sp,
+                  color: const Color(0xFFEB5757),
+                ),
                 SizedBox(width: 6.w),
                 Text(
                   '1 overdue',
@@ -508,13 +561,18 @@ class _TasksPageState extends State<TasksPage> {
             backgroundColor: const Color(0xFF0A448C),
             foregroundColor: Colors.white,
             padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 14.h),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.r),
+            ),
           ),
           child: Row(
             children: [
               Icon(Icons.add, size: 16.sp, color: Colors.white),
               SizedBox(width: 6.w),
-              Text('Add Task', style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold)),
+              Text(
+                'Add Task',
+                style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold),
+              ),
             ],
           ),
         ),
@@ -524,10 +582,7 @@ class _TasksPageState extends State<TasksPage> {
     if (isDesktop) {
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          searchBar,
-          actionsRow,
-        ],
+        children: [searchBar, actionsRow],
       );
     } else {
       return Column(
@@ -558,7 +613,8 @@ class _TasksPageState extends State<TasksPage> {
       if (_filterOverdueOnly && !t.isOverdue) return false;
       if (searchQuery.isNotEmpty) {
         final matchesTitle = t.title.toLowerCase().contains(searchQuery);
-        final matchesDept = t.department?.toLowerCase().contains(searchQuery) ?? false;
+        final matchesDept =
+            t.department?.toLowerCase().contains(searchQuery) ?? false;
         return matchesTitle || matchesDept;
       }
       return true;
@@ -625,7 +681,7 @@ class _TasksPageState extends State<TasksPage> {
               ],
             ),
           ),
-          
+
           // Cards list
           Expanded(
             child: ListView(
@@ -633,17 +689,21 @@ class _TasksPageState extends State<TasksPage> {
               children: [
                 // Render "No tasks here yet" dotted box if status is pending and list has elements but we want it shown,
                 // or if column is actually empty.
-                if (status == KanbanStatus.pending && columnTasks.any((t) => t.isOverdue) && !_filterOverdueOnly) ...[
+                if (status == KanbanStatus.pending &&
+                    columnTasks.any((t) => t.isOverdue) &&
+                    !_filterOverdueOnly) ...[
                   _buildNoTasksPlaceholder(),
                   SizedBox(height: 12.h),
                 ],
                 if (columnTasks.isEmpty)
                   _buildNoTasksPlaceholder()
                 else
-                  ...columnTasks.map((task) => Padding(
-                    padding: EdgeInsets.only(bottom: 12.h),
-                    child: _buildTaskCard(task),
-                  )),
+                  ...columnTasks.map(
+                    (task) => Padding(
+                      padding: EdgeInsets.only(bottom: 12.h),
+                      child: _buildTaskCard(task),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -659,7 +719,8 @@ class _TasksPageState extends State<TasksPage> {
         border: Border.all(
           color: Colors.grey[300]!,
           width: 1.5,
-          style: BorderStyle.none, // We can draw dashed border or just clean solid
+          style:
+              BorderStyle.none, // We can draw dashed border or just clean solid
         ),
         color: Colors.grey[100],
         borderRadius: BorderRadius.circular(12.r),
@@ -728,7 +789,10 @@ class _TasksPageState extends State<TasksPage> {
                   ),
                   if (task.isOverdue)
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 6.w,
+                        vertical: 2.h,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFECEB),
                         borderRadius: BorderRadius.circular(4.r),
@@ -736,7 +800,11 @@ class _TasksPageState extends State<TasksPage> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.warning, color: const Color(0xFFEB5757), size: 10.sp),
+                          Icon(
+                            Icons.warning,
+                            color: const Color(0xFFEB5757),
+                            size: 10.sp,
+                          ),
                           SizedBox(width: 4.w),
                           Text(
                             'OVERDUE',
@@ -752,7 +820,7 @@ class _TasksPageState extends State<TasksPage> {
                 ],
               ),
               SizedBox(height: 8.h),
-              
+
               // Title & Description
               Text(
                 task.title,
@@ -774,13 +842,16 @@ class _TasksPageState extends State<TasksPage> {
                 overflow: TextOverflow.ellipsis,
               ),
               SizedBox(height: 12.h),
-              
+
               // Department & Owner Initials
               Row(
                 children: [
                   if (task.department != null) ...[
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 4.h,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEAF2FF),
                         borderRadius: BorderRadius.circular(4.r),
@@ -819,12 +890,18 @@ class _TasksPageState extends State<TasksPage> {
                   ),
                   if (task.dueDate != null) ...[
                     const Spacer(),
-                    Icon(Icons.calendar_today_outlined, size: 10.sp, color: Colors.grey[400]),
+                    Icon(
+                      Icons.calendar_today_outlined,
+                      size: 10.sp,
+                      color: Colors.grey[400],
+                    ),
                     SizedBox(width: 4.w),
                     Text(
                       task.dueDate!,
                       style: TextStyle(
-                        color: task.isOverdue ? const Color(0xFFEB5757) : Colors.grey[400],
+                        color: task.isOverdue
+                            ? const Color(0xFFEB5757)
+                            : Colors.grey[400],
                         fontSize: 10.sp,
                         fontWeight: FontWeight.bold,
                       ),
@@ -833,10 +910,10 @@ class _TasksPageState extends State<TasksPage> {
                 ],
               ),
               SizedBox(height: 12.h),
-              
+
               Divider(color: Colors.grey[100], thickness: 1),
               SizedBox(height: 8.h),
-              
+
               // Attachment & Comment count, and transitions
               Row(
                 children: [
@@ -847,14 +924,18 @@ class _TasksPageState extends State<TasksPage> {
                     style: TextStyle(color: Colors.grey[400], fontSize: 11.sp),
                   ),
                   SizedBox(width: 10.w),
-                  Icon(Icons.chat_bubble_outline, size: 12.sp, color: Colors.grey[400]),
+                  Icon(
+                    Icons.chat_bubble_outline,
+                    size: 12.sp,
+                    color: Colors.grey[400],
+                  ),
                   SizedBox(width: 4.w),
                   Text(
                     task.commentsCount.toString(),
                     style: TextStyle(color: Colors.grey[400], fontSize: 11.sp),
                   ),
                   const Spacer(),
-                  
+
                   // Transition Status actions
                   ..._buildTransitionButtons(task),
                 ],
@@ -868,27 +949,81 @@ class _TasksPageState extends State<TasksPage> {
 
   List<Widget> _buildTransitionButtons(KanbanTask task) {
     List<Widget> buttons = [];
-    
+
     if (task.status == KanbanStatus.pending) {
-      buttons.add(_buildTransitionPill('> To Do', const Color(0xFFF2C94C), () => _moveTask(task.id, KanbanStatus.todo)));
+      buttons.add(
+        _buildTransitionPill(
+          '> To Do',
+          const Color(0xFFF2C94C),
+          () => _moveTask(task.id, KanbanStatus.todo),
+        ),
+      );
       buttons.add(SizedBox(width: 4.w));
-      buttons.add(_buildTransitionPill('> In', const Color(0xFF2F80ED), () => _moveTask(task.id, KanbanStatus.inProgress)));
+      buttons.add(
+        _buildTransitionPill(
+          '> In',
+          const Color(0xFF2F80ED),
+          () => _moveTask(task.id, KanbanStatus.inProgress),
+        ),
+      );
     } else if (task.status == KanbanStatus.todo) {
-      buttons.add(_buildTransitionPill('> Pending', const Color(0xFF757575), () => _moveTask(task.id, KanbanStatus.pending)));
+      buttons.add(
+        _buildTransitionPill(
+          '> Pending',
+          const Color(0xFF757575),
+          () => _moveTask(task.id, KanbanStatus.pending),
+        ),
+      );
       buttons.add(SizedBox(width: 4.w));
-      buttons.add(_buildTransitionPill('> In', const Color(0xFF2F80ED), () => _moveTask(task.id, KanbanStatus.inProgress)));
+      buttons.add(
+        _buildTransitionPill(
+          '> In',
+          const Color(0xFF2F80ED),
+          () => _moveTask(task.id, KanbanStatus.inProgress),
+        ),
+      );
     } else if (task.status == KanbanStatus.inProgress) {
-      buttons.add(_buildTransitionPill('> Pending', const Color(0xFF757575), () => _moveTask(task.id, KanbanStatus.pending)));
+      buttons.add(
+        _buildTransitionPill(
+          '> Pending',
+          const Color(0xFF757575),
+          () => _moveTask(task.id, KanbanStatus.pending),
+        ),
+      );
       buttons.add(SizedBox(width: 4.w));
-      buttons.add(_buildTransitionPill('> To', const Color(0xFFF2C94C), () => _moveTask(task.id, KanbanStatus.todo)));
+      buttons.add(
+        _buildTransitionPill(
+          '> To',
+          const Color(0xFFF2C94C),
+          () => _moveTask(task.id, KanbanStatus.todo),
+        ),
+      );
       buttons.add(SizedBox(width: 4.w));
-      buttons.add(_buildTransitionPill('> Done', const Color(0xFF27AE60), () => _moveTask(task.id, KanbanStatus.complete)));
+      buttons.add(
+        _buildTransitionPill(
+          '> Done',
+          const Color(0xFF27AE60),
+          () => _moveTask(task.id, KanbanStatus.complete),
+        ),
+      );
     } else if (task.status == KanbanStatus.complete) {
-      buttons.add(_buildTransitionPill('> Pending', const Color(0xFF757575), () => _moveTask(task.id, KanbanStatus.pending)));
+      buttons.add(
+        _buildTransitionPill(
+          '> Pending',
+          const Color(0xFF757575),
+          () => _moveTask(task.id, KanbanStatus.pending),
+        ),
+      );
       buttons.add(SizedBox(width: 4.w));
-      buttons.add(_buildTransitionPill('> To', const Color(0xFFF2C94C), () => _moveTask(task.id, KanbanStatus.todo)));
+      buttons.add(
+        _buildTransitionPill(
+          '> To',
+          const Color(0xFFF2C94C),
+          () => _moveTask(task.id, KanbanStatus.todo),
+        ),
+      );
     }
-    
+
     return buttons;
   }
 
@@ -950,18 +1085,25 @@ class _TasksPageState extends State<TasksPage> {
                 SizedBox(height: 12.h),
                 TextField(
                   controller: deptController,
-                  decoration: const InputDecoration(labelText: 'Department (e.g. CS Dept, Business)'),
+                  decoration: const InputDecoration(
+                    labelText: 'Department (e.g. CS Dept, Business)',
+                  ),
                 ),
                 SizedBox(height: 12.h),
                 Row(
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: selectedPriority,
-                        decoration: const InputDecoration(labelText: 'Priority'),
+                        initialValue: selectedPriority,
+                        decoration: const InputDecoration(
+                          labelText: 'Priority',
+                        ),
                         items: const [
                           DropdownMenuItem(value: 'HIGH', child: Text('High')),
-                          DropdownMenuItem(value: 'MEDIUM', child: Text('Medium')),
+                          DropdownMenuItem(
+                            value: 'MEDIUM',
+                            child: Text('Medium'),
+                          ),
                           DropdownMenuItem(value: 'LOW', child: Text('Low')),
                         ],
                         onChanged: (val) {
@@ -976,13 +1118,25 @@ class _TasksPageState extends State<TasksPage> {
                     SizedBox(width: 12.w),
                     Expanded(
                       child: DropdownButtonFormField<KanbanStatus>(
-                        value: selectedStatus,
+                        initialValue: selectedStatus,
                         decoration: const InputDecoration(labelText: 'Phase'),
                         items: const [
-                          DropdownMenuItem(value: KanbanStatus.pending, child: Text('Pending')),
-                          DropdownMenuItem(value: KanbanStatus.todo, child: Text('To Do')),
-                          DropdownMenuItem(value: KanbanStatus.inProgress, child: Text('In Progress')),
-                          DropdownMenuItem(value: KanbanStatus.complete, child: Text('Complete')),
+                          DropdownMenuItem(
+                            value: KanbanStatus.pending,
+                            child: Text('Pending'),
+                          ),
+                          DropdownMenuItem(
+                            value: KanbanStatus.todo,
+                            child: Text('To Do'),
+                          ),
+                          DropdownMenuItem(
+                            value: KanbanStatus.inProgress,
+                            child: Text('In Progress'),
+                          ),
+                          DropdownMenuItem(
+                            value: KanbanStatus.complete,
+                            child: Text('Complete'),
+                          ),
                         ],
                         onChanged: (val) {
                           if (val != null) {
@@ -1008,18 +1162,22 @@ class _TasksPageState extends State<TasksPage> {
               onPressed: () {
                 if (titleController.text.isNotEmpty) {
                   setState(() {
-                    _tasks.add(KanbanTask(
-                      id: DateTime.now().millisecondsSinceEpoch.toString(),
-                      title: titleController.text,
-                      description: descriptionController.text,
-                      priority: selectedPriority,
-                      status: selectedStatus,
-                      department: deptController.text.isNotEmpty ? deptController.text : null,
-                      author: 'Dr. Ahmed',
-                      authorInitials: 'AH',
-                      attachmentsCount: 0,
-                      commentsCount: 0,
-                    ));
+                    _tasks.add(
+                      KanbanTask(
+                        id: DateTime.now().millisecondsSinceEpoch.toString(),
+                        title: titleController.text,
+                        description: descriptionController.text,
+                        priority: selectedPriority,
+                        status: selectedStatus,
+                        department: deptController.text.isNotEmpty
+                            ? deptController.text
+                            : null,
+                        author: 'Dr. Ahmed',
+                        authorInitials: 'AH',
+                        attachmentsCount: 0,
+                        commentsCount: 0,
+                      ),
+                    );
                   });
                   Navigator.pop(context);
                 }
@@ -1030,8 +1188,6 @@ class _TasksPageState extends State<TasksPage> {
       ),
     );
   }
-
-
 
   void _showUserProfileDialog(BuildContext context) {
     showDialog(
@@ -1072,10 +1228,7 @@ class _TasksPageState extends State<TasksPage> {
             SizedBox(height: 4.h),
             Text(
               'ahmed.admin@aitu.edu.eg',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 14.sp,
-              ),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 14.sp),
             ),
             SizedBox(height: 24.h),
             _buildProfileItem(
@@ -1096,10 +1249,7 @@ class _TasksPageState extends State<TasksPage> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Close',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontSize: 14.sp,
-              ),
+              style: TextStyle(color: AppColors.primary, fontSize: 14.sp),
             ),
           ),
           CustomButton(
@@ -1121,21 +1271,14 @@ class _TasksPageState extends State<TasksPage> {
   }) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: AppColors.textHint,
-          size: 20.sp,
-        ),
+        Icon(icon, color: AppColors.textHint, size: 20.sp),
         SizedBox(width: 12.w),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               label,
-              style: TextStyle(
-                color: AppColors.textHint,
-                fontSize: 12.sp,
-              ),
+              style: TextStyle(color: AppColors.textHint, fontSize: 12.sp),
             ),
             Text(
               value,

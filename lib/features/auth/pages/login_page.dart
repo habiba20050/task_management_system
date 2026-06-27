@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/colors/app_colors.dart';
 import '../../../core/validation/validators.dart';
 import '../../../responsive/responsive_layout.dart';
-import '../../../shared/widgets/auth_branding_section.dart';
+import '../../../shared/widgets/auth_layout.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
 import '../cubit/auth_cubit.dart';
@@ -41,94 +41,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.authBackground,
-      body: ResponsiveLayout(
-        mobile: _buildMobileLayout(context),
-        tablet: _buildTabletLayout(context),
-        desktop: _buildDesktopLayout(context),
-      ),
-    );
-  }
-
-  Widget _buildDesktopLayout(BuildContext context) {
-    return Row(
-      children: [
-        const AuthBrandingSection(),
-        Expanded(
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 60.w, vertical: 40.h),
-            child: SingleChildScrollView(
-              child: _buildForm(context),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTabletLayout(BuildContext context) {
-    return Row(
-      children: [
-        const AuthBrandingSection(),
-        Expanded(
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 40.w, vertical: 30.h),
-            child: SingleChildScrollView(
-              child: _buildForm(context),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMobileLayout(BuildContext context) {
-    return SingleChildScrollView(
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 24.h),
-        child: Column(
-          children: [
-            SizedBox(height: 20.h),
-            Container(
-              padding: EdgeInsets.all(20.w),
-              decoration: BoxDecoration(
-                color: AppColors.aituBlue,
-                borderRadius: BorderRadius.circular(16.r),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.task_alt,
-                    size: 48.sp,
-                    color: Colors.white,
-                  ),
-                  SizedBox(height: 12.h),
-                  Text(
-                    'AITU TASK MANAGEMENT',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    'Task & Ticket Management System',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12.sp,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 30.h),
-            _buildForm(context),
-          ],
-        ),
-      ),
-    );
+    return AuthLayout(child: _buildForm(context));
   }
 
   Widget _buildForm(BuildContext context) {
@@ -148,14 +61,11 @@ class _LoginPageState extends State<LoginPage> {
           ),
           SizedBox(height: 8.h),
           Text(
-            'Sign in to your AITU account to continue.',
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: AppColors.textSecondary,
-            ),
+            'Sign in to your AITU account',
+            style: TextStyle(fontSize: 14.sp, color: AppColors.textSecondary),
           ),
           SizedBox(height: 40.h),
-          
+
           // Identifier Field (Email or Username)
           CustomTextField(
             label: 'Username or Email Address',
@@ -170,7 +80,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
           SizedBox(height: 20.h),
-          
+
           // Password Field
           CustomTextField(
             label: 'Password',
@@ -201,7 +111,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
           SizedBox(height: 12.h),
-          
+
           // Forgot Password Link
           Align(
             alignment: Alignment.centerRight,
@@ -220,7 +130,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
           SizedBox(height: 24.h),
-          
+
           // Login Button
           BlocConsumer<AuthCubit, AuthState>(
             listener: (context, state) {
@@ -244,39 +154,7 @@ class _LoginPageState extends State<LoginPage> {
             },
           ),
           SizedBox(height: 24.h),
-          
-          // Info Message
-          Container(
-            padding: EdgeInsets.all(12.w),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(8.r),
-              border: Border.all(
-                color: AppColors.primary.withOpacity(0.1),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.info_outline,
-                  color: AppColors.primary,
-                  size: 18.sp,
-                ),
-                SizedBox(width: 8.w),
-                Expanded(
-                  child: Text(
-                    'Enter your email and password to sign in to your account.',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 12.sp,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
           SizedBox(height: 40.h),
-          
         ],
       ),
     );
