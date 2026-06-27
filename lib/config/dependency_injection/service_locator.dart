@@ -10,6 +10,8 @@ import '../../features/profile/cubit/profile_cubit.dart';
 import '../../features/profile/repository/profile_repository.dart';
 import '../../features/profile/repository/profile_repository_impl.dart';
 import '../../features/profile/service/profile_api.dart';
+import '../../features/teams/cubit/teams_cubit.dart';
+import '../../features/teams/repository/teams_repository.dart';
 
 final getIt = GetIt.instance;
 
@@ -51,6 +53,14 @@ class ServiceLocator {
     );
     getIt.registerFactory<ProfileCubit>(
       () => ProfileCubit(getIt<ProfileRepository>()),
+    );
+
+    // Teams
+    getIt.registerLazySingleton<TeamsRepository>(
+      () => TeamsRepository(),
+    );
+    getIt.registerFactory<TeamsCubit>(
+      () => TeamsCubit(getIt<TeamsRepository>()),
     );
   }
 }
