@@ -12,6 +12,16 @@ class Validators {
     return null;
   }
 
+  static String? validateEmailOrUsername(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Email or username is required';
+    }
+    if (value.length < 3) {
+      return 'Must be at least 3 characters';
+    }
+    return null;
+  }
+
   static String? validatePassword(String? value) {
     if (value == null || value.isEmpty) {
       return 'Password is required';

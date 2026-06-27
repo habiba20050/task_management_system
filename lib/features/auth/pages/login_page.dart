@@ -156,13 +156,12 @@ class _LoginPageState extends State<LoginPage> {
           ),
           SizedBox(height: 40.h),
           
-          // Email Field
+          // Identifier Field (Email or Username)
           CustomTextField(
             label: 'Username or Email Address',
-            hint: 'Enter Your Email',
+            hint: 'Enter Your Email or Username',
             controller: _emailController,
-            validator: Validators.validateEmail,
-            keyboardType: TextInputType.emailAddress,
+            validator: Validators.validateEmailOrUsername,
             textInputAction: TextInputAction.next,
             prefixIcon: Icon(
               Icons.email_outlined,
@@ -225,7 +224,7 @@ class _LoginPageState extends State<LoginPage> {
           // Login Button
           BlocConsumer<AuthCubit, AuthState>(
             listener: (context, state) {
-              if (state is AuthAuthenticated) {
+              if (state is AuthSuccess) {
                 context.pushReplacement('/dashboard');
               } else if (state is AuthError) {
                 ScaffoldMessenger.of(context).showSnackBar(

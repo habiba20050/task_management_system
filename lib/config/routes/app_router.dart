@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/pages/login_page.dart';
 import '../../features/auth/pages/forget_password_page.dart';
@@ -8,8 +9,10 @@ import '../../features/dashboard/pages/dashboard_page.dart';
 import '../../features/team/pages/team_page.dart';
 import '../../features/tasks/pages/tasks_page.dart';
 import '../../features/users/pages/users_page.dart';
+import '../../features/profile/cubit/profile_cubit.dart';
 import '../../features/profile/pages/profile_page.dart';
 import '../../shared/widgets/main_layout.dart';
+import '../dependency_injection/service_locator.dart';
 
 class AppRouter {
   AppRouter._();
@@ -121,9 +124,12 @@ class AppRouter {
       GoRoute(
         path: settings,
         name: 'settings',
-        builder: (context, state) => const MainLayout(
-          title: 'Profile Settings',
-          child: ProfilePage(),
+        builder: (context, state) => BlocProvider(
+          create: (context) => getIt<ProfileCubit>(),
+          child: const MainLayout(
+            title: 'Profile Settings',
+            child: ProfilePage(),
+          ),
         ),
       ),
       GoRoute(
