@@ -5,6 +5,7 @@ import '../../cubit/users_cubit.dart';
 import '../../cubit/users_state.dart';
 import '../widgets/users_filter_bar.dart';
 import '../widgets/user_data_table.dart';
+import '../widgets/invite_user_dialog_widget.dart';
 import '../../../teams/ui/widgets/stat_card_widget.dart'; // إعادة استخدام كروت الإحصاءات السابقة
 
 class UsersRolesScreen extends StatelessWidget {
@@ -23,23 +24,47 @@ class UsersRolesScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // هيدر الشاشة العلوي
-                const Text('Users & Roles', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Users & Roles', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        InviteUserDialogWidget.show(context);
+                      },
+                      icon: const Icon(Icons.add, size: 18, color: Colors.white),
+                      label: const Text(
+                        'Invite User',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0F4C81),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 24),
 
                 // 1. كروت الإحصاءات الأربعة العلوية تماماً كالتصميم
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: const [
-                      StatCardWidget(icon: Icons.people_outline, iconColor: Color(0xFF3B82F6), iconBgColor: Color(0xFFEFF6FF), value: '9', title: 'Total Users'),
-                      SizedBox(width: 16),
-                      StatCardWidget(icon: Icons.shield_outlined, iconColor: Color(0xFFEF4444), iconBgColor: Color(0xFFFEF2F2), value: '1', title: 'Admins'),
-                      SizedBox(width: 16),
-                      StatCardWidget(icon: Icons.workspace_premium_outlined, iconColor: Color(0xFFF59E0B), iconBgColor: Color(0xFFFFFBEB), value: '3', title: 'Managers'),
-                      SizedBox(width: 16),
-                      StatCardWidget(icon: Icons.badge_outlined, iconColor: Color(0xFF10B981), iconBgColor: Color(0xFFE6F4EA), value: '5', title: 'Members'),
-                    ],
-                  ),
+                Row(
+                  children: const [
+                    Expanded(child: StatCardWidget(icon: Icons.people_outline, iconColor: Color(0xFF3B82F6), iconBgColor: Color(0xFFEFF6FF), value: '9', title: 'Total Users')),
+                    SizedBox(width: 16),
+                    Expanded(child: StatCardWidget(icon: Icons.shield_outlined, iconColor: Color(0xFFEF4444), iconBgColor: Color(0xFFFEF2F2), value: '1', title: 'Admins')),
+                    SizedBox(width: 16),
+                    Expanded(child: StatCardWidget(icon: Icons.workspace_premium_outlined, iconColor: Color(0xFFF59E0B), iconBgColor: Color(0xFFFFFBEB), value: '3', title: 'Managers')),
+                    SizedBox(width: 16),
+                    Expanded(child: StatCardWidget(icon: Icons.badge_outlined, iconColor: Color(0xFF10B981), iconBgColor: Color(0xFFE6F4EA), value: '5', title: 'Members')),
+                  ],
                 ),
                 const SizedBox(height: 32),
 

@@ -102,6 +102,79 @@ class _TeamPageState extends State<TeamPage> {
     );
   }
 
+  String _currentLanguage = 'EN';
+
+  Widget _buildLanguageSelector(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(2.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade200, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _currentLanguage = 'EN';
+              });
+            },
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
+              decoration: BoxDecoration(
+                color: _currentLanguage == 'EN'
+                    ? const Color(0xFF1565C0)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(18.r),
+              ),
+              child: Text(
+                'English',
+                style: TextStyle(
+                  color: _currentLanguage == 'EN' ? Colors.white : Colors.grey[600],
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _currentLanguage = 'AR';
+              });
+            },
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
+              decoration: BoxDecoration(
+                color: _currentLanguage == 'AR'
+                    ? const Color(0xFF1565C0)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(18.r),
+              ),
+              child: Text(
+                'العربية',
+                style: TextStyle(
+                  color: _currentLanguage == 'AR' ? Colors.white : Colors.grey[600],
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeader(BuildContext context) {
     final isDesktop = ResponsiveLayout.isDesktop(context);
     
@@ -111,37 +184,13 @@ class _TeamPageState extends State<TeamPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Text(
-                    'Team Management',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: isDesktop ? 22.sp : 18.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (isDesktop) ...[
-                    SizedBox(width: 12.w),
-                    Container(
-                      width: 4.w,
-                      height: 4.h,
-                      decoration: const BoxDecoration(
-                        color: Colors.grey,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    Text(
-                      'Sunday, June 21, 2026',
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ],
+              Text(
+                'Team Management',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: isDesktop ? 22.sp : 18.sp,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               SizedBox(height: 4.h),
               Text(
@@ -156,36 +205,7 @@ class _TeamPageState extends State<TeamPage> {
         ),
         
         if (!ResponsiveLayout.isMobile(context)) ...[
-          Container(
-            width: isDesktop ? 260.w : 180.w,
-            height: 38.h,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20.r),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search tasks, teams...',
-                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 12.sp),
-                prefixIcon: Icon(Icons.search, size: 16.sp, color: Colors.grey[400]),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 8.h),
-              ),
-              style: TextStyle(fontSize: 12.sp),
-            ),
-          ),
-          SizedBox(width: 16.w),
-          
+          // Notifications Bell
           Builder(
             builder: (context) => GestureDetector(
               onTap: () => Scaffold.of(context).openEndDrawer(),
@@ -236,52 +256,7 @@ class _TeamPageState extends State<TeamPage> {
           ),
           SizedBox(width: 20.w),
           
-          GestureDetector(
-            onTap: () => _showUserProfileDialog(context),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 16.r,
-                  backgroundColor: const Color(0xFF0A448C),
-                  child: Text(
-                    'AH',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                SizedBox(width: 8.w),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Dr. Ahmed',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Admin',
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontSize: 10.sp,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(width: 4.w),
-                Icon(
-                  Icons.keyboard_arrow_down,
-                  color: Colors.grey[500],
-                  size: 16.sp,
-                ),
-              ],
-            ),
-          ),
+          _buildLanguageSelector(context),
         ],
       ],
     );

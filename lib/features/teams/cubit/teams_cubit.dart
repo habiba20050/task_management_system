@@ -59,4 +59,25 @@ class TeamsCubit extends Cubit<TeamsState> {
       emit(TeamsLoaded(filteredTeams));
     }
   }
+
+  // إضافة فريق جديد
+  void addTeam(TeamModel team) {
+    _allTeams.add(team);
+    emit(TeamsLoaded(List.from(_allTeams)));
+  }
+
+  // تعديل بيانات فريق
+  void updateTeam(TeamModel team) {
+    final index = _allTeams.indexWhere((t) => t.id == team.id);
+    if (index != -1) {
+      _allTeams[index] = team;
+      emit(TeamsLoaded(List.from(_allTeams)));
+    }
+  }
+
+  // حذف فريق
+  void deleteTeam(String id) {
+    _allTeams.removeWhere((t) => t.id == id);
+    emit(TeamsLoaded(List.from(_allTeams)));
+  }
 }

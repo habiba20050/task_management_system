@@ -38,14 +38,30 @@ class _TicketsScreenState extends State<TicketsScreen> {
                       // 1. البحث باسم الموظف أو المهمة
                       Expanded(
                         flex: 2,
-                        child: TextField(
-                          onChanged: (val) => setState(() => _searchQuery = val),
-                          decoration: InputDecoration(
-                            hintText: 'Search by Member name or Task...',
-                            prefixIcon: const Icon(Icons.search),
-                            filled: true,
-                            fillColor: const Color(0xFFF8FAFC),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        child: Container(
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.02),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: TextField(
+                            onChanged: (val) => setState(() => _searchQuery = val),
+                            decoration: const InputDecoration(
+                              hintText: 'Search by Member name or Task...',
+                              hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                              prefixIcon: Icon(Icons.search, color: Color(0xFF0F4C81), size: 18),
+                              border: InputBorder.none,
+                              contentPadding: EdgeInsets.symmetric(vertical: 10),
+                            ),
+                            style: const TextStyle(fontSize: 13),
                           ),
                         ),
                       ),

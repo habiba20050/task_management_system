@@ -33,42 +33,44 @@ class Sidebar extends StatelessWidget {
           // Logo Section
           Container(
             padding: EdgeInsets.all(
-              ResponsiveLayout.isTablet(context) ? 16.w : 24.w,
+              ResponsiveLayout.isTablet(context) ? 12.w : 18.w,
             ),
             child: Row(
               children: [
                 Image.asset(
                   'assets/images/logo.png',
-                  width: ResponsiveLayout.isTablet(context) ? 46.w : 58.w,
-                  height: ResponsiveLayout.isTablet(context) ? 46.h : 58.h,
+                  width: ResponsiveLayout.isTablet(context) ? 58.w : 74.w,
+                  height: ResponsiveLayout.isTablet(context) ? 58.h : 74.h,
                   fit: BoxFit.contain,
                 ),
                 SizedBox(
-                  width: ResponsiveLayout.isTablet(context) ? 10.w : 14.w,
+                  width: ResponsiveLayout.isTablet(context) ? 8.w : 12.w,
                 ),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        'AITU',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontSize: ResponsiveLayout.isTablet(context)
-                              ? 16.sp
-                              : 20.sp,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
                       Text(
                         'جامعة أسيوط التكنولوجية',
                         style: TextStyle(
                           color: AppColors.primary,
                           fontSize: ResponsiveLayout.isTablet(context)
-                              ? 10.sp
-                              : 12.sp,
+                              ? 9.sp
+                              : 11.5.sp,
                           fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 2.h),
+                      Text(
+                        'Assiut Technological\nUniversity',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: ResponsiveLayout.isTablet(context)
+                              ? 7.5.sp
+                              : 9.5.sp,
+                          fontWeight: FontWeight.bold,
+                          height: 1.1,
                         ),
                       ),
                       SizedBox(height: 4.h),
@@ -77,8 +79,8 @@ class Sidebar extends StatelessWidget {
                         style: TextStyle(
                           color: const Color(0xFF041831), // Dark navy
                           fontSize: ResponsiveLayout.isTablet(context)
-                              ? 8.5.sp
-                              : 10.5.sp,
+                              ? 7.sp
+                              : 8.5.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:task_management_system/features/users/ui/widgets/invite_user_dialog_widget.dart';
 import '../../cubit/users_cubit.dart';
 
 class UsersFilterBar extends StatefulWidget {
@@ -16,21 +15,17 @@ class _UsersFilterBarState extends State<UsersFilterBar> {
 
   @override
   Widget build(BuildContext context) {
-    // استخدام Wrap بدلاً من Row لجعل الشريط متجاوباً مع أحجام الشاشات المختلفة
-    // وينزل لسطر جديد عند الحاجة لمنع الـ Overflow.
-    return Wrap(
-      spacing: 16.0, // المسافة الأفقية بين العناصر
-      runSpacing: 16.0, // المسافة العمودية بين الأسطر
-      crossAxisAlignment: WrapCrossAlignment.center, // محاذاة العناصر في المنتصف عمودياً
+    return Row(
       children: [
         // حقل البحث باسم المستخدم أو الإيميل
         SizedBox(
-          width: 350, // تحديد عرض مناسب لحقل البحث
+          width: 350,
           child: Container(
             height: 46,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
             ),
             child: TextField(
               onChanged: (value) {
@@ -50,75 +45,53 @@ class _UsersFilterBarState extends State<UsersFilterBar> {
             ),
           ),
         ),
+        const SizedBox(width: 16),
 
         // أزرار الفلترة (Tabs) لتبديل الأدوار
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: const Color(0xFFE2E8F0),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: IntrinsicWidth( // يجعل الـ Row يأخذ عرض المحتوى فقط
-            child: Row(
-              children: _tabs.map((tab) {
-                final isSelected = _selectedTab == tab;
-                return GestureDetector(
-                  onTap: () {
-                    setState(() => _selectedTab = tab);
-                    context.read<UsersCubit>().filterByRole(tab);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: _tabs.map((tab) {
+            final isSelected = _selectedTab == tab;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: GestureDetector(
+                onTap: () {
+                  setState(() => _selectedTab = tab);
+                  context.read<UsersCubit>().filterByRole(tab);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF0F4C81)
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
                       color: isSelected
                           ? const Color(0xFF0F4C81)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      tab,
-                      style: TextStyle(
-                        color: isSelected
-                            ? Colors.white
-                            : const Color(0xFF475569),
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.w500,
-                        fontSize: 13,
-                      ),
+                          : const Color(0xFFE2E8F0),
+                      width: 1.2,
                     ),
                   ),
-                );
-              }).toList(),
-            ),
-          ),
-        ),
-
-        // زر إضافة / دعوة مستخدم جديد (+ Invite User)
-        ElevatedButton.icon(
-          onPressed: () {
-            InviteUserDialogWidget.show(context);
-          },
-          icon: const Icon(Icons.add, size: 18, color: Colors.white),
-          label: const Text(
-            'Invite User',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF0F4C81),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16), // زيادة الـ padding العمودي ليتناسب مع ارتفاع حقل البحث
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            elevation: 0,
-          ),
+                  child: Text(
+                    tab,
+                    style: TextStyle(
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF475569),
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.w500,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
         ),
       ],
     );

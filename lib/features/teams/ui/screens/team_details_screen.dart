@@ -10,40 +10,75 @@ class TeamDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      elevation: 10,
       backgroundColor: const Color(0xFFEDF2F7),
-      appBar: AppBar(
-        title: Text(team.name, style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF0F172A)),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(32.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: Container(
+        width: 1000,
+        height: 650,
+        padding: const EdgeInsets.all(24),
+        child: Column(
           children: [
-            // الجزء الأيسر: نظرة عامة والمسؤولين
-            Expanded(
-              flex: 1,
-              child: Column(
-                children: [
-                  _buildManagementCard(),
-                  const SizedBox(height: 24),
-                  _buildProgressCard(),
-                ],
-              ),
+            Row(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back, size: 16, color: Colors.white),
+                  label: const Text('Back to Teams', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F4C81),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Text(
+                  team.name,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                ),
+              ],
             ),
-            const SizedBox(width: 24),
-            // الجزء الأيمن: قائمة الأعضاء والمهام
+            const SizedBox(height: 16),
+            const Divider(color: Color(0xFFE2E8F0), thickness: 1),
+            const SizedBox(height: 16),
             Expanded(
-              flex: 2,
-              child: Column(
-                children: [
-                  _buildMembersList(),
-                  const SizedBox(height: 24),
-                  _buildTeamTasksList(),
-                ],
+              child: SingleChildScrollView(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        children: [
+                          _buildManagementCard(),
+                          const SizedBox(height: 20),
+                          _buildProgressCard(),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        children: [
+                          _buildMembersList(),
+                          const SizedBox(height: 20),
+                          _buildTeamTasksList(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

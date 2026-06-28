@@ -1,25 +1,85 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../cubit/teams_cubit.dart';
 import '../../cubit/teams_state.dart';
 import '../widgets/top_bar_widget.dart';
 import '../widgets/stat_card_widget.dart';
 import '../widgets/team_card_widget.dart';
+import '../widgets/create_team_dialog_widget.dart';
+import '../../../../core/colors/app_colors.dart';
+import '../../../../responsive/responsive_layout.dart';
 
-class TeamsDashboardScreen extends StatelessWidget {
+class TeamsDashboardScreen extends StatefulWidget {
   const TeamsDashboardScreen({Key? key}) : super(key: key);
+
+  @override
+  State<TeamsDashboardScreen> createState() => _TeamsDashboardScreenState();
+}
+
+class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
+
+
+  Widget _buildHeader(BuildContext context) {
+    final isDesktop = ResponsiveLayout.isDesktop(context);
+    
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Team Management',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: isDesktop ? 22.sp : 18.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 4.h),
+              Text(
+                'Overview of teams, departments & performance',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: isDesktop ? 13.sp : 11.sp,
+                ),
+              ),
+            ],
+          ),
+        ),
+        ElevatedButton.icon(
+          onPressed: () {
+            CreateTeamDialogWidget.show(context, context.read<TeamsCubit>());
+          },
+          icon: const Icon(Icons.add, size: 18, color: Colors.white),
+          label: const Text('Add New Team', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF0F4C81),
+            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEDF2F7), // نفس خلفية التصميم الرمادية الفاتحة
+      backgroundColor: const Color(0xFFEDF2F7),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(32.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. شريط البحث العلوي وزر إضافة فريق جديد
+              // Unified Header
+              _buildHeader(context),
+              const SizedBox(height: 24),
+              
+              // 1. Search Bar and Add Team
               BlocBuilder<TeamsCubit, TeamsState>(
                 buildWhen: (previous, current) => current is TeamsLoaded,
                 builder: (context, state) {
@@ -29,51 +89,51 @@ class TeamsDashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 32),
 
-              // 2. كروت الإحصاءات العلوية الخاصة بالفرق فقط (بدون التذاكر - طلب 8)
+              // 2. Stats
               BlocBuilder<TeamsCubit, TeamsState>(
                 builder: (context, state) {
                   if (state is TeamsLoaded) {
-                    // حساب الإحصائيات من البيانات الفعلية
                     final totalTeams = state.teams.length;
                     final totalMembers = state.teams.fold<int>(0, (sum, team) => sum + team.membersCount);
                     final departments = state.teams.map((team) => team.department).toSet().length;
 
-                    return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          StatCardWidget(
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: StatCardWidget(
                             icon: Icons.groups_outlined,
                             iconColor: const Color(0xFF3B82F6),
                             iconBgColor: const Color(0xFFEFF6FF),
                             value: totalTeams.toString(),
                             title: 'Total Teams',
                           ),
-                          const SizedBox(width: 16),
-                          StatCardWidget(
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: StatCardWidget(
                             icon: Icons.person_add_alt_1_outlined,
                             iconColor: const Color(0xFF10B981),
                             iconBgColor: const Color(0xFFE6F4EA),
                             value: totalMembers.toString(),
                             title: 'Total Members',
                           ),
-                          const SizedBox(width: 16),
-                          StatCardWidget(
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: StatCardWidget(
                             icon: Icons.domain_outlined,
                             iconColor: const Color(0xFF8B5CF6),
                             iconBgColor: const Color(0xFFF5F3FF),
                             value: departments.toString(),
                             title: 'Departments',
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     );
                   }
-                  // عرض واجهة تحميل هيكلية (Skeleton) للحفاظ على ثبات الواجهة
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: List.generate(3, (index) => const Padding(
+                  return Row(
+                    children: List.generate(3, (index) => const Expanded(
+                      child: Padding(
                         padding: EdgeInsets.only(right: 16.0),
                         child: StatCardWidget(
                           icon: Icons.hourglass_empty,
@@ -82,14 +142,14 @@ class TeamsDashboardScreen extends StatelessWidget {
                           value: '...',
                           title: 'Loading...',
                         ),
-                      )),
-                    ),
+                      ),
+                    )),
                   );
                 },
               ),
               const SizedBox(height: 32),
 
-              // 3. مراقبة حالة الـ Cubit وعرض كروت الفرق بناءً على الفلترة والبحث
+              // 3. Teams List
               BlocBuilder<TeamsCubit, TeamsState>(
                 builder: (context, state) {
                   if (state is TeamsLoading) {
@@ -102,7 +162,6 @@ class TeamsDashboardScreen extends StatelessWidget {
                       ),
                     );
                   } else if (state is TeamsLoaded) {
-                    // في حالة لم يتم العثور على أي فريق أثناء البحث
                     if (state.teams.isEmpty) {
                       return const Padding(
                         padding: EdgeInsets.symmetric(vertical: 64.0),
@@ -119,16 +178,21 @@ class TeamsDashboardScreen extends StatelessWidget {
                       );
                     }
 
-                    // عرض الكروت المفلترة أفقياً بمحاذاة ممتازة
-                    return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: state.teams.map((team) => Padding(
-                          padding: const EdgeInsets.only(right: 24.0),
-                          child: TeamCardWidget(team: team),
-                        )).toList(),
+                    final isDesktop = ResponsiveLayout.isDesktop(context);
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: isDesktop ? 3 : 1,
+                        crossAxisSpacing: 24.w,
+                        mainAxisSpacing: 24.h,
+                        childAspectRatio: isDesktop ? 0.78 : (ResponsiveLayout.isTablet(context) ? 0.9 : 1.0),
                       ),
+                      itemCount: state.teams.length,
+                      itemBuilder: (context, index) {
+                        final team = state.teams[index];
+                        return TeamCardWidget(team: team);
+                      },
                     );
                   } else if (state is TeamsError) {
                     return Padding(

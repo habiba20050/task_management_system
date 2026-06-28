@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../model/team_model.dart';
+import '../../cubit/teams_cubit.dart';
 import '../screens/team_details_screen.dart';
+import 'create_team_dialog_widget.dart';
 
 class TeamCardWidget extends StatelessWidget {
   final TeamModel team;
@@ -15,13 +18,9 @@ class TeamCardWidget extends StatelessWidget {
       onTap: () => _navigateToDetails(context),
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        width: 320,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: const Border(
-            top: BorderSide(color: Color(0xFF10B981), width: 4), // الخط الأخضر العلوي المميز
-          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.03),
@@ -51,9 +50,27 @@ class TeamCardWidget extends StatelessWidget {
                 ),
                 Row(
                   children: [
-                    _buildIconButton(Icons.edit_outlined, const Color(0xFF3B82F6), const Color(0xFFEFF6FF)),
+                    _buildIconButton(
+                      Icons.edit_outlined,
+                      const Color(0xFF3B82F6),
+                      const Color(0xFFEFF6FF),
+                      () {
+                        CreateTeamDialogWidget.show(
+                          context,
+                          context.read<TeamsCubit>(),
+                          teamToEdit: team,
+                        );
+                      },
+                    ),
                     const SizedBox(width: 8),
-                    _buildIconButton(Icons.delete_outline, const Color(0xFFEF4444), const Color(0xFFFEF2F2)),
+                    _buildIconButton(
+                      Icons.delete_outline,
+                      const Color(0xFFEF4444),
+                      const Color(0xFFFEF2F2),
+                      () {
+                        context.read<TeamsCubit>().deleteTeam(team.id);
+                      },
+                    ),
                   ],
                 ),
               ],
@@ -155,11 +172,10 @@ class TeamCardWidget extends StatelessWidget {
 
   // ميثود الانتقال لصفحة التفاصيل القوية
   void _navigateToDetails(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TeamDetailsScreen(team: team),
-      ),
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => TeamDetailsScreen(team: team),
     );
   }
 
@@ -202,11 +218,15 @@ class TeamCardWidget extends StatelessWidget {
   }
 
   // بناء الأزرار الصغيرة للتعديل والحذف
-  Widget _buildIconButton(IconData icon, Color color, Color bgColor) {
-    return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
-      child: Icon(icon, color: color, size: 18),
+  Widget _buildIconButton(IconData icon, Color color, Color bgColor, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
+        child: Icon(icon, color: color, size: 18),
+      ),
     );
   }
 

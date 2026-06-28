@@ -195,6 +195,7 @@ class _UsersPageState extends State<UsersPage> {
     final isDesktop = ResponsiveLayout.isDesktop(context);
     
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
           child: Column(
@@ -372,6 +373,24 @@ class _UsersPageState extends State<UsersPage> {
             ),
           ),
         ],
+        SizedBox(width: 16.w),
+        ElevatedButton(
+          onPressed: () {},
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF0A448C),
+            foregroundColor: Colors.white,
+            padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 14.h),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add, size: 16.sp, color: Colors.white),
+              SizedBox(width: 8.w),
+              Text('Invite User', style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -413,12 +432,15 @@ class _UsersPageState extends State<UsersPage> {
 
     if (isDesktop) {
       return Row(
-        children: cards.map((c) => Expanded(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8.w),
-            child: c,
-          ),
-        )).toList(),
+        children: [
+          Expanded(child: cards[0]),
+          SizedBox(width: 16.w),
+          Expanded(child: cards[1]),
+          SizedBox(width: 16.w),
+          Expanded(child: cards[2]),
+          SizedBox(width: 16.w),
+          Expanded(child: cards[3]),
+        ],
       );
     } else if (isTablet) {
       return GridView.count(
@@ -504,14 +526,15 @@ class _UsersPageState extends State<UsersPage> {
     
     Widget searchBar = Container(
       width: isDesktop ? 300.w : double.infinity,
-      height: 40.h,
+      height: 44.h,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10.r),
+        borderRadius: BorderRadius.circular(22.r),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.01),
-            blurRadius: 4,
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -522,11 +545,11 @@ class _UsersPageState extends State<UsersPage> {
         decoration: InputDecoration(
           hintText: 'Search users by name or email...',
           hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13.sp),
-          prefixIcon: Icon(Icons.search, size: 18.sp, color: Colors.grey[400]),
+          prefixIcon: Icon(Icons.search, size: 18.sp, color: const Color(0xFF0F4C81)),
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: 9.h),
+          contentPadding: EdgeInsets.symmetric(vertical: 10.h),
         ),
         style: TextStyle(fontSize: 13.sp),
       ),
@@ -548,10 +571,10 @@ class _UsersPageState extends State<UsersPage> {
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF0A448C) : Colors.white,
+                color: isSelected ? const Color(0xFF0F4C81) : Colors.white,
                 borderRadius: BorderRadius.circular(8.r),
                 border: Border.all(
-                  color: isSelected ? const Color(0xFF0A448C) : Colors.grey[200]!,
+                  color: isSelected ? const Color(0xFF0F4C81) : const Color(0xFFE2E8F0),
                   width: 1.2,
                 ),
               ),
@@ -569,31 +592,12 @@ class _UsersPageState extends State<UsersPage> {
       }).toList(),
     );
 
-    Widget inviteButton = ElevatedButton(
-      onPressed: () {},
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF0A448C),
-        foregroundColor: Colors.white,
-        padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 14.h),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.add, size: 16.sp, color: Colors.white),
-          SizedBox(width: 8.w),
-          Text('Invite User', style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-
     if (isDesktop) {
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           searchBar,
           roleTabs,
-          inviteButton,
         ],
       );
     } else {
@@ -606,8 +610,6 @@ class _UsersPageState extends State<UsersPage> {
             scrollDirection: Axis.horizontal,
             child: roleTabs,
           ),
-          SizedBox(height: 12.h),
-          inviteButton,
         ],
       );
     }

@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../cubit/teams_cubit.dart';
+import '../../model/team_model.dart';
 
 class CreateTeamDialogWidget extends StatefulWidget {
-  const CreateTeamDialogWidget({Key? key}) : super(key: key);
+  final TeamModel? teamToEdit;
+  const CreateTeamDialogWidget({Key? key, this.teamToEdit}) : super(key: key);
 
-  static void show(BuildContext context) {
+  static void show(BuildContext context, TeamsCubit cubit, {TeamModel? teamToEdit}) {
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) => const CreateTeamDialogWidget(),
+      builder: (context) => BlocProvider.value(
+        value: cubit,
+        child: CreateTeamDialogWidget(teamToEdit: teamToEdit),
+      ),
     );
   }
 
@@ -23,6 +30,16 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
   String? _selectedDepartment;
   String? _selectedLeader;
   String? _selectedMember;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.teamToEdit != null) {
+      _teamNameController.text = widget.teamToEdit!.name;
+      _selectedDepartment = widget.teamToEdit!.department;
+      _selectedLeader = widget.teamToEdit!.leaderName;
+    }
+  }
 
   @override
   void dispose() {
@@ -51,19 +68,19 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
-                        'Create New Team',
-                        style: TextStyle(
+                        widget.teamToEdit != null ? 'Edit Team' : 'Create New Team',
+                        style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF0F172A),
                         ),
                       ),
-                      SizedBox(height: 6),
+                      const SizedBox(height: 6),
                       Text(
-                        'Set up a new team and assign a leader.',
-                        style: TextStyle(
+                        widget.teamToEdit != null ? 'Update team details and leader.' : 'Set up a new team and assign a leader.',
+                        style: const TextStyle(
                           fontSize: 14,
                           color: Color(0xFF94A3B8),
                         ),
@@ -157,7 +174,36 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
                     child: ElevatedButton(
                       onPressed: () {
                         if (_formKey.currentState!.validate()) {
-                          // تنفيذ منطق الإضافة هنا (Cubit Call)
+                          final name = _teamNameController.text;
+                          final dept = _selectedDepartment ?? 'General';
+                          final leaderName = _selectedLeader ?? 'Prof. Khalid Mansour';
+                          final leaderInitials = leaderName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase();
+                          
+                          if (widget.teamToEdit != null) {
+                            final updatedTeam = TeamModel(
+                              id: widget.teamToEdit!.id,
+                              name: name,
+                              department: dept,
+                              leaderName: leaderName,
+                              leaderInitials: leaderInitials,
+                              membersCount: widget.teamToEdit!.membersCount,
+                              totalTasks: widget.teamToEdit!.totalTasks,
+                              completedTasks: widget.teamToEdit!.completedTasks,
+                            );
+                            context.read<TeamsCubit>().updateTeam(updatedTeam);
+                          } else {
+                            final newTeam = TeamModel(
+                              id: DateTime.now().millisecondsSinceEpoch.toString(),
+                              name: name,
+                              department: dept,
+                              leaderName: leaderName,
+                              leaderInitials: leaderInitials,
+                              membersCount: 4,
+                              totalTasks: 50,
+                              completedTasks: 0,
+                            );
+                            context.read<TeamsCubit>().addTeam(newTeam);
+                          }
                           Navigator.pop(context);
                         }
                       },
@@ -167,9 +213,9 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        'Create Team',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      child: Text(
+                        widget.teamToEdit != null ? 'Save Changes' : 'Create Team',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     ),
                   ),

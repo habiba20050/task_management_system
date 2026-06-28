@@ -11,6 +11,7 @@ import '../../features/dashboard/pages/dashboard_page.dart';
 import '../../features/tasks/pages/tasks_page.dart';
 import '../../features/users/ui/screens/users_roles_screen.dart';
 import '../../features/profile/pages/profile_page.dart';
+import '../../features/reports/pages/reports_page.dart';
 import '../../shared/widgets/main_layout.dart';
 import '../dependency_injection/service_locator.dart';
 
@@ -118,7 +119,7 @@ class AppRouter {
         name: 'reports',
         builder: (context, state) => const MainLayout(
           title: 'Reports',
-          child: Scaffold(body: Center(child: Text('Reports Page'))),
+          child: ReportsPage(),
         ),
       ),
       GoRoute(
