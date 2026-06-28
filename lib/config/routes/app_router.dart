@@ -11,6 +11,7 @@ import '../../features/dashboard/pages/dashboard_page.dart';
 import '../../features/tasks/pages/tasks_page.dart';
 import '../../features/users/ui/screens/users_roles_screen.dart';
 import '../../features/profile/pages/profile_page.dart';
+import '../../features/profile/cubit/profile_cubit.dart';
 import '../../features/reports/pages/reports_page.dart';
 import '../../shared/widgets/main_layout.dart';
 import '../dependency_injection/service_locator.dart';
@@ -125,9 +126,12 @@ class AppRouter {
       GoRoute(
         path: settings,
         name: 'settings',
-        builder: (context, state) => const MainLayout(
+        builder: (context, state) => MainLayout(
           title: 'Profile Settings',
-          child: ProfilePage(),
+          child: BlocProvider(
+            create: (context) => getIt<ProfileCubit>(),
+            child: const ProfilePage(),
+          ),
         ),
       ),
       GoRoute(

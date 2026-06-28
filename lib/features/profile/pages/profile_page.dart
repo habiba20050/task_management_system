@@ -16,8 +16,6 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final TextEditingController _searchController = TextEditingController();
-
   // Form 1 Controllers
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _jobTitleController = TextEditingController();
@@ -44,7 +42,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   void dispose() {
-    _searchController.dispose();
     _fullNameController.dispose();
     _jobTitleController.dispose();
     _deptController.dispose();
@@ -166,183 +163,25 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildHeader(BuildContext context) {
     final isDesktop = ResponsiveLayout.isDesktop(context);
 
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    'Profile Setting',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: isDesktop ? 22.sp : 18.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (isDesktop) ...[
-                    SizedBox(width: 12.w),
-                    Container(
-                      width: 4.w,
-                      height: 4.h,
-                      decoration: const BoxDecoration(
-                        color: Colors.grey,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    Text(
-                      'Sunday, June 21, 2026',
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              SizedBox(height: 4.h),
-              Text(
-                'Update your personal profile, email, and security settings',
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: isDesktop ? 13.sp : 11.sp,
-                ),
-              ),
-            ],
+        Text(
+          'Profile Settings',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: isDesktop ? 22.sp : 18.sp,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        if (!ResponsiveLayout.isMobile(context)) ...[
-          Container(
-            width: isDesktop ? 260.w : 180.w,
-            height: 38.h,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20.r),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search tasks, teams...',
-                hintStyle: TextStyle(color: Colors.grey[400], fontSize: 12.sp),
-                prefixIcon: Icon(Icons.search, size: 16.sp, color: Colors.grey[400]),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 8.h),
-              ),
-              style: TextStyle(fontSize: 12.sp),
-            ),
+        SizedBox(height: 4.h),
+        Text(
+          'Update your personal profile, email, and security settings',
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: isDesktop ? 13.sp : 11.sp,
           ),
-          SizedBox(width: 16.w),
-          Builder(
-            builder: (context) => GestureDetector(
-              onTap: () => Scaffold.of(context).openEndDrawer(),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(8.w),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.notifications_outlined,
-                      size: 20.sp,
-                      color: const Color(0xFF0A448C),
-                    ),
-                  ),
-                  Positioned(
-                    right: -2.w,
-                    top: -2.h,
-                    child: Container(
-                      padding: EdgeInsets.all(4.w),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFF3B30),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        '3',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 8.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(width: 20.w),
-          GestureDetector(
-            onTap: () => _showUserProfileDialog(context),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 16.r,
-                  backgroundColor: const Color(0xFF0A448C),
-                  child: Text(
-                    _initials.isNotEmpty ? _initials : '?',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                SizedBox(width: 8.w),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _fullNameController.text.isNotEmpty
-                          ? _fullNameController.text
-                          : _username,
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Admin',
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontSize: 10.sp,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(width: 4.w),
-                Icon(
-                  Icons.keyboard_arrow_down,
-                  color: Colors.grey[500],
-                  size: 16.sp,
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ],
     );
   }
@@ -775,126 +614,6 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             style: TextStyle(fontSize: 13.sp, color: AppColors.textPrimary),
           ),
-        ),
-      ],
-    );
-  }
-
-  void _showUserProfileDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'User Profile',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 18.sp,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 40.r,
-              backgroundColor: AppColors.primary,
-              child: Text(
-                _initials.isNotEmpty ? _initials : '?',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            SizedBox(height: 16.h),
-            Text(
-              _fullNameController.text.isNotEmpty
-                  ? _fullNameController.text
-                  : _username,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 18.sp,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 4.h),
-            Text(
-              _email,
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 14.sp,
-              ),
-            ),
-            SizedBox(height: 24.h),
-            _buildProfileItem(
-              icon: Icons.person_outline,
-              label: 'Role',
-              value: 'Admin',
-            ),
-            SizedBox(height: 12.h),
-            _buildProfileItem(
-              icon: Icons.business_outlined,
-              label: 'Department',
-              value: _deptController.text.isNotEmpty ? _deptController.text : 'N/A',
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Close',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontSize: 14.sp,
-              ),
-            ),
-          ),
-          CustomButton(
-            text: 'Logout',
-            onPressed: () {
-              Navigator.pop(context);
-              context.go('/login');
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProfileItem({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Row(
-      children: [
-        Icon(
-          icon,
-          color: AppColors.textHint,
-          size: 20.sp,
-        ),
-        SizedBox(width: 12.w),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: AppColors.textHint,
-                fontSize: 12.sp,
-              ),
-            ),
-            Text(
-              value,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
         ),
       ],
     );
