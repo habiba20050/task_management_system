@@ -44,7 +44,6 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: ResponsiveLayout.isMobile(context) ? 20.h : 40.h),
           Text(
             'Forget Password',
             style: TextStyle(
@@ -62,22 +61,17 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
               height: 1.5,
             ),
           ),
-          SizedBox(height: 40.h),
+          SizedBox(height: 24.h),
 
           // Email Field
           CustomTextField(
-            label: 'Username or Email Address',
+            label: 'Email Address',
             hint: 'Enter Your Email',
             controller: _emailController,
             validator: Validators.validateEmail,
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _handleSendOtp(),
-            prefixIcon: Icon(
-              Icons.email_outlined,
-              color: AppColors.textHint,
-              size: 20.sp,
-            ),
           ),
           SizedBox(height: 30.h),
 
@@ -107,7 +101,6 @@ class _ForgetPasswordPageState extends State<ForgetPasswordPage> {
             },
           ),
           SizedBox(height: 24.h),
-          SizedBox(height: 40.h),
         ],
       ),
     );

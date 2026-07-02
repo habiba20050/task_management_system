@@ -4,7 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/colors/app_colors.dart';
 import '../../../core/validation/validators.dart';
-import '../../../responsive/responsive_layout.dart';
 import '../../../shared/widgets/auth_layout.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
@@ -50,34 +49,13 @@ class _LoginPageState extends State<LoginPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: ResponsiveLayout.isMobile(context) ? 20.h : 40.h),
-          Text(
-            'Welcome back',
-            style: TextStyle(
-              fontSize: ResponsiveLayout.isMobile(context) ? 24.sp : 28.sp,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          SizedBox(height: 8.h),
-          Text(
-            'Sign in to your AITU account',
-            style: TextStyle(fontSize: 14.sp, color: AppColors.textSecondary),
-          ),
-          SizedBox(height: 40.h),
-
           // Identifier Field (Email or Username)
           CustomTextField(
-            label: 'Username or Email Address',
-            hint: 'Enter Your Email or Username',
+            label: 'Email Address',
+            hint: 'Enter Your Email',
             controller: _emailController,
             validator: Validators.validateEmailOrUsername,
             textInputAction: TextInputAction.next,
-            prefixIcon: Icon(
-              Icons.email_outlined,
-              color: AppColors.textHint,
-              size: 20.sp,
-            ),
           ),
           SizedBox(height: 20.h),
 
@@ -90,24 +68,25 @@ class _LoginPageState extends State<LoginPage> {
             obscureText: _obscurePassword,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _handleLogin(),
-            prefixIcon: Icon(
-              Icons.lock_outline,
-              color: AppColors.textHint,
-              size: 20.sp,
-            ),
-            suffixIcon: IconButton(
-              icon: Icon(
-                _obscurePassword
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-                color: AppColors.textHint,
-                size: 20.sp,
-              ),
+            suffixIcon: TextButton(
               onPressed: () {
                 setState(() {
                   _obscurePassword = !_obscurePassword;
                 });
               },
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                _obscurePassword ? 'Show' : 'Hide',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
           SizedBox(height: 12.h),
@@ -154,7 +133,6 @@ class _LoginPageState extends State<LoginPage> {
             },
           ),
           SizedBox(height: 24.h),
-          SizedBox(height: 40.h),
         ],
       ),
     );

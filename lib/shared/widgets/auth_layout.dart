@@ -5,10 +5,7 @@ import '../../responsive/responsive_layout.dart';
 class AuthLayout extends StatelessWidget {
   final Widget child;
 
-  const AuthLayout({
-    super.key,
-    required this.child,
-  });
+  const AuthLayout({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -19,8 +16,8 @@ class AuthLayout extends StatelessWidget {
     final double cardWidth = isMobile
         ? 340.w
         : isTablet
-            ? 700.w
-            : 950.w;
+        ? 450.w
+        : 480.w;
 
     return Scaffold(
       body: Stack(
@@ -42,9 +39,7 @@ class AuthLayout extends StatelessWidget {
 
           // Concentric background circle curves
           const Positioned.fill(
-            child: CustomPaint(
-              painter: AuthBackgroundCurvesPainter(),
-            ),
+            child: CustomPaint(painter: AuthBackgroundCurvesPainter()),
           ),
 
           // Translucent decorative shapes
@@ -84,7 +79,7 @@ class AuthLayout extends StatelessWidget {
                 width: cardWidth,
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(20.r),
+                  borderRadius: BorderRadius.circular(24.r),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.25),
@@ -94,230 +89,99 @@ class AuthLayout extends StatelessWidget {
                   ],
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: isMobile
-                    ? _buildMobileContent(context)
-                    : _buildDesktopContent(context, isTablet),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Desktop / Tablet layout: Side-by-side row split
-  Widget _buildDesktopContent(BuildContext context, bool isTablet) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Left side: Branding
-          Expanded(
-            flex: isTablet ? 10 : 9,
-            child: Container(
-              color: const Color(0xFFF8FAFC),
-              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 48.h),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Logo with shadow
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.06),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 24.w : 36.w,
+                    vertical: isMobile ? 32.h : 40.h,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Circular Logo with glow shadow
+                      Center(
+                        child: Container(
+                          width: isMobile ? 130.w : 170.w,
+                          height: isMobile ? 130.w : 170.w,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 16,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          padding: EdgeInsets.all(8.r),
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            fit: BoxFit.contain,
+                          ),
                         ),
-                      ],
-                    ),
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      width: 270.w,
-                      height: 270.h,
-                      fit: BoxFit.contain,
-                    ),
+                      ),
+                      SizedBox(height: 20.h),
+
+                      // University Short Name / Acronym
+                      Text(
+                        'AITU',
+                        style: TextStyle(
+                          color: const Color(0xFF1565C0),
+                          fontSize: isMobile ? 28.sp : 32.sp,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 8.h),
+
+                      // System Name
+                      Text(
+                        'Task Management System',
+                        style: TextStyle(
+                          color: const Color(0xFF1565C0),
+                          fontSize: isMobile ? 13.sp : 15.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 6.h),
+
+                      // University Name in Arabic
+                      Text(
+                        'جامعة أسيوط التكنولوجية الدولية',
+                        style: TextStyle(
+                          color: const Color(0xFF757575),
+                          fontSize: isMobile ? 14.sp : 16.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+
+                      // Small separator
+                      Center(
+                        child: Container(
+                          margin: EdgeInsets.symmetric(vertical: 16.h),
+                          width: 40.w,
+                          height: 2.h,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1565C0).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(1.r),
+                          ),
+                        ),
+                      ),
+
+                      // Form child
+                      child,
+                    ],
                   ),
-                  SizedBox(height: 32.h),
-                  // University Name English
-                  Text(
-                    'Assiut International Technological University',
-                    style: TextStyle(
-                      color: const Color(0xFF1565C0), // Button color
-                      fontSize: isTablet ? 13.sp : 15.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 6.h),
-                  // University Name Arabic
-                  Text(
-                    'جامعة أسيوط التكنولوجية الدولية',
-                    style: TextStyle(
-                      color: const Color(0xFF1565C0), // Button color
-                      fontSize: isTablet ? 14.sp : 16.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 24.h),
-                  // Elegant divider line
-                  Container(
-                    width: 50.w,
-                    height: 2.5.h,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1565C0).withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(2.r),
-                    ),
-                  ),
-                  SizedBox(height: 20.h),
-                  // System Name
-                  Text(
-                    'Task & Ticket\nManagement System',
-                    style: TextStyle(
-                      color: const Color(0xFF041831),
-                      fontSize: isTablet ? 18.sp : 21.sp,
-                      fontWeight: FontWeight.w800,
-                      height: 1.25,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 6.h),
-                  Text(
-                    'نظام إدارة المهام والتذاكر',
-                    style: TextStyle(
-                      color: const Color(0xFF757575),
-                      fontSize: isTablet ? 12.sp : 14.sp,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
-          // Vertical Divider
-          VerticalDivider(
-            color: Colors.grey.shade200,
-            width: 1,
-            thickness: 1,
-          ),
-          // Right side: Form child
-          Expanded(
-            flex: 11,
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: isTablet ? 32.w : 48.w,
-                vertical: 40.h,
-              ),
-              child: Center(child: child),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  // Mobile layout: Vertical stack split
-  Widget _buildMobileContent(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Top side: Branding
-        Container(
-          color: const Color(0xFFF8FAFC),
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 32.h),
-          child: Column(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 15,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  width: 175.w,
-                  height: 175.h,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              SizedBox(height: 20.h),
-              // University Name English
-              Text(
-                'Assiut International Technological University',
-                style: TextStyle(
-                  color: const Color(0xFF1565C0),
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 4.h),
-              // University Name Arabic
-              Text(
-                'جامعة أسيوط التكنولوجية الدولية',
-                style: TextStyle(
-                  color: const Color(0xFF1565C0),
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 16.h),
-              // Elegant divider line
-              Container(
-                width: 40.w,
-                height: 2.h,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1565C0).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(1.r),
-                ),
-              ),
-              SizedBox(height: 16.h),
-              // System Name
-              Text(
-                'Task & Ticket Management System',
-                style: TextStyle(
-                  color: const Color(0xFF041831),
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w800,
-                  height: 1.2,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 4.h),
-              Text(
-                'نظام إدارة المهام والتذاكر',
-                style: TextStyle(
-                  color: const Color(0xFF757575),
-                  fontSize: 11.sp,
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-        // Horizontal Divider
-        Divider(
-          color: Colors.grey.shade200,
-          height: 1,
-          thickness: 1,
-        ),
-        // Bottom side: Form child
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
-          child: child,
-        ),
-      ],
     );
   }
 }

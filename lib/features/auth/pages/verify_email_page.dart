@@ -85,7 +85,6 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(height: ResponsiveLayout.isMobile(context) ? 20.h : 40.h),
         Text(
           'Verify Your Email',
           style: TextStyle(
@@ -96,18 +95,22 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
         ),
         SizedBox(height: 8.h),
         Text(
-          'Enter your email address to receive a 6-digit verification code.',
-          style: TextStyle(fontSize: 14.sp, color: AppColors.textSecondary),
+          'We have sent a 6-digit verification code to ${widget.email}. Please enter it below to proceed.',
+          style: TextStyle(
+            fontSize: 14.sp,
+            color: AppColors.textSecondary,
+            height: 1.4,
+          ),
         ),
-        SizedBox(height: 40.h),
+        SizedBox(height: 24.h),
 
         // OTP Input Fields
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: List.generate(6, (index) {
             return SizedBox(
-              width: ResponsiveLayout.isMobile(context) ? 45.w : 50.w,
-              height: ResponsiveLayout.isMobile(context) ? 55.h : 60.h,
+              width: ResponsiveLayout.isMobile(context) ? 42.w : 50.w,
+              height: ResponsiveLayout.isMobile(context) ? 50.h : 60.h,
               child: TextField(
                 controller: _otpControllers[index],
                 focusNode: _focusNodes[index],
@@ -115,26 +118,26 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
                 keyboardType: TextInputType.number,
                 maxLength: 1,
                 style: TextStyle(
-                  fontSize: ResponsiveLayout.isMobile(context) ? 20.sp : 24.sp,
+                  fontSize: ResponsiveLayout.isMobile(context) ? 18.sp : 22.sp,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
                 decoration: InputDecoration(
                   counterText: '',
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: const Color(0xFFEDF4FC),
                   contentPadding: EdgeInsets.symmetric(vertical: 12.h),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8.r),
-                    borderSide: BorderSide(color: AppColors.border),
+                    borderSide: const BorderSide(color: Color(0xFFD0E1FD)),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8.r),
-                    borderSide: BorderSide(color: AppColors.border),
+                    borderSide: const BorderSide(color: Color(0xFFD0E1FD)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8.r),
-                    borderSide: BorderSide(color: AppColors.primary, width: 2),
+                    borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
                   ),
                 ),
                 onChanged: (value) => _handleOtpChange(index, value),
@@ -172,6 +175,7 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
                 SnackBar(
                   content: Text(state.message),
                   backgroundColor: AppColors.error,
+                  behavior: SnackBarBehavior.floating,
                 ),
               );
             }
@@ -185,7 +189,6 @@ class _VerifyEmailPageState extends State<VerifyEmailPage> {
           },
         ),
         SizedBox(height: 24.h),
-        SizedBox(height: 40.h),
       ],
     );
   }

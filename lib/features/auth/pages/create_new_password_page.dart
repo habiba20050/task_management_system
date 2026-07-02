@@ -64,7 +64,6 @@ class _CreateNewPasswordPageState extends State<CreateNewPasswordPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: ResponsiveLayout.isMobile(context) ? 20.h : 40.h),
           Text(
             'Create New Password',
             style: TextStyle(
@@ -78,7 +77,7 @@ class _CreateNewPasswordPageState extends State<CreateNewPasswordPage> {
             'Your new password must be different from your previous password.',
             style: TextStyle(fontSize: 14.sp, color: AppColors.textSecondary),
           ),
-          SizedBox(height: 40.h),
+          SizedBox(height: 24.h),
 
           // New Password Field
           CustomTextField(
@@ -88,24 +87,25 @@ class _CreateNewPasswordPageState extends State<CreateNewPasswordPage> {
             validator: Validators.validatePassword,
             obscureText: _obscureNewPassword,
             textInputAction: TextInputAction.next,
-            prefixIcon: Icon(
-              Icons.lock_outline,
-              color: AppColors.textHint,
-              size: 20.sp,
-            ),
-            suffixIcon: IconButton(
-              icon: Icon(
-                _obscureNewPassword
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-                color: AppColors.textHint,
-                size: 20.sp,
-              ),
+            suffixIcon: TextButton(
               onPressed: () {
                 setState(() {
                   _obscureNewPassword = !_obscureNewPassword;
                 });
               },
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                _obscureNewPassword ? 'Show' : 'Hide',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
           SizedBox(height: 20.h),
@@ -127,24 +127,25 @@ class _CreateNewPasswordPageState extends State<CreateNewPasswordPage> {
             obscureText: _obscureConfirmPassword,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _handleResetPassword(),
-            prefixIcon: Icon(
-              Icons.lock_outline,
-              color: AppColors.textHint,
-              size: 20.sp,
-            ),
-            suffixIcon: IconButton(
-              icon: Icon(
-                _obscureConfirmPassword
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-                color: AppColors.textHint,
-                size: 20.sp,
-              ),
+            suffixIcon: TextButton(
               onPressed: () {
                 setState(() {
                   _obscureConfirmPassword = !_obscureConfirmPassword;
                 });
               },
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                _obscureConfirmPassword ? 'Show' : 'Hide',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
           SizedBox(height: 30.h),
@@ -178,7 +179,6 @@ class _CreateNewPasswordPageState extends State<CreateNewPasswordPage> {
             },
           ),
           SizedBox(height: 24.h),
-          SizedBox(height: 40.h),
         ],
       ),
     );
