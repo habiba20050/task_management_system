@@ -1,6 +1,9 @@
-import 'package:dio/dio.dart';
-import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:equatable/equatable.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:get_it/get_it.dart';
+import 'package:dio/dio.dart';
+import '../../../core/network/mock_database.dart';
 import '../model/login_request.dart';
 import '../model/user_model.dart';
 import '../repository/auth_repository.dart';
@@ -55,6 +58,34 @@ class AuthCubit extends Cubit<AuthState> {
   final AuthRepository _authRepository;
 
   AuthCubit(this._authRepository) : super(const AuthInitial());
+
+  Future<void> checkAuthStatus() async {
+    emit(const AuthLoading());
+    try {
+      final secureStorage = GetIt.instance<FlutterSecureStorage>();
+      final token = await secureStorage.read(key: 'access_token');
+      final email = await secureStorage.read(key: 'user_email');
+
+      if (token != null && email != null) {
+        final mockUser = MockDatabase.instance.users.firstWhere(
+          (u) => u.email.toLowerCase() == email.trim().toLowerCase(),
+        );
+
+        final user = UserModel(
+          id: mockUser.id,
+          email: mockUser.email,
+          username: mockUser.email.split('@')[0],
+          fullName: mockUser.fullName,
+          role: mockUser.role,
+        );
+        emit(AuthSuccess(user, token));
+      } else {
+        emit(const AuthUnauthenticated());
+      }
+    } catch (_) {
+      emit(const AuthUnauthenticated());
+    }
+  }
 
   Future<void> login({
     required String email,

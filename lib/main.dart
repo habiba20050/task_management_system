@@ -5,7 +5,6 @@ import 'core/theme/app_theme.dart';
 import 'config/dependency_injection/service_locator.dart';
 import 'config/routes/app_router.dart';
 import 'features/auth/cubit/auth_cubit.dart';
-import 'features/auth/repository/auth_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,8 +36,8 @@ class MyApp extends StatelessWidget {
           minTextAdapt: true,
           splitScreenMode: true,
           builder: (context, child) {
-            return BlocProvider(
-              create: (context) => AuthCubit(getIt<AuthRepository>()),
+            return BlocProvider.value(
+              value: getIt<AuthCubit>()..checkAuthStatus(),
               child: MaterialApp.router(
                 title: 'AITU Task Management',
                 debugShowCheckedModeBanner: false,

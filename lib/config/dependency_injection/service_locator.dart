@@ -14,6 +14,9 @@ import '../../features/teams/cubit/teams_cubit.dart';
 import '../../features/teams/repository/teams_repository.dart';
 import '../../features/users/cubit/users_cubit.dart';
 
+import '../../features/auth/cubit/auth_cubit.dart';
+import '../../core/network/mock_database.dart';
+
 final getIt = GetIt.instance;
 
 class ServiceLocator {
@@ -22,6 +25,7 @@ class ServiceLocator {
   static Future<void> init() async {
     // Core
     await LocalStorage.init();
+    await MockDatabase.instance.init();
 
     // Network
     getIt.registerLazySingleton<Dio>(() => DioFactory.createDio());
@@ -40,6 +44,9 @@ class ServiceLocator {
         getIt<AuthApi>(),
         getIt<FlutterSecureStorage>(),
       ),
+    );
+    getIt.registerSingleton<AuthCubit>(
+      AuthCubit(getIt<AuthRepository>()),
     );
 
     // Profile

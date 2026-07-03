@@ -49,12 +49,12 @@ class _LoginPageState extends State<LoginPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Identifier Field (Email or Username)
+          // Identifier Field (Email only)
           CustomTextField(
             label: 'Email Address',
             hint: 'Enter Your Email',
             controller: _emailController,
-            validator: Validators.validateEmailOrUsername,
+            validator: Validators.validateEmail,
             textInputAction: TextInputAction.next,
           ),
           SizedBox(height: 20.h),

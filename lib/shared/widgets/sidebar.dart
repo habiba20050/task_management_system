@@ -100,128 +100,195 @@ class Sidebar extends StatelessWidget {
 
           // Navigation Items
           Expanded(
-            child: ListView(
-              padding: EdgeInsets.symmetric(
-                horizontal: ResponsiveLayout.isTablet(context) ? 8.w : 12.w,
-              ),
-              children: [
-                _SidebarNavItem(
+            child: Builder(
+              builder: (context) {
+                final authState = context.watch<AuthCubit>().state;
+                final role = authState is AuthSuccess ? authState.user.role : 'Team Member';
+
+                final List<Widget> navWidgets = [];
+                
+                navWidgets.add(_SidebarNavItem(
                   icon: Icons.bar_chart_outlined,
                   label: 'Dashboard',
                   route: '/dashboard',
                   isSelected: _isRouteSelected(context, '/dashboard'),
-                ),
-                _SidebarNavItem(
-                  icon: Icons.people_outline,
-                  label: 'Teams',
-                  route: '/team',
-                  isSelected: _isRouteSelected(context, '/team'),
-                ),
-                _SidebarNavItem(
-                  icon: Icons.grid_view_outlined,
-                  label: 'Tasks & Tickets',
+                ));
+
+                if (role == 'Admin' || role == 'Manager') {
+                  navWidgets.add(_SidebarNavItem(
+                    icon: Icons.people_outline,
+                    label: 'Teams',
+                    route: '/team',
+                    isSelected: _isRouteSelected(context, '/team'),
+                  ));
+                  navWidgets.add(_SidebarNavItem(
+                    icon: Icons.assignment_outlined,
+                    label: 'Projects',
+                    route: '/projects',
+                    isSelected: _isRouteSelected(context, '/projects'),
+                  ));
+                }
+
+                navWidgets.add(_SidebarNavItem(
+                  icon: Icons.checklist_outlined,
+                  label: role == 'Team Member' ? 'My Tasks' : 'Tasks',
                   route: '/tasks',
                   isSelected: _isRouteSelected(context, '/tasks'),
-                ),
-                _SidebarNavItem(
-                  icon: Icons.description_outlined,
-                  label: 'Reports',
-                  route: '/reports',
-                  isSelected: _isRouteSelected(context, '/reports'),
-                ),
-                _SidebarNavItem(
-                  icon: Icons.manage_accounts_outlined,
-                  label: 'Users & Roles',
-                  route: '/users-roles',
-                  isSelected: _isRouteSelected(context, '/users-roles'),
-                ),
-                _SidebarNavItem(
+                ));
+
+                navWidgets.add(_SidebarNavItem(
+                  icon: Icons.label_important_outline,
+                  label: role == 'Team Member' ? 'My Tickets' : 'Tickets',
+                  route: '/tickets',
+                  isSelected: _isRouteSelected(context, '/tickets'),
+                ));
+
+                if (role == 'Manager' || role == 'Team Leader') {
+                  navWidgets.add(_SidebarNavItem(
+                    icon: Icons.rate_review_outlined,
+                    label: 'Review Center',
+                    route: '/review-center',
+                    isSelected: _isRouteSelected(context, '/review-center'),
+                  ));
+                }
+
+                if (role != 'Team Member') {
+                  navWidgets.add(_SidebarNavItem(
+                    icon: Icons.description_outlined,
+                    label: 'Reports',
+                    route: '/reports',
+                    isSelected: _isRouteSelected(context, '/reports'),
+                  ));
+                }
+
+                if (role == 'Admin' || role == 'Manager') {
+                  navWidgets.add(_SidebarNavItem(
+                    icon: Icons.manage_accounts_outlined,
+                    label: 'Users & Roles',
+                    route: '/users-roles',
+                    isSelected: _isRouteSelected(context, '/users-roles'),
+                  ));
+                }
+
+                navWidgets.add(_SidebarNavItem(
+                  icon: Icons.warning_amber_outlined,
+                  label: 'Complaints',
+                  route: '/complaints',
+                  isSelected: _isRouteSelected(context, '/complaints'),
+                ));
+
+                if (role == 'Admin' || role == 'Team Leader' || role == 'Team Member') {
+                  navWidgets.add(_SidebarNavItem(
+                    icon: Icons.analytics_outlined,
+                    label: role == 'Team Member' ? 'Score & Achievements' : 'Evaluations',
+                    route: '/evaluations',
+                    isSelected: _isRouteSelected(context, '/evaluations'),
+                  ));
+                }
+
+                navWidgets.add(_SidebarNavItem(
                   icon: Icons.settings_outlined,
                   label: 'Profile Settings',
                   route: '/settings',
                   isSelected: _isRouteSelected(context, '/settings'),
-                ),
-              ],
+                ));
+
+                return ListView(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: ResponsiveLayout.isTablet(context) ? 8.w : 12.w,
+                  ),
+                  children: navWidgets,
+                );
+              }
             ),
           ),
 
           // User Section
-          Container(
-            margin: EdgeInsets.all(
-              ResponsiveLayout.isTablet(context) ? 10.w : 16.w,
-            ),
-            padding: EdgeInsets.all(
-              ResponsiveLayout.isTablet(context) ? 8.w : 12.w,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.sidebarProfileBg,
-              borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: Colors.grey.shade100, width: 1),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: ResponsiveLayout.isTablet(context) ? 14.r : 18.r,
-                  backgroundColor: AppColors.aituRed,
-                  child: Text(
-                    'AH',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: ResponsiveLayout.isTablet(context)
-                          ? 11.sp
-                          : 13.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+          Builder(
+            builder: (context) {
+              final authState = context.watch<AuthCubit>().state;
+              final role = authState is AuthSuccess ? authState.user.role : 'Team Member';
+              final fullName = authState is AuthSuccess ? (authState.user.fullName ?? authState.user.email.split('@')[0]) : 'User';
+              final initials = fullName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase();
+
+              return Container(
+                margin: EdgeInsets.all(
+                  ResponsiveLayout.isTablet(context) ? 10.w : 16.w,
                 ),
-                SizedBox(
-                  width: ResponsiveLayout.isTablet(context) ? 6.w : 10.w,
+                padding: EdgeInsets.all(
+                  ResponsiveLayout.isTablet(context) ? 8.w : 12.w,
                 ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Dr. Ahmed',
+                decoration: BoxDecoration(
+                  color: AppColors.sidebarProfileBg,
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(color: Colors.grey.shade100, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: ResponsiveLayout.isTablet(context) ? 14.r : 18.r,
+                      backgroundColor: AppColors.aituRed,
+                      child: Text(
+                        initials.isEmpty ? 'U' : initials,
                         style: TextStyle(
-                          color: AppColors.textPrimary,
+                          color: Colors.white,
                           fontSize: ResponsiveLayout.isTablet(context)
                               ? 11.sp
                               : 13.sp,
                           fontWeight: FontWeight.bold,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                      SizedBox(height: 2.h),
-                      Text(
-                        'Admin',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: ResponsiveLayout.isTablet(context)
-                              ? 9.sp
-                              : 11.sp,
-                        ),
+                    ),
+                    SizedBox(
+                      width: ResponsiveLayout.isTablet(context) ? 6.w : 10.w,
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            fullName,
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: ResponsiveLayout.isTablet(context)
+                                  ? 11.sp
+                                  : 13.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 2.h),
+                          Text(
+                            role,
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: ResponsiveLayout.isTablet(context)
+                                  ? 9.sp
+                                  : 11.sp,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    IconButton(
+                      constraints: const BoxConstraints(),
+                      padding: EdgeInsets.zero,
+                      icon: Icon(
+                        Icons.logout,
+                        color: AppColors.textSecondary,
+                        size: ResponsiveLayout.isTablet(context) ? 16.sp : 18.sp,
+                      ),
+                      onPressed: () {
+                        context.read<AuthCubit>().logout();
+                        context.pushReplacement('/login');
+                      },
+                    ),
+                  ],
                 ),
-                IconButton(
-                  constraints: const BoxConstraints(),
-                  padding: EdgeInsets.zero,
-                  icon: Icon(
-                    Icons.logout,
-                    color: AppColors.textSecondary,
-                    size: ResponsiveLayout.isTablet(context) ? 16.sp : 18.sp,
-                  ),
-                  onPressed: () {
-                    context.read<AuthCubit>().logout();
-                    context.pushReplacement('/login');
-                  },
-                ),
-              ],
-            ),
+              );
+            }
           ),
         ],
       ),

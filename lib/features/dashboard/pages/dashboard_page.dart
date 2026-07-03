@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../core/colors/app_colors.dart';
+import '../../../core/network/mock_database.dart';
 import '../../../responsive/responsive_layout.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/notification_drawer.dart';
+import '../../auth/cubit/auth_cubit.dart';
 
 class DashboardPage extends StatefulWidget {
   final bool showMyTasks;
@@ -16,114 +19,23 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  final TextEditingController _searchController = TextEditingController();
-  bool _showMyTasks = false;
-  bool _card1Complete = false;
-  bool _card2Complete = false;
-  bool _card3Complete = false;
-  bool _card4Complete = true;
-  
-
-
-  @override
-  void initState() {
-    super.initState();
-    _showMyTasks = widget.showMyTasks;
-  }
-
-  @override
-  void didUpdateWidget(covariant DashboardPage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.showMyTasks != widget.showMyTasks) {
-      setState(() {
-        _showMyTasks = widget.showMyTasks;
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
   String _currentLanguage = 'EN';
-
-  Widget _buildLanguageSelector(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(2.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-        border: Border.all(color: Colors.grey.shade200, width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _currentLanguage = 'EN';
-              });
-            },
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
-              decoration: BoxDecoration(
-                color: _currentLanguage == 'EN'
-                    ? const Color(0xFF1565C0)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(18.r),
-              ),
-              child: Text(
-                'English',
-                style: TextStyle(
-                  color: _currentLanguage == 'EN' ? Colors.white : Colors.grey[600],
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _currentLanguage = 'AR';
-              });
-            },
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 6.h),
-              decoration: BoxDecoration(
-                color: _currentLanguage == 'AR'
-                    ? const Color(0xFF1565C0)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(18.r),
-              ),
-              child: Text(
-                'العربية',
-                style: TextStyle(
-                  color: _currentLanguage == 'AR' ? Colors.white : Colors.grey[600],
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     final isDesktop = ResponsiveLayout.isDesktop(context);
+    final authState = context.watch<AuthCubit>().state;
     
+    if (authState is! AuthSuccess) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final user = authState.user;
+    final role = user.role;
+    const isDark = false;
+
     return Scaffold(
       backgroundColor: AppColors.dashboardBg,
       endDrawer: const NotificationDrawer(),
@@ -137,20 +49,18 @@ class _DashboardPageState extends State<DashboardPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Top Header
-              _buildHeader(context),
+              _buildHeader(context, user, isDark),
               SizedBox(height: 24.h),
-              
-              if (!_showMyTasks) ...[
-                // KPI Stats Grid
-                _buildKPIStatsGrid(context),
-                SizedBox(height: 24.h),
-                
-                // Charts Section 2 (Bar Chart & Recent Activity)
-                _buildChartsSection2(context),
-              ] else ...[
-                // My Tasks Section
-                _buildMyTasksSection(context),
-              ],
+
+              // Render Dashboard based on role
+              if (role == 'Admin')
+                _buildAdminDashboard(context, isDark)
+              else if (role == 'Manager')
+                _buildManagerDashboard(context, isDark)
+              else if (role == 'Team Leader')
+                _buildLeaderDashboard(context, isDark)
+              else
+                _buildMemberDashboard(context, user.id, isDark),
             ],
           ),
         ),
@@ -158,18 +68,17 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  // --- Shared Header ---
+  Widget _buildHeader(BuildContext context, user, bool isDark) {
     final isDesktop = ResponsiveLayout.isDesktop(context);
-    
     return Row(
       children: [
-        // Title & Description
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Dashboard',
+                _currentLanguage == 'EN' ? 'Dashboard Overview' : 'لوحة التحكم العامة',
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: isDesktop ? 22.sp : 18.sp,
@@ -178,7 +87,9 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               SizedBox(height: 4.h),
               Text(
-                'Overview of tasks, teams & performance',
+                _currentLanguage == 'EN' 
+                    ? 'Welcome back, ${user.fullName} (${user.role})'
+                    : 'مرحباً بعودتك، ${user.fullName} (${user.role})',
                 style: TextStyle(
                   color: Colors.grey[600],
                   fontSize: isDesktop ? 13.sp : 11.sp,
@@ -187,657 +98,359 @@ class _DashboardPageState extends State<DashboardPage> {
             ],
           ),
         ),
-        
-        // Search & Profile Actions (Only shown on Desktop/Tablet)
-        if (!ResponsiveLayout.isMobile(context)) ...[
-
-          
-          // Notifications Bell
-          Builder(
-            builder: (context) => GestureDetector(
-              onTap: () => Scaffold.of(context).openEndDrawer(),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(8.w),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
+        SizedBox(width: 8.w),
+        // Notifications
+        Builder(
+          builder: (context) => GestureDetector(
+            onTap: () {
+              MockDatabase.instance.markNotificationsRead(user.id);
+              Scaffold.of(context).openEndDrawer();
+            },
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8.w),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF242432) : Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.notifications_outlined,
+                    size: 20.sp,
+                    color: isDark ? Colors.white70 : const Color(0xFF0A448C),
+                  ),
+                ),
+                Positioned(
+                  right: -2.w,
+                  top: -2.h,
+                  child: Container(
+                    padding: EdgeInsets.all(4.w),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFF3B30),
                       shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
                     ),
-                    child: Icon(
-                      Icons.notifications_outlined,
-                      size: 20.sp,
-                      color: const Color(0xFF0A448C),
-                    ),
-                  ),
-                  Positioned(
-                    right: -2.w,
-                    top: -2.h,
-                    child: Container(
-                      padding: EdgeInsets.all(4.w),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFFF3B30),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        '3',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 8.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    child: Text(
+                      MockDatabase.instance.notifications.where((n) => n.userId == user.id && !n.isRead).length.toString(),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 8.sp,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          SizedBox(width: 20.w),
-          
-          // Language selector
-          _buildLanguageSelector(context),
-        ],
+        ),
+        SizedBox(width: 16.w),
+        // Language Toggle
+        _buildLanguageSelector(context, isDark),
       ],
     );
   }
 
-  Widget _buildKPIStatsGrid(BuildContext context) {
-    final isDesktop = ResponsiveLayout.isDesktop(context);
-    final isTablet = ResponsiveLayout.isTablet(context);
-
-    final cards = [
-      _buildKPICard(
-        icon: Icons.adjust,
-        iconColor: const Color(0xFF2F80ED),
-        iconBgColor: const Color(0xFFEAF2FF),
-        value: '248',
-        label: 'Total Tasks',
-      ),
-      _buildKPICard(
-        icon: Icons.check_circle_outline,
-        iconColor: const Color(0xFF27AE60),
-        iconBgColor: const Color(0xFFE8F8EE),
-        value: '186',
-        label: 'Completed',
-      ),
-      _buildKPICard(
-        icon: Icons.access_time,
-        iconColor: const Color(0xFFF2C94C),
-        iconBgColor: const Color(0xFFFFF9E6),
-        value: '42',
-        label: 'In Progress',
-      ),
-      _buildKPICard(
-        icon: Icons.warning_amber_rounded,
-        iconColor: const Color(0xFFEB5757),
-        iconBgColor: const Color(0xFFFFECEB),
-        value: '20',
-        label: 'Overdue',
-      ),
-    ];
-
-    if (isDesktop) {
-      return Row(
-        children: cards.map((c) => Expanded(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8.w),
-            child: c,
-          ),
-        )).toList(),
-      );
-    } else if (isTablet) {
-      return GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisSpacing: 16.w,
-        mainAxisSpacing: 16.h,
-        childAspectRatio: 1.8,
-        children: cards,
-      );
-    } else {
-      return Column(
-        children: cards.map((c) => Padding(
-          padding: EdgeInsets.only(bottom: 12.h),
-          child: c,
-        )).toList(),
-      );
-    }
-  }
-
-  Widget _buildKPICard({
-    required IconData icon,
-    required Color iconColor,
-    required Color iconBgColor,
-    required String value,
-    required String label,
-  }) {
+  Widget _buildLanguageSelector(BuildContext context, bool isDark) {
     return Container(
-      padding: EdgeInsets.all(18.w),
+      padding: EdgeInsets.all(2.w),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: isDark ? const Color(0xFF242432) : Colors.white,
+        borderRadius: BorderRadius.circular(20.r),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: EdgeInsets.all(12.w),
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: iconColor, size: 22.sp),
-          ),
-          SizedBox(width: 16.w),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 26.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 2.h),
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
+          _buildLangBtn('EN', _currentLanguage == 'EN', isDark),
+          _buildLangBtn('AR', _currentLanguage == 'AR', isDark),
         ],
       ),
     );
   }
 
-  Widget _buildChartsSection2(BuildContext context) {
-    final isDesktop = ResponsiveLayout.isDesktop(context);
-    
-    if (isDesktop) {
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 2,
-            child: _buildBarChartCard(),
+  Widget _buildLangBtn(String label, bool isSelected, bool isDark) {
+    return GestureDetector(
+      onTap: () => setState(() => _currentLanguage = label),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF1565C0) : Colors.transparent,
+          borderRadius: BorderRadius.circular(18.r),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.grey[600]),
+            fontSize: 11.sp,
+            fontWeight: FontWeight.bold,
           ),
-          SizedBox(width: 24.w),
-          Expanded(
-            flex: 1,
-            child: SizedBox(
-              height: 334.h,
-              child: _buildRecentActivityCard(),
-            ),
-          ),
-        ],
-      );
-    } else {
-      return Column(
-        children: [
-          _buildBarChartCard(),
-          SizedBox(height: 24.h),
-          SizedBox(
-            height: 360.h,
-            child: _buildRecentActivityCard(),
-          ),
-        ],
-      );
-    }
+        ),
+      ),
+    );
   }
 
+  // --- Admin Dashboard ---
+  Widget _buildAdminDashboard(BuildContext context, bool isDark) {
+    final db = MockDatabase.instance;
+    final totalManagers = db.users.where((u) => u.role == 'Manager').length;
+    final totalLeaders = db.users.where((u) => u.role == 'Team Leader').length;
+    final totalMembers = db.users.where((u) => u.role == 'Team Member').length;
+    final totalTeams = db.teams.length;
+    final totalProjects = db.projects.length;
+    final totalTickets = db.tickets.length;
+    final totalTasks = db.tasks.length;
 
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStatsRow(isDark, [
+          _StatData(Icons.shield_outlined, 'Managers', totalManagers.toString(), const Color(0xFF2F80ED), const Color(0xFFEAF2FF)),
+          _StatData(Icons.workspace_premium_outlined, 'Leaders', totalLeaders.toString(), const Color(0xFF27AE60), const Color(0xFFE8F8EE)),
+          _StatData(Icons.people_outline, 'Members', totalMembers.toString(), const Color(0xFFF2C94C), const Color(0xFFFFF9E6)),
+          _StatData(Icons.assignment_outlined, 'Projects', totalProjects.toString(), const Color(0xFFEB5757), const Color(0xFFFFECEB)),
+        ]),
+        SizedBox(height: 24.h),
+        _buildStatsRow(isDark, [
+          _StatData(Icons.group_work_outlined, 'Teams', totalTeams.toString(), Colors.purple, const Color(0xFFF3E8FF)),
+          _StatData(Icons.label_outline, 'Tickets', totalTickets.toString(), Colors.teal, const Color(0xFFE6FFFA)),
+          _StatData(Icons.checklist_outlined, 'Tasks', totalTasks.toString(), Colors.indigo, const Color(0xFFE0E7FF)),
+        ]),
+        SizedBox(height: 24.h),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 2,
+              child: _buildRankingsCard(isDark),
+            ),
+            SizedBox(width: 24.w),
+            Expanded(
+              flex: 1,
+              child: _buildRecentComplaintsPanel(isDark),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
-  Widget _buildBarChartCard() {
-    return Container(
-      padding: EdgeInsets.all(24.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+  // --- Manager Dashboard ---
+  Widget _buildManagerDashboard(BuildContext context, bool isDark) {
+    final db = MockDatabase.instance;
+    final totalTeams = db.teams.length;
+    final totalLeaders = db.users.where((u) => u.role == 'Team Leader').length;
+    final totalProjects = db.projects.length;
+    final delayedTasks = db.tasks.where((t) => t.status != 'Approved' && t.status != 'Completed' && DateTime.tryParse(t.deadline)?.isBefore(DateTime.now()) == true).length;
+    final pendingReviews = db.tasks.where((t) => t.status == 'Submitted' || t.status == 'Under Review').length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStatsRow(isDark, [
+          _StatData(Icons.group_work_outlined, 'Teams Count', totalTeams.toString(), const Color(0xFF2F80ED), const Color(0xFFEAF2FF)),
+          _StatData(Icons.workspace_premium_outlined, 'Leaders Count', totalLeaders.toString(), const Color(0xFF27AE60), const Color(0xFFE8F8EE)),
+          _StatData(Icons.assignment_outlined, 'Projects Count', totalProjects.toString(), const Color(0xFFF2C94C), const Color(0xFFFFF9E6)),
+          _StatData(Icons.warning_amber_outlined, 'Delayed Tasks', delayedTasks.toString(), const Color(0xFFEB5757), const Color(0xFFFFECEB)),
+        ]),
+        SizedBox(height: 24.h),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 2,
+              child: _buildDeliverablesWaitingReviewCard(isDark, pendingReviews),
+            ),
+            SizedBox(width: 24.w),
+            Expanded(
+              flex: 1,
+              child: _buildProjectHealthScoreCard(isDark),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // --- Team Leader Dashboard ---
+  Widget _buildLeaderDashboard(BuildContext context, bool isDark) {
+    final db = MockDatabase.instance;
+    final team = db.teams.firstWhere((t) => t.leaderId == '3', orElse: () => MockTeam(id: '', name: 'My Team', managerId: '', leaderId: '', memberIds: []));
+    final memberCount = team.memberIds.length;
+    final teamTasks = db.tasks.where((t) => team.memberIds.contains(t.assignedMemberId)).toList();
+    final activeTasks = teamTasks.where((t) => t.status == 'Assigned' || t.status == 'In Progress').length;
+    final pendingReviews = teamTasks.where((t) => t.status == 'Submitted' || t.status == 'Under Review').length;
+    final delayedTasks = teamTasks.where((t) => t.status != 'Approved' && t.status != 'Completed' && DateTime.tryParse(t.deadline)?.isBefore(DateTime.now()) == true).length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStatsRow(isDark, [
+          _StatData(Icons.people_outline, 'Team Members', memberCount.toString(), const Color(0xFF2F80ED), const Color(0xFFEAF2FF)),
+          _StatData(Icons.checklist_outlined, 'Active Tasks', activeTasks.toString(), const Color(0xFF27AE60), const Color(0xFFE8F8EE)),
+          _StatData(Icons.rate_review_outlined, 'Pending Reviews', pendingReviews.toString(), const Color(0xFFF2C94C), const Color(0xFFFFF9E6)),
+          _StatData(Icons.warning_amber_outlined, 'Delayed Tasks', delayedTasks.toString(), const Color(0xFFEB5757), const Color(0xFFFFECEB)),
+        ]),
+        SizedBox(height: 24.h),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 2,
+              child: _buildTeamMembersActivity(isDark, team.memberIds),
+            ),
+            SizedBox(width: 24.w),
+            Expanded(
+              flex: 1,
+              child: _buildTeamProductivityCard(isDark, teamTasks),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // --- Team Member Dashboard ---
+  Widget _buildMemberDashboard(BuildContext context, String memberId, bool isDark) {
+    final db = MockDatabase.instance;
+    final myTasks = db.tasks.where((t) => t.assignedMemberId == memberId).toList();
+    final userDetails = db.users.firstWhere((u) => u.id == memberId, orElse: () => MockUser(id: '', email: '', fullName: '', role: '', department: ''));
+    final completedCount = myTasks.where((t) => t.status == 'Approved' || t.status == 'Completed').length;
+    final pendingCount = myTasks.where((t) => t.status == 'Assigned' || t.status == 'In Progress' || t.status == 'Needs Changes').length;
+    final overdueCount = myTasks.where((t) => t.status != 'Approved' && t.status != 'Completed' && DateTime.tryParse(t.deadline)?.isBefore(DateTime.now()) == true).length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStatsRow(isDark, [
+          _StatData(Icons.emoji_events_outlined, 'Current Points', userDetails.points.toString(), const Color(0xFF2F80ED), const Color(0xFFEAF2FF)),
+          _StatData(Icons.check_circle_outline, 'Completed Tasks', completedCount.toString(), const Color(0xFF27AE60), const Color(0xFFE8F8EE)),
+          _StatData(Icons.hourglass_empty_outlined, 'Pending Tasks', pendingCount.toString(), const Color(0xFFF2C94C), const Color(0xFFFFF9E6)),
+          _StatData(Icons.warning_amber_rounded, 'Overdue Deadlines', overdueCount.toString(), const Color(0xFFEB5757), const Color(0xFFFFECEB)),
+        ]),
+        SizedBox(height: 24.h),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 2,
+              child: _buildMemberTasksList(isDark, myTasks),
+            ),
+            SizedBox(width: 24.w),
+            Expanded(
+              flex: 1,
+              child: _buildRankingProgressCard(isDark, userDetails),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // --- Support Cards / Panels ---
+
+  Widget _buildStatsRow(bool isDark, List<_StatData> items) {
+    return Row(
+      children: items.map((item) => Expanded(
+        child: Container(
+          margin: EdgeInsets.symmetric(horizontal: 8.w),
+          padding: EdgeInsets.all(18.w),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF242432) : Colors.white,
+            borderRadius: BorderRadius.circular(16.r),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Row(
             children: [
+              Container(
+                padding: EdgeInsets.all(12.w),
+                decoration: BoxDecoration(
+                  color: isDark ? item.bgColor.withOpacity(0.1) : item.bgColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(item.icon, color: item.iconColor, size: 22.sp),
+              ),
+              SizedBox(width: 16.w),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Department Performance',
+                    item.value,
                     style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 15.sp,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
+                      fontSize: 24.sp,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: 4.h),
+                  SizedBox(height: 2.h),
                   Text(
-                    'Completed vs. pending tasks by department',
+                    item.label,
                     style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 11.sp,
+                      color: isDark ? Colors.white60 : Colors.grey[500],
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ],
-              ),
-              Row(
-                children: [
-                  _buildLegendDot(color: const Color(0xFF0A448C), label: 'Completed'),
-                  SizedBox(width: 16.w),
-                  _buildLegendDot(color: const Color(0xFF9CCAFF), label: 'Pending'),
                 ],
               ),
             ],
           ),
-          SizedBox(height: 24.h),
-          SizedBox(
-            height: 210.h,
-            child: BarChart(
-              BarChartData(
-                barTouchData: BarTouchData(
-                  enabled: false,
-                  touchTooltipData: BarTouchTooltipData(
-                    getTooltipColor: (group) => Colors.transparent,
-                    tooltipPadding: EdgeInsets.zero,
-                    tooltipMargin: 4.h,
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      return BarTooltipItem(
-                        '${rod.toY.toInt()}%',
-                        TextStyle(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 9.sp,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                gridData: const FlGridData(show: false),
-                borderData: FlBorderData(show: false),
-                titlesData: FlTitlesData(
-                  show: true,
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 15,
-                      getTitlesWidget: (value, meta) {
-                        return Padding(
-                          padding: EdgeInsets.only(right: 8.w),
-                          child: Text(
-                            value.toInt().toString(),
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        );
-                      },
-                      reservedSize: 28.w,
-                    ),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        const depts = ['CS Dept', 'Engineering', 'Business', 'IT Services', 'Mathematics'];
-                        if (value.toInt() >= 0 && value.toInt() < depts.length) {
-                          return Padding(
-                            padding: EdgeInsets.only(top: 8.h),
-                            child: Text(
-                              depts[value.toInt()],
-                              style: TextStyle(
-                                color: Colors.grey[500],
-                                fontSize: 10.sp,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                      reservedSize: 28.h,
-                    ),
-                  ),
-                ),
-                barGroups: [
-                  _buildBarGroup(0, 47, 15),
-                  _buildBarGroup(1, 37, 18),
-                  _buildBarGroup(2, 29, 12),
-                  _buildBarGroup(3, 52, 8),
-                  _buildBarGroup(4, 20, 22),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      )).toList(),
     );
   }
 
-  BarChartGroupData _buildBarGroup(int x, double completed, double pending) {
-    return BarChartGroupData(
-      x: x,
-      barRods: [
-        BarChartRodData(
-          toY: completed,
-          color: const Color(0xFF0A448C),
-          width: 10.w,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(3.r),
-            topRight: Radius.circular(3.r),
-          ),
-        ),
-        BarChartRodData(
-          toY: pending,
-          color: const Color(0xFF9CCAFF),
-          width: 10.w,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(3.r),
-            topRight: Radius.circular(3.r),
-          ),
-        ),
-      ],
-      showingTooltipIndicators: const [0, 1],
-    );
-  }
-
-  Widget _buildLegendDot({required Color color, required String label}) {
-    return Row(
-      children: [
-        Container(
-          width: 8.w,
-          height: 8.h,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2.r),
-          ),
-        ),
-        SizedBox(width: 8.w),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 11.sp,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRecentActivityCard() {
-    final List<ActivityItem> activities = [
-      ActivityItem(
-        initials: 'SA',
-        name: 'Sarah Ahmed',
-        action: 'completed',
-        target: 'API Integration Review',
-        time: '5 min ago',
-        color: const Color(0xFF27AE60),
-      ),
-      ActivityItem(
-        initials: 'OK',
-        name: 'Omar Khalil',
-        action: 'created ticket',
-        target: 'Network Infrastructure Audit',
-        time: '23 min ago',
-        color: const Color(0xFF2F80ED),
-      ),
-      ActivityItem(
-        initials: 'NH',
-        name: 'Nour Hassan',
-        action: 'updated status of',
-        target: 'Course Management Portal',
-        time: '1 hr ago',
-        color: const Color(0xFFF2C94C),
-      ),
-      ActivityItem(
-        initials: 'AS',
-        name: 'Ahmed Sayed',
-        action: 'missed deadline for',
-        target: 'Annual Report Submission',
-        time: '2 hr ago',
-        color: const Color(0xFFEB5757),
-      ),
-      ActivityItem(
-        initials: 'FA',
-        name: 'Fatma Ali',
-        action: 'commented on',
-        target: 'Student Portal Redesign',
-        time: '3 hr ago',
-        color: Colors.grey[500]!,
-      ),
-    ];
+  Widget _buildRankingsCard(bool isDark) {
+    final db = MockDatabase.instance;
+    // Show teams or members rankings
+    final teamsSorted = List<MockTeam>.from(db.teams)..sort((a, b) => b.progress.compareTo(a.progress));
 
     return Container(
       padding: EdgeInsets.all(24.w),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF242432) : Colors.white,
         borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Recent Activity',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 15.sp,
-                  fontWeight: FontWeight.bold,
+          Text(
+            'Team Rankings (Progress)',
+            style: TextStyle(
+              color: isDark ? Colors.white : AppColors.textPrimary,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 16.h),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: teamsSorted.length,
+            separatorBuilder: (context, index) => const Divider(),
+            itemBuilder: (context, index) {
+              final team = teamsSorted[index];
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: AppColors.aituBlue.withOpacity(0.1),
+                  child: Text('#${index + 1}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.aituBlue)),
                 ),
-              ),
-              TextButton(
-                onPressed: () {},
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Text(
-                  'View all',
-                  style: TextStyle(
-                    color: const Color(0xFF2F80ED),
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.bold,
+                title: Text(team.name, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
+                subtitle: Text('Progress Percentage: ${team.progress.toInt()}%', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey)),
+                trailing: SizedBox(
+                  width: 100.w,
+                  child: LinearProgressIndicator(
+                    value: team.progress / 100.0,
+                    backgroundColor: Colors.grey[200],
+                    color: AppColors.primary,
                   ),
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12.h),
-          Expanded(
-            child: ListView.separated(
-              itemCount: activities.length,
-              separatorBuilder: (context, index) => Divider(
-                color: Colors.grey[100],
-                thickness: 1,
-                height: 14.h,
-              ),
-              itemBuilder: (context, index) {
-                final activity = activities[index];
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CircleAvatar(
-                      radius: 14.r,
-                      backgroundColor: activity.color.withOpacity(0.1),
-                      child: Text(
-                        activity.initials,
-                        style: TextStyle(
-                          color: activity.color,
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          RichText(
-                            text: TextSpan(
-                              style: TextStyle(
-                                color: Colors.grey[700],
-                                fontSize: 11.sp,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: '${activity.name} ',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                                ),
-                                TextSpan(text: '${activity.action} '),
-                                TextSpan(
-                                  text: activity.target,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF0A448C),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: 2.h),
-                          Text(
-                            activity.time,
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 10.sp,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-
-
-  void _showUserProfileDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'User Profile',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 18.sp,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              radius: 40.r,
-              backgroundColor: AppColors.primary,
-              child: Text(
-                'AH',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            SizedBox(height: 16.h),
-            Text(
-              'Dr. Ahmed',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 18.sp,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 4.h),
-            Text(
-              'ahmed.admin@aitu.edu.eg',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 14.sp,
-              ),
-            ),
-            SizedBox(height: 24.h),
-            _buildProfileItem(
-              icon: Icons.person_outline,
-              label: 'Role',
-              value: 'Admin',
-            ),
-            SizedBox(height: 12.h),
-            _buildProfileItem(
-              icon: Icons.business_outlined,
-              label: 'Department',
-              value: 'Administration',
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Close',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontSize: 14.sp,
-              ),
-            ),
-          ),
-          CustomButton(
-            text: 'Logout',
-            onPressed: () {
-              Navigator.pop(context);
-              context.go('/login');
+              );
             },
           ),
         ],
@@ -845,640 +458,363 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildProfileItem({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Row(
-      children: [
-        Icon(
-          icon,
-          color: AppColors.textHint,
-          size: 20.sp,
-        ),
-        SizedBox(width: 12.w),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: AppColors.textHint,
-                fontSize: 12.sp,
-              ),
-            ),
-            Text(
-              value,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMyTasksSection(BuildContext context) {
-    final isMobile = ResponsiveLayout.isMobile(context);
-    final activeCount = 3 - (_card1Complete ? 1 : 0) - (_card2Complete ? 1 : 0) - (_card3Complete ? 1 : 0);
-    final completedCount = 1 + (_card1Complete ? 1 : 0) + (_card2Complete ? 1 : 0) + (_card3Complete ? 1 : 0);
-    final overdueCount = 1 - (_card1Complete ? 1 : 0);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Dark Blue Tasks Banner / Header
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: AppColors.aituBlue,
-            borderRadius: BorderRadius.circular(12.r),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-          child: Row(
-            children: [
-              // Icon Container
-              Container(
-                padding: EdgeInsets.all(8.w),
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(8.r),
-                  border: Border.all(color: Colors.white38),
-                ),
-                child: Icon(
-                  Icons.assignment_outlined,
-                  color: Colors.white,
-                  size: 20.sp,
-                ),
-              ),
-              SizedBox(width: 12.w),
-              // Description Columns
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'My Tasks',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 2.h),
-                    RichText(
-                      text: TextSpan(
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
-                          fontSize: 12.sp,
-                        ),
-                        children: [
-                          TextSpan(text: '$activeCount active · $completedCount completed · '),
-                          TextSpan(
-                            text: '$overdueCount overdue!',
-                            style: TextStyle(
-                              color: overdueCount > 0 ? const Color(0xFFFF8A80) : Colors.white.withOpacity(0.8),
-                              fontWeight: overdueCount > 0 ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // View All Tasks Button
-              OutlinedButton(
-                onPressed: () {
-                  context.go('/tasks');
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.white54, width: 1.2),
-                  padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.r),
-                  ),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'View All Tasks',
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(width: 4.w),
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      size: 10.sp,
-                      color: Colors.white,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(height: 24.h),
-
-        // Responsive Cards Grid / Column
-        if (!isMobile)
-          Column(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: _buildDetailedTaskCard(
-                      leftBorderColor: const Color(0xFFEB5757),
-                      priority: 'HIGH',
-                      priorityColor: const Color(0xFFEB5757),
-                      priorityBg: const Color(0xFFFFECEB),
-                      status: 'To Do',
-                      statusColor: const Color(0xFFF2C94C),
-                      statusBg: const Color(0xFFFFF9E6),
-                      isOverdue: true,
-                      title: 'Faculty Performance Review Q2',
-                      description:
-                          'Conduct comprehensive performance evaluations for all CS department faculty members, reviewing research publications, teaching feedback, and service metrics.',
-                      department: 'CS Dept',
-                      dueDate: 'Jun 30',
-                      isComplete: _card1Complete,
-                      onActionTap: () {
-                        setState(() {
-                          _card1Complete = true;
-                        });
-                      },
-                    ),
-                  ),
-                  SizedBox(width: 16.w),
-                  Expanded(
-                    child: _buildDetailedTaskCard(
-                      leftBorderColor: const Color(0xFFF2C94C),
-                      priority: 'HIGH',
-                      priorityColor: const Color(0xFFEB5757),
-                      priorityBg: const Color(0xFFFFECEB),
-                      status: 'To Do',
-                      statusColor: const Color(0xFFF2C94C),
-                      statusBg: const Color(0xFFFFF9E6),
-                      isOverdue: true,
-                      title: 'Faculty Performance Review Q2',
-                      description:
-                          'Conduct comprehensive performance evaluations for all CS department faculty members, reviewing research publications, teaching feedback, and service metrics.',
-                      department: 'CS Dept',
-                      dueDate: 'Jun 30',
-                      isComplete: _card2Complete,
-                      onActionTap: () {
-                        setState(() {
-                          _card2Complete = true;
-                        });
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16.h),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: _buildDetailedTaskCard(
-                      leftBorderColor: const Color(0xFF27AE60),
-                      priority: 'HIGH',
-                      priorityColor: const Color(0xFFEB5757),
-                      priorityBg: const Color(0xFFFFECEB),
-                      status: 'To Do',
-                      statusColor: const Color(0xFFF2C94C),
-                      statusBg: const Color(0xFFFFF9E6),
-                      isOverdue: true,
-                      title: 'Faculty Performance Review Q2',
-                      description:
-                          'Conduct comprehensive performance evaluations for all CS department faculty members, reviewing research publications, teaching feedback, and service metrics.',
-                      department: 'CS Dept',
-                      dueDate: 'Jun 30',
-                      isComplete: _card3Complete,
-                      onActionTap: () {
-                        setState(() {
-                          _card3Complete = true;
-                        });
-                      },
-                    ),
-                  ),
-                  SizedBox(width: 16.w),
-                  Expanded(
-                    child: _buildDetailedTaskCard(
-                      leftBorderColor: const Color(0xFF2F80ED),
-                      priority: 'HIGH',
-                      priorityColor: const Color(0xFFEB5757),
-                      priorityBg: const Color(0xFFFFECEB),
-                      status: 'Complete',
-                      statusColor: const Color(0xFF2F80ED),
-                      statusBg: const Color(0xFFEAF2FF),
-                      isOverdue: false,
-                      title: 'Faculty Performance Review Q2',
-                      description:
-                          'Conduct comprehensive performance evaluations for all CS department faculty members, reviewing research publications, teaching feedback, and service metrics.',
-                      department: 'CS Dept',
-                      dueDate: 'Jun 30',
-                      isComplete: _card4Complete,
-                      onActionTap: () {
-                        setState(() {
-                          _card4Complete = true;
-                        });
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          )
-        else
-          Column(
-            children: [
-              _buildDetailedTaskCard(
-                leftBorderColor: const Color(0xFFEB5757),
-                priority: 'HIGH',
-                priorityColor: const Color(0xFFEB5757),
-                priorityBg: const Color(0xFFFFECEB),
-                status: 'To Do',
-                statusColor: const Color(0xFFF2C94C),
-                statusBg: const Color(0xFFFFF9E6),
-                isOverdue: true,
-                title: 'Faculty Performance Review Q2',
-                description:
-                    'Conduct comprehensive performance evaluations for all CS department faculty members, reviewing research publications, teaching feedback, and service metrics.',
-                department: 'CS Dept',
-                dueDate: 'Jun 30',
-                isComplete: _card1Complete,
-                onActionTap: () {
-                  setState(() {
-                    _card1Complete = true;
-                  });
-                },
-              ),
-              SizedBox(height: 16.h),
-              _buildDetailedTaskCard(
-                leftBorderColor: const Color(0xFFF2C94C),
-                priority: 'HIGH',
-                priorityColor: const Color(0xFFEB5757),
-                priorityBg: const Color(0xFFFFECEB),
-                status: 'To Do',
-                statusColor: const Color(0xFFF2C94C),
-                statusBg: const Color(0xFFFFF9E6),
-                isOverdue: true,
-                title: 'Faculty Performance Review Q2',
-                description:
-                    'Conduct comprehensive performance evaluations for all CS department faculty members, reviewing research publications, teaching feedback, and service metrics.',
-                department: 'CS Dept',
-                dueDate: 'Jun 30',
-                isComplete: _card2Complete,
-                onActionTap: () {
-                  setState(() {
-                    _card2Complete = true;
-                  });
-                },
-              ),
-              SizedBox(height: 16.h),
-              _buildDetailedTaskCard(
-                leftBorderColor: const Color(0xFF27AE60),
-                priority: 'HIGH',
-                priorityColor: const Color(0xFFEB5757),
-                priorityBg: const Color(0xFFFFECEB),
-                status: 'To Do',
-                statusColor: const Color(0xFFF2C94C),
-                statusBg: const Color(0xFFFFF9E6),
-                isOverdue: true,
-                title: 'Faculty Performance Review Q2',
-                description:
-                    'Conduct comprehensive performance evaluations for all CS department faculty members, reviewing research publications, teaching feedback, and service metrics.',
-                department: 'CS Dept',
-                dueDate: 'Jun 30',
-                isComplete: _card3Complete,
-                onActionTap: () {
-                  setState(() {
-                    _card3Complete = true;
-                  });
-                },
-              ),
-              SizedBox(height: 16.h),
-              _buildDetailedTaskCard(
-                leftBorderColor: const Color(0xFF2F80ED),
-                priority: 'HIGH',
-                priorityColor: const Color(0xFFEB5757),
-                priorityBg: const Color(0xFFFFECEB),
-                status: 'Complete',
-                statusColor: const Color(0xFF2F80ED),
-                statusBg: const Color(0xFFEAF2FF),
-                isOverdue: false,
-                title: 'Faculty Performance Review Q2',
-                description:
-                    'Conduct comprehensive performance evaluations for all CS department faculty members, reviewing research publications, teaching feedback, and service metrics.',
-                department: 'CS Dept',
-                dueDate: 'Jun 30',
-                isComplete: _card4Complete,
-                onActionTap: () {
-                  setState(() {
-                    _card4Complete = true;
-                  });
-                },
-              ),
-            ],
-          ),
-      ],
-    );
-  }
-
-  Widget _buildDetailedTaskCard({
-    required Color leftBorderColor,
-    required String priority,
-    required Color priorityColor,
-    required Color priorityBg,
-    required String status,
-    required Color statusColor,
-    required Color statusBg,
-    required bool isOverdue,
-    required String title,
-    required String description,
-    required String department,
-    required String dueDate,
-    required bool isComplete,
-    required VoidCallback onActionTap,
-  }) {
+  Widget _buildRecentComplaintsPanel(bool isDark) {
+    final complaints = MockDatabase.instance.complaints;
     return Container(
+      padding: EdgeInsets.all(24.w),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF242432) : Colors.white,
         borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Recent Complaints',
+            style: TextStyle(
+              color: isDark ? Colors.white : AppColors.textPrimary,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.bold,
+            ),
           ),
+          SizedBox(height: 16.h),
+          if (complaints.isEmpty)
+            Text('No complaints registered.', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey))
+          else
+            Column(
+              children: complaints.map((c) => Card(
+                color: isDark ? const Color(0xFF1E1E28) : Colors.grey[100],
+                child: ListTile(
+                  title: Text(c.title, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
+                  subtitle: Text('${c.targetName} (${c.status})', style: TextStyle(color: isDark ? Colors.white70 : Colors.grey[600])),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                  onTap: () => context.go('/complaints'),
+                ),
+              )).toList(),
+            ),
         ],
       ),
-      child: ClipRRect(
+    );
+  }
+
+  Widget _buildDeliverablesWaitingReviewCard(bool isDark, int pendingReviews) {
+    final db = MockDatabase.instance;
+    final submittedTasks = db.tasks.where((t) => t.status == 'Submitted').toList();
+
+    return Container(
+      padding: EdgeInsets.all(24.w),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF242432) : Colors.white,
         borderRadius: BorderRadius.circular(16.r),
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border(
-              left: BorderSide(color: leftBorderColor, width: 4.w),
-            ),
-          ),
-          padding: EdgeInsets.all(20.w),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Tags Row
-              Row(
-                children: [
-                  // Priority Tag
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                    decoration: BoxDecoration(
-                      color: priorityBg,
-                      borderRadius: BorderRadius.circular(4.r),
-                    ),
-                    child: Text(
-                      priority,
-                      style: TextStyle(
-                        color: priorityColor,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 8.w),
-                  // Status Tag
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                    decoration: BoxDecoration(
-                      color: statusBg,
-                      borderRadius: BorderRadius.circular(4.r),
-                    ),
-                    child: Text(
-                      status,
-                      style: TextStyle(
-                        color: statusColor,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  if (isOverdue && !isComplete) ...[
-                    SizedBox(width: 8.w),
-                    // Overdue Tag
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFECEB),
-                        borderRadius: BorderRadius.circular(4.r),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.warning_amber_rounded,
-                            color: const Color(0xFFEB5757),
-                            size: 11.sp,
-                          ),
-                          SizedBox(width: 4.w),
-                          Text(
-                            'OVERDUE',
-                            style: TextStyle(
-                              color: const Color(0xFFEB5757),
-                              fontSize: 10.sp,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              SizedBox(height: 16.h),
-              // Title
               Text(
-                title,
+                'Deliverables Waiting Review ($pendingReviews)',
                 style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 15.sp,
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: 8.h),
-              // Description
-              Text(
-                description,
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 12.sp,
-                  height: 1.4,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              SizedBox(height: 20.h),
-              // Bottom Row (Department, Due Date, Button)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      // Department Tag
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEAF2FF),
-                          borderRadius: BorderRadius.circular(4.r),
-                        ),
-                        child: Text(
-                          department,
-                          style: TextStyle(
-                            color: const Color(0xFF0A448C),
-                            fontSize: 11.sp,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 12.w),
-                      // Due Date
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_today_outlined,
-                            color: Colors.grey[400],
-                            size: 12.sp,
-                          ),
-                          SizedBox(width: 4.w),
-                          Text(
-                            dueDate,
-                            style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  // Action Button or Done status
-                  if (isComplete)
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F8EE),
-                        borderRadius: BorderRadius.circular(6.r),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.check_circle_outline,
-                            color: const Color(0xFF27AE60),
-                            size: 13.sp,
-                          ),
-                          SizedBox(width: 4.w),
-                          Text(
-                            'Done',
-                            style: TextStyle(
-                              color: const Color(0xFF27AE60),
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    OutlinedButton(
-                      onPressed: onActionTap,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF27AE60),
-                        side: const BorderSide(color: Color(0xFF27AE60), width: 1.2),
-                        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6.r),
-                        ),
-                        backgroundColor: const Color(0xFFE8F8EE),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.check,
-                            color: const Color(0xFF27AE60),
-                            size: 12.sp,
-                          ),
-                          SizedBox(width: 4.w),
-                          Text(
-                            'Mark Complete',
-                            style: TextStyle(
-                              color: const Color(0xFF27AE60),
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
+              TextButton(
+                onPressed: () => context.go('/review-center'),
+                child: const Text('Go to Review Center'),
               ),
             ],
           ),
-        ),
+          SizedBox(height: 16.h),
+          if (submittedTasks.isEmpty)
+            Text('No tasks awaiting review.', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey))
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: submittedTasks.length,
+              separatorBuilder: (context, index) => const Divider(),
+              itemBuilder: (context, index) {
+                final task = submittedTasks[index];
+                return ListTile(
+                  title: Text(task.title, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
+                  subtitle: Text('Submitted Work Notes: ${task.notes ?? 'No comments'}', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey)),
+                  trailing: const Chip(label: Text('Submitted'), backgroundColor: Colors.amberAccent),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProjectHealthScoreCard(bool isDark) {
+    return Container(
+      padding: EdgeInsets.all(24.w),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF242432) : Colors.white,
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            'Project Health Score',
+            style: TextStyle(
+              color: isDark ? Colors.white : AppColors.textPrimary,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 24.h),
+          SizedBox(
+            width: 120.w,
+            height: 120.h,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CircularProgressIndicator(
+                  value: 0.85,
+                  strokeWidth: 10.w,
+                  backgroundColor: Colors.grey[200],
+                  color: AppColors.aituRed,
+                ),
+                Center(
+                  child: Text(
+                    '85%',
+                    style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 16.h),
+          Text(
+            'All systems operational',
+            style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13.sp),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeamMembersActivity(bool isDark, List<String> memberIds) {
+    final db = MockDatabase.instance;
+    final members = db.users.where((u) => memberIds.contains(u.id)).toList();
+
+    return Container(
+      padding: EdgeInsets.all(24.w),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF242432) : Colors.white,
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Team Members Performance',
+            style: TextStyle(
+              color: isDark ? Colors.white : AppColors.textPrimary,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 16.h),
+          Column(
+            children: members.map((m) => ListTile(
+              leading: CircleAvatar(
+                backgroundColor: AppColors.aituRed.withOpacity(0.1),
+                child: Text(m.fullName[0], style: const TextStyle(color: AppColors.aituRed, fontWeight: FontWeight.bold)),
+              ),
+              title: Text(m.fullName, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
+              subtitle: Text('Points: ${m.points} | Score: ${m.finalScore.toInt()}%', style: TextStyle(color: isDark ? Colors.white70 : Colors.grey[600])),
+              trailing: ElevatedButton(
+                onPressed: () => context.go('/evaluations'),
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 10.w),
+                  backgroundColor: AppColors.primary,
+                ),
+                child: const Text('View Evaluation'),
+              ),
+            )).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeamProductivityCard(bool isDark, List<MockTask> tasks) {
+    final completed = tasks.where((t) => t.status == 'Approved' || t.status == 'Completed').length;
+    final total = tasks.length;
+    final rate = total == 0 ? 0.0 : (completed / total);
+
+    return Container(
+      padding: EdgeInsets.all(24.w),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF242432) : Colors.white,
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            'Team Productivity',
+            style: TextStyle(
+              color: isDark ? Colors.white : AppColors.textPrimary,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 24.h),
+          SizedBox(
+            width: 120.w,
+            height: 120.h,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CircularProgressIndicator(
+                  value: rate,
+                  strokeWidth: 10.w,
+                  backgroundColor: Colors.grey[200],
+                  color: AppColors.success,
+                ),
+                Center(
+                  child: Text(
+                    '${(rate * 100).toInt()}%',
+                    style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 16.h),
+          Text(
+            '$completed of $total tasks completed',
+            style: TextStyle(color: isDark ? Colors.white70 : Colors.grey, fontSize: 13.sp),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMemberTasksList(bool isDark, List<MockTask> tasks) {
+    return Container(
+      padding: EdgeInsets.all(24.w),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF242432) : Colors.white,
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'My Tasks Feed',
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.textPrimary,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              TextButton(
+                onPressed: () => context.go('/tasks'),
+                child: const Text('Go to Planner'),
+              ),
+            ],
+          ),
+          SizedBox(height: 16.h),
+          if (tasks.isEmpty)
+            Text('No tasks assigned to you.', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey))
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: tasks.length,
+              separatorBuilder: (context, index) => const Divider(),
+              itemBuilder: (context, index) {
+                final task = tasks[index];
+                return ListTile(
+                  title: Text(task.title, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
+                  subtitle: Text('Deadline: ${task.deadline} | Status: ${task.status}', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey)),
+                  trailing: Icon(
+                    task.status == 'Approved' || task.status == 'Completed'
+                        ? Icons.check_circle
+                        : (task.status == 'Needs Changes' ? Icons.error : Icons.radio_button_unchecked),
+                    color: task.status == 'Approved' || task.status == 'Completed'
+                        ? Colors.green
+                        : (task.status == 'Needs Changes' ? Colors.red : Colors.grey),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRankingProgressCard(bool isDark, MockUser user) {
+    return Container(
+      padding: EdgeInsets.all(24.w),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF242432) : Colors.white,
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            'Score & Performance',
+            style: TextStyle(
+              color: isDark ? Colors.white : AppColors.textPrimary,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 24.h),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(16.w),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E28) : Colors.grey[100],
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            child: Column(
+              children: [
+                Text('Total Points', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey[500], fontSize: 13.sp)),
+                Text(
+                  user.points.toString(),
+                  style: TextStyle(fontSize: 32.sp, fontWeight: FontWeight.bold, color: AppColors.aituRed),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 16.h),
+          Text(
+            'Efficiency Score: ${user.finalScore.toInt()}%',
+            style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary, fontSize: 14.sp),
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            'Keep completing tasks early to boost points!',
+            style: TextStyle(color: isDark ? Colors.white60 : Colors.grey[600], fontSize: 11.sp),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
 }
 
-class NotificationItem {
-  final String title;
-  final String description;
-  final String time;
-  final bool isRead;
+class _StatData {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color iconColor;
+  final Color bgColor;
 
-  NotificationItem({
-    required this.title,
-    required this.description,
-    required this.time,
-    required this.isRead,
-  });
-}
-
-class ActivityItem {
-  final String initials;
-  final String name;
-  final String action;
-  final String target;
-  final String time;
-  final Color color;
-
-  ActivityItem({
-    required this.initials,
-    required this.name,
-    required this.action,
-    required this.target,
-    required this.time,
-    required this.color,
-  });
+  _StatData(this.icon, this.label, this.value, this.iconColor, this.bgColor);
 }
