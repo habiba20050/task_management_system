@@ -4,6 +4,7 @@ import '../../../../config/dependency_injection/service_locator.dart';
 import '../../../../core/colors/app_colors.dart';
 import '../../cubit/users_cubit.dart';
 import '../../cubit/users_state.dart';
+import '../../../../core/localization/translate_extension.dart';
 import '../widgets/users_filter_bar.dart';
 import '../widgets/user_data_table.dart';
 import '../widgets/invite_user_dialog_widget.dart';
@@ -28,9 +29,9 @@ class UsersRolesScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Users & Roles',
-                      style: TextStyle(
+                    Text(
+                      'Users & Roles'.tr(context),
+                      style: const TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF0F172A),
@@ -45,9 +46,9 @@ class UsersRolesScreen extends StatelessWidget {
                         size: 18,
                         color: Colors.white,
                       ),
-                      label: const Text(
-                        'Invite User',
-                        style: TextStyle(
+                      label: Text(
+                        'Invite User'.tr(context),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -71,14 +72,14 @@ class UsersRolesScreen extends StatelessWidget {
 
                 // 1. كروت الإحصاءات الأربعة العلوية تماماً كالتصميم
                 Row(
-                  children: const [
+                  children: [
                     Expanded(
                       child: StatCardWidget(
                         icon: Icons.people_outline,
                         iconColor: Color(0xFF3B82F6),
                         iconBgColor: Color(0xFFEFF6FF),
                         value: '9',
-                        title: 'Total Users',
+                        title: 'Total Users'.tr(context),
                       ),
                     ),
                     SizedBox(width: 16),
@@ -88,7 +89,7 @@ class UsersRolesScreen extends StatelessWidget {
                         iconColor: Color(0xFFEF4444),
                         iconBgColor: Color(0xFFFEF2F2),
                         value: '1',
-                        title: 'Admins',
+                        title: 'Admins'.tr(context),
                       ),
                     ),
                     SizedBox(width: 16),
@@ -98,7 +99,7 @@ class UsersRolesScreen extends StatelessWidget {
                         iconColor: Color(0xFFF59E0B),
                         iconBgColor: Color(0xFFFFFBEB),
                         value: '3',
-                        title: 'Managers',
+                        title: 'Managers'.tr(context),
                       ),
                     ),
                     SizedBox(width: 16),
@@ -108,7 +109,7 @@ class UsersRolesScreen extends StatelessWidget {
                         iconColor: Color(0xFF10B981),
                         iconBgColor: Color(0xFFE6F4EA),
                         value: '5',
-                        title: 'Members',
+                        title: 'Members'.tr(context),
                       ),
                     ),
                   ],
@@ -131,12 +132,12 @@ class UsersRolesScreen extends StatelessWidget {
                       );
                     } else if (state is UsersLoaded) {
                       if (state.filteredUsers.isEmpty) {
-                        return const Center(
+                        return Center(
                           child: Padding(
-                            padding: EdgeInsets.all(48.0),
+                            padding: const EdgeInsets.all(48.0),
                             child: Text(
-                              'No users found.',
-                              style: TextStyle(color: Color(0xFF94A3B8)),
+                              'No users found.'.tr(context),
+                              style: const TextStyle(color: Color(0xFF94A3B8)),
                             ),
                           ),
                         );

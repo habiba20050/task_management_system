@@ -5,6 +5,8 @@ import '../../../core/colors/app_colors.dart';
 import '../../../core/network/mock_database.dart';
 import '../../../responsive/responsive_layout.dart';
 import '../../auth/cubit/auth_cubit.dart';
+import '../../language/cubit/language_cubit.dart';
+import '../../../core/localization/translate_extension.dart';
 
 class ProjectManagementPage extends StatefulWidget {
   const ProjectManagementPage({super.key});
@@ -71,7 +73,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Projects Portfolio',
+                        'Projects Portfolio'.tr(context),
                         style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 22.sp,
@@ -80,7 +82,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                       ),
                       SizedBox(height: 4.h),
                       Text(
-                        'Create and monitor university project developments',
+                        'Create and monitor university project developments'.tr(context),
                         style: TextStyle(color: Colors.grey[600], fontSize: 13.sp),
                       ),
                     ],
@@ -89,9 +91,9 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                     ElevatedButton.icon(
                       onPressed: () => _showCreateProjectDialog(context),
                       icon: const Icon(Icons.add, color: Colors.white),
-                      label: const Text(
-                        'New Project',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      label: Text(
+                        'New Project'.tr(context),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
@@ -118,7 +120,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                         controller: _searchController,
                         onChanged: (_) => setState(() {}),
                         decoration: InputDecoration(
-                          hintText: 'Search projects by name, description...',
+                          hintText: 'Search projects by name, description...'.tr(context),
                           hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13.sp),
                           prefixIcon: const Icon(Icons.search, color: AppColors.primary),
                           border: InputBorder.none,
@@ -144,7 +146,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                             .map(
                               (p) => DropdownMenuItem(
                                 value: p,
-                                child: Text(p, style: TextStyle(fontSize: 13.sp)),
+                                child: Text(p.tr(context), style: TextStyle(fontSize: 13.sp)),
                               ),
                             )
                             .toList(),
@@ -163,7 +165,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
               // Projects Grid
               Expanded(
                 child: projects.isEmpty
-                    ? const Center(child: Text('No projects found.'))
+                    ? Center(child: Text('No projects found.'.tr(context)))
                     : GridView.builder(
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: isDesktop ? 3 : 1,
@@ -178,7 +180,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                           // Fetch Manager Name
                           final managerName = db.users.firstWhere(
                             (u) => u.id == project.managerId,
-                            orElse: () => MockUser(id: '', email: '', fullName: 'Unassigned Manager', role: '', department: ''),
+                            orElse: () => MockUser(id: '', email: '', fullName: 'Unassigned Manager'.tr(context), role: '', department: ''),
                           ).fullName;
 
                           // Fetch assigned teams objects
@@ -248,7 +250,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                                                         Icon(Icons.person_outline, size: 12.sp, color: Colors.grey[500]),
                                                         SizedBox(width: 4.w),
                                                         Text(
-                                                          'Mgr: $managerName',
+                                                          'Manager'.tr(context) + ': $managerName',
                                                           style: TextStyle(fontSize: 11.sp, color: Colors.grey[600]),
                                                         ),
                                                       ],
@@ -273,7 +275,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                                               Icon(Icons.calendar_today_outlined, size: 11.sp, color: Colors.grey[500]),
                                               SizedBox(width: 4.w),
                                               Text(
-                                                '${project.startDate} to ${project.endDate}',
+                                                '${project.startDate} - ${project.endDate}',
                                                 style: TextStyle(fontSize: 11.sp, color: Colors.grey[600]),
                                               ),
                                             ],
@@ -315,7 +317,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                                                   borderRadius: BorderRadius.circular(6.r),
                                                 ),
                                                 child: Text(
-                                                  project.status,
+                                                  project.status.tr(context),
                                                   style: TextStyle(
                                                     color: project.status == 'Completed' ? Colors.green : Colors.blue,
                                                     fontSize: 10.sp,
@@ -359,7 +361,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: Colors.white,
-          title: const Text('Select Mock Upload Attachments', style: TextStyle(fontWeight: FontWeight.bold)),
+          title: Text('Select Mock Upload Attachments'.tr(context), style: const TextStyle(fontWeight: FontWeight.bold)),
           content: SizedBox(
             width: 350.w,
             child: ListView(
@@ -386,13 +388,13 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel'.tr(context))),
             ElevatedButton(
               onPressed: () {
                 onPicked(tempPicked);
                 Navigator.pop(context);
               },
-              child: const Text('Select'),
+              child: Text('Select'.tr(context)),
             ),
           ],
         ),
@@ -419,7 +421,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: Colors.white,
-          title: const Text('Create New Project', style: TextStyle(fontWeight: FontWeight.bold)),
+          title: Text('Create New Project'.tr(context), style: const TextStyle(fontWeight: FontWeight.bold)),
           content: SingleChildScrollView(
             child: SizedBox(
               width: 500.w,
@@ -427,13 +429,13 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Project Name')),
+                  TextField(controller: nameCtrl, decoration: InputDecoration(labelText: 'Project Name'.tr(context))),
                   SizedBox(height: 12.h),
-                  TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description'), maxLines: 3),
+                  TextField(controller: descCtrl, decoration: InputDecoration(labelText: 'Description'.tr(context)), maxLines: 3),
                   SizedBox(height: 16.h),
                   
                   // Manager Selector
-                  const Text('Assign Project Manager', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  Text('Assign Project Manager'.tr(context), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   DropdownButtonFormField<String>(
                     value: selectedManagerId,
                     items: managers
@@ -445,7 +447,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                   SizedBox(height: 16.h),
 
                   // Teams Selector
-                  const Text('Select Working Teams', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  Text('Select Working Teams'.tr(context), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   Container(
                     height: 130,
                     margin: const EdgeInsets.only(top: 8),
@@ -477,17 +479,17 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
 
                   DropdownButtonFormField<String>(
                     initialValue: priority,
-                    decoration: const InputDecoration(labelText: 'Priority'),
-                    items: ['HIGH', 'MEDIUM', 'LOW'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                    decoration: InputDecoration(labelText: 'Priority'.tr(context)),
+                    items: ['HIGH', 'MEDIUM', 'LOW'].map((p) => DropdownMenuItem(value: p, child: Text(p.tr(context)))).toList(),
                     onChanged: (val) => setDialogState(() => priority = val!),
                   ),
                   SizedBox(height: 16.h),
                   
-                  TextField(controller: linksCtrl, decoration: const InputDecoration(labelText: 'Links (Optional, comma-separated)')),
+                  TextField(controller: linksCtrl, decoration: InputDecoration(labelText: 'Links (Optional, comma-separated)'.tr(context))),
                   SizedBox(height: 16.h),
                   
                   // Interactive Visual Mock File Picker
-                  const Text('Attach Project Files', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  Text('Attach Project Files'.tr(context), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   SizedBox(height: 8.h),
                   GestureDetector(
                     onTap: () {
@@ -510,12 +512,12 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                           Icon(Icons.cloud_upload_outlined, size: 36.sp, color: AppColors.primary),
                           SizedBox(height: 8.h),
                           Text(
-                            'Click to browse mock files',
+                            'Click to browse mock files'.tr(context),
                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.primary),
                           ),
                           SizedBox(height: 4.h),
                           Text(
-                            'Supports PDF, PNG, SQL, DOCX up to 50MB',
+                            'Supports PDF, PNG, SQL, DOCX up to 50MB'.tr(context),
                             style: TextStyle(fontSize: 11.sp, color: Colors.grey[500]),
                           ),
                         ],
@@ -545,12 +547,12 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel'.tr(context))),
             ElevatedButton(
               onPressed: () {
                 if (nameCtrl.text.isNotEmpty && selectedManagerId != null) {
                   if (selectedTeamIds.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select at least one team.')));
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please select at least one team.'.tr(context))));
                     return;
                   }
                   
@@ -576,7 +578,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                   Navigator.pop(context);
                 }
               },
-              child: const Text('Create'),
+              child: Text('Create'.tr(context)),
             ),
           ],
         ),
@@ -588,7 +590,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
     final db = MockDatabase.instance;
     
     // Fetch manager details
-    final manager = db.users.firstWhere((u) => u.id == project.managerId, orElse: () => MockUser(id: '', email: '', fullName: 'Unassigned', role: '', department: ''));
+    final manager = db.users.firstWhere((u) => u.id == project.managerId, orElse: () => MockUser(id: '', email: '', fullName: 'Unassigned'.tr(context), role: '', department: ''));
     
     // Fetch assigned teams
     final teams = db.teams.where((t) => project.assignedTeamIds.contains(t.id)).toList();
@@ -605,28 +607,28 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildInfoRow('Manager:', manager.fullName),
-                _buildInfoRow('Priority:', project.priority),
-                _buildInfoRow('Status:', project.status),
-                _buildInfoRow('Duration:', '${project.startDate} to ${project.endDate}'),
+                _buildInfoRow('Manager:'.tr(context), manager.fullName),
+                _buildInfoRow('Priority:'.tr(context), project.priority.tr(context)),
+                _buildInfoRow('Status:'.tr(context), project.status.tr(context)),
+                _buildInfoRow('Duration:'.tr(context), '${project.startDate} - ${project.endDate}'),
                 const Divider(),
                 const SizedBox(height: 8),
-                const Text('Description:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                Text('Description:'.tr(context), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                 const SizedBox(height: 4),
                 Text(project.description),
                 const SizedBox(height: 12),
                 const Divider(),
                 const SizedBox(height: 8),
-                const Text('Assigned Teams:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                Text('Assigned Teams:'.tr(context), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                 ...teams.map((t) => Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text('- ${t.name} (Leader: ${db.users.firstWhere((u) => u.id == t.leaderId, orElse: () => MockUser(id: '', email: '', fullName: 'Unassigned', role: '', department: '')).fullName})'),
+                  child: Text('- ${t.name} (' + 'Team Leader'.tr(context) + ': ${db.users.firstWhere((u) => u.id == t.leaderId, orElse: () => MockUser(id: '', email: '', fullName: 'Unassigned'.tr(context), role: '', department: '')).fullName})'),
                 )),
                 if (project.projectLinks.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   const Divider(),
                   const SizedBox(height: 8),
-                  const Text('Links:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                  Text('Links:'.tr(context), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
                   ...project.projectLinks.map((link) => Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(link, style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline)),
@@ -636,7 +638,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                   const SizedBox(height: 12),
                   const Divider(),
                   const SizedBox(height: 8),
-                  const Text('Attached Files:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                  Text('Attached Files:'.tr(context), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
                   ...project.projectFiles.map((file) => Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Row(
@@ -653,14 +655,14 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Close'.tr(context))),
           if (role == 'Manager')
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
                 _showDivideTasksDialog(context, project, teams);
               },
-              child: const Text('Divide Tasks (Create Tickets)'),
+              child: Text('Divide Tasks (Create Tickets)'.tr(context)),
             ),
           if (role == 'Team Leader')
             ElevatedButton(
@@ -668,7 +670,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                 Navigator.pop(context);
                 _showDivideTicketsIntoTasksDialog(context, project);
               },
-              child: const Text('Divide Tickets into Tasks'),
+              child: Text('Divide Tickets into Tasks'.tr(context)),
             ),
         ],
       ),
@@ -700,7 +702,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: Colors.white,
-          title: Text('Create Deliverable (Ticket) for: ${project.name}'),
+          title: Text('Divide Tasks (Create Tickets)'.tr(context) + ': ${project.name}'),
           content: SizedBox(
             width: 400.w,
             child: Column(
@@ -708,26 +710,26 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
               children: [
                 DropdownButtonFormField<String>(
                   value: selectedTeamId,
-                  decoration: const InputDecoration(labelText: 'Assign to Team'),
+                  decoration: InputDecoration(labelText: 'Teams'.tr(context)),
                   items: teams.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))).toList(),
                   onChanged: (val) => setDialogState(() => selectedTeamId = val!),
                 ),
                 SizedBox(height: 12.h),
-                TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Ticket Title')),
+                TextField(controller: titleCtrl, decoration: InputDecoration(labelText: 'Ticket Title'.tr(context))),
                 SizedBox(height: 12.h),
-                TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description / Requirement'), maxLines: 3),
+                TextField(controller: descCtrl, decoration: InputDecoration(labelText: 'Description'.tr(context)), maxLines: 3),
                 SizedBox(height: 12.h),
                 DropdownButtonFormField<String>(
                   initialValue: priority,
-                  decoration: const InputDecoration(labelText: 'Priority'),
-                  items: ['HIGH', 'MEDIUM', 'LOW'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                  decoration: InputDecoration(labelText: 'Priority'.tr(context)),
+                  items: ['HIGH', 'MEDIUM', 'LOW'].map((p) => DropdownMenuItem(value: p, child: Text(p.tr(context)))).toList(),
                   onChanged: (val) => setDialogState(() => priority = val!),
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel'.tr(context))),
             ElevatedButton(
               onPressed: () {
                 if (titleCtrl.text.isNotEmpty) {
@@ -744,11 +746,11 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                   );
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Ticket created and assigned successfully.')),
+                    SnackBar(content: Text('Ticket created and assigned successfully.'.tr(context))),
                   );
                 }
               },
-              child: const Text('Assign'),
+              child: Text('Submit'.tr(context)),
             ),
           ],
         ),
@@ -769,7 +771,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
     );
 
     if (team.id.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You are not currently leading a team.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('You are not currently leading a team.'.tr(context))));
       return;
     }
 
@@ -780,13 +782,13 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        title: Text('Split Team Tickets: ${team.name}'),
+        title: Text('Divide Tickets into Tasks'.tr(context) + ': ${team.name}'),
         content: SizedBox(
           width: 450.w,
           child: tickets.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text('No active tickets assigned to your team yet.'),
+              ? Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text('No active tickets assigned to your team yet.'.tr(context)),
                 )
               : ListView.separated(
                   shrinkWrap: true,
@@ -802,14 +804,14 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                           Navigator.pop(context);
                           _showCreateSubTaskDialog(context, ticket, team);
                         },
-                        child: const Text('Split & Assign'),
+                        child: Text('Divide Tickets into Tasks'.tr(context)),
                       ),
                     );
                   },
                 ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Close'.tr(context))),
         ],
       ),
     );
@@ -824,7 +826,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
     final teamMembers = db.users.where((u) => team.memberIds.contains(u.id)).toList();
     
     if (teamMembers.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No team members found to assign tasks to.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No team members found to assign tasks to.'.tr(context))));
       return;
     }
 
@@ -843,26 +845,26 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
               children: [
                 DropdownButtonFormField<String>(
                   value: selectedMemberId,
-                  decoration: const InputDecoration(labelText: 'Assign to Member'),
+                  decoration: InputDecoration(labelText: 'Members'.tr(context)),
                   items: teamMembers.map((m) => DropdownMenuItem(value: m.id, child: Text(m.fullName))).toList(),
                   onChanged: (val) => setDialogState(() => selectedMemberId = val!),
                 ),
                 SizedBox(height: 12.h),
-                TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Sub-Task Title')),
+                TextField(controller: titleCtrl, decoration: InputDecoration(labelText: 'Sub-Task Title'.tr(context))),
                 SizedBox(height: 12.h),
-                TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Task Details'), maxLines: 3),
+                TextField(controller: descCtrl, decoration: InputDecoration(labelText: 'Description'.tr(context)), maxLines: 3),
                 SizedBox(height: 12.h),
                 DropdownButtonFormField<String>(
                   initialValue: priority,
-                  decoration: const InputDecoration(labelText: 'Priority'),
-                  items: ['HIGH', 'MEDIUM', 'LOW'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                  decoration: InputDecoration(labelText: 'Priority'.tr(context)),
+                  items: ['HIGH', 'MEDIUM', 'LOW'].map((p) => DropdownMenuItem(value: p, child: Text(p.tr(context)))).toList(),
                   onChanged: (val) => setDialogState(() => priority = val!),
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel'.tr(context))),
             ElevatedButton(
               onPressed: () {
                 if (titleCtrl.text.isNotEmpty) {
@@ -881,11 +883,11 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> {
                   );
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Task assigned to member successfully.')),
+                    SnackBar(content: Text('Task assigned to member successfully.'.tr(context))),
                   );
                 }
               },
-              child: const Text('Assign'),
+              child: Text('Submit'.tr(context)),
             ),
           ],
         ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../cubit/teams_cubit.dart';
+import '../../../../core/localization/translate_extension.dart';
 import '../../cubit/teams_state.dart';
 import '../widgets/create_team_dialog_widget.dart';
 import 'team_details_screen.dart';
@@ -39,7 +40,7 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Team Management Portal',
+                        'Team Management Portal'.tr(context),
                         style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 22.sp,
@@ -48,7 +49,7 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                       ),
                       SizedBox(height: 4.h),
                       Text(
-                        'Track and filter university team operations & department progress',
+                        'Track and filter university team operations & department progress'.tr(context),
                         style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 13.sp,
@@ -64,9 +65,9 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                       );
                     },
                     icon: const Icon(Icons.add, size: 18, color: Colors.white),
-                    label: const Text(
-                      'Add New Team',
-                      style: TextStyle(
+                    label: Text(
+                      'Add New Team'.tr(context),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
@@ -104,7 +105,7 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                           });
                         },
                         decoration: InputDecoration(
-                          hintText: 'Search teams by name or leader...',
+                          hintText: 'Search teams by name or leader...'.tr(context),
                           hintStyle: TextStyle(
                             color: Colors.grey[400],
                             fontSize: 13.sp,
@@ -263,7 +264,7 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                                   columns: [
                                     DataColumn(
                                       label: Text(
-                                        'Team Name',
+                                        'Team Name'.tr(context),
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 13.sp,
@@ -272,7 +273,7 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                                     ),
                                     DataColumn(
                                       label: Text(
-                                        'Department',
+                                        'Department'.tr(context),
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 13.sp,
@@ -281,7 +282,7 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                                     ),
                                     DataColumn(
                                       label: Text(
-                                        'Team Leader',
+                                        'Team Leader'.tr(context),
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 13.sp,
@@ -290,7 +291,7 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                                     ),
                                     DataColumn(
                                       label: Text(
-                                        'Members',
+                                        'Members'.tr(context),
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 13.sp,
@@ -299,7 +300,7 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                                     ),
                                     DataColumn(
                                       label: Text(
-                                        'Completion Rate',
+                                        'Completion Rate'.tr(context),
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 13.sp,
@@ -308,7 +309,7 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                                     ),
                                     DataColumn(
                                       label: Text(
-                                        'Actions',
+                                        'Actions'.tr(context),
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 13.sp,
@@ -350,7 +351,7 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                                               ),
                                             ),
                                             child: Text(
-                                              t.department,
+                                              t.department.tr(context),
                                               style: TextStyle(
                                                 color: const Color(0xFF0A448C),
                                                 fontSize: 11.sp,
@@ -381,7 +382,7 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                                           ),
                                         ),
                                         DataCell(
-                                          Text('${t.membersCount} members'),
+                                          Text('${t.membersCount} ' + 'Members'.tr(context)),
                                         ),
                                         DataCell(
                                           Row(
@@ -414,9 +415,9 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                                                 builder: (context) => TeamDetailsScreen(team: t),
                                               );
                                             },
-                                            child: const Text(
-                                              'More',
-                                              style: TextStyle(
+                                            child: Text(
+                                              'More'.tr(context),
+                                              style: const TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 color: AppColors.primary,
                                               ),

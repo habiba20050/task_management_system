@@ -13,6 +13,7 @@ import '../../features/profile/service/profile_api.dart';
 import '../../features/teams/cubit/teams_cubit.dart';
 import '../../features/teams/repository/teams_repository.dart';
 import '../../features/users/cubit/users_cubit.dart';
+import '../../features/language/cubit/language_cubit.dart';
 
 import '../../features/auth/cubit/auth_cubit.dart';
 import '../../core/network/mock_database.dart';
@@ -74,6 +75,11 @@ class ServiceLocator {
     // Users
     getIt.registerFactory<UsersCubit>(
       () => UsersCubit(),
+    );
+
+    // Language
+    getIt.registerSingleton<LanguageCubit>(
+      LanguageCubit(),
     );
   }
 }

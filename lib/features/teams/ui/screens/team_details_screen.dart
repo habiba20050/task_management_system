@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../model/team_model.dart';
 import '../../../../core/network/mock_database.dart';
+import '../../../../core/localization/translate_extension.dart';
 
 class TeamDetailsScreen extends StatelessWidget {
   final TeamModel team;
@@ -80,9 +81,9 @@ class TeamDetailsScreen extends StatelessWidget {
                     size: 16,
                     color: Colors.white,
                   ),
-                  label: const Text(
-                    'Back to Teams',
-                    style: TextStyle(
+                  label: Text(
+                    'Back to Teams'.tr(context),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
@@ -127,9 +128,9 @@ class TeamDetailsScreen extends StatelessWidget {
                       flex: 1,
                       child: Column(
                         children: [
-                          _buildManagementCard(manager, leader),
+                          _buildManagementCard(context, manager, leader),
                           const SizedBox(height: 20),
-                          _buildProgressCard(completedTasksCount, remainingTasksCount, totalTasksCount, completionRate),
+                          _buildProgressCard(context, completedTasksCount, remainingTasksCount, totalTasksCount, completionRate),
                         ],
                       ),
                     ),
@@ -139,9 +140,9 @@ class TeamDetailsScreen extends StatelessWidget {
                       flex: 2,
                       child: Column(
                         children: [
-                          _buildMembersList(members, tasks),
+                          _buildMembersList(context, members, tasks),
                           const SizedBox(height: 20),
-                          _buildTeamTasksList(tasks, members),
+                          _buildTeamTasksList(context, tasks, members),
                         ],
                       ),
                     ),
@@ -155,7 +156,7 @@ class TeamDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildManagementCard(MockUser manager, MockUser leader) {
+  Widget _buildManagementCard(BuildContext context, MockUser manager, MockUser leader) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -165,9 +166,9 @@ class TeamDetailsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Team Supervision',
-            style: TextStyle(
+          Text(
+            'Team Supervision'.tr(context),
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Color(0xFF0F172A),
@@ -177,7 +178,7 @@ class TeamDetailsScreen extends StatelessWidget {
           _buildUserTile(
             leader.fullName,
             leader.fullName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase(),
-            'TEAM LEADER',
+            'TEAM LEADER'.tr(context),
             const Color(0xFFFFFBEB),
             Colors.orange,
           ),
@@ -185,7 +186,7 @@ class TeamDetailsScreen extends StatelessWidget {
           _buildUserTile(
             manager.fullName,
             manager.fullName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase(),
-            'PROJECT MANAGER',
+            'PROJECT MANAGER'.tr(context),
             const Color(0xFFEFF6FF),
             Colors.blue,
           ),
@@ -248,7 +249,7 @@ class TeamDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProgressCard(int completed, int remaining, int total, double rate) {
+  Widget _buildProgressCard(BuildContext context, int completed, int remaining, int total, double rate) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -258,9 +259,9 @@ class TeamDetailsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Task Score & Completion',
-            style: TextStyle(
+          Text(
+            'Task Score & Completion'.tr(context),
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Color(0xFF0F172A),
@@ -300,21 +301,21 @@ class TeamDetailsScreen extends StatelessWidget {
             children: [
               Column(
                 children: [
-                  const Text('Completed', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text('Completed'.tr(context), style: const TextStyle(color: Colors.grey, fontSize: 12)),
                   const SizedBox(height: 4),
                   Text('$completed', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16)),
                 ],
               ),
               Column(
                 children: [
-                  const Text('Remaining', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text('Remaining'.tr(context), style: const TextStyle(color: Colors.grey, fontSize: 12)),
                   const SizedBox(height: 4),
                   Text('$remaining', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 16)),
                 ],
               ),
               Column(
                 children: [
-                  const Text('Total Tasks', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text('Total Tasks'.tr(context), style: const TextStyle(color: Colors.grey, fontSize: 12)),
                   const SizedBox(height: 4),
                   Text('$total', style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16)),
                 ],
@@ -326,7 +327,7 @@ class TeamDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMembersList(List<MockUser> members, List<MockTask> tasks) {
+  Widget _buildMembersList(BuildContext context, List<MockUser> members, List<MockTask> tasks) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -337,7 +338,7 @@ class TeamDetailsScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Members (${members.length})',
+            'Members'.tr(context) + ' (${members.length})',
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -346,9 +347,9 @@ class TeamDetailsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           if (members.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Text('No members assigned to this team.', style: TextStyle(color: Colors.grey)),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text('No members assigned to this team.'.tr(context), style: const TextStyle(color: Colors.grey)),
             )
           else
             ListView.separated(
@@ -373,7 +374,7 @@ class TeamDetailsScreen extends StatelessWidget {
                     member.fullName,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  subtitle: Text('${memberTasks.length} tasks taken'),
+                  subtitle: Text('${memberTasks.length} ' + 'tasks taken'.tr(context)),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
@@ -381,7 +382,7 @@ class TeamDetailsScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '${member.points} Points',
+                      '${member.points} ' + 'Points'.tr(context),
                       style: const TextStyle(color: Color(0xFF27AE60), fontWeight: FontWeight.bold, fontSize: 12),
                     ),
                   ),
@@ -393,7 +394,7 @@ class TeamDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTeamTasksList(List<MockTask> tasks, List<MockUser> members) {
+  Widget _buildTeamTasksList(BuildContext context, List<MockTask> tasks, List<MockUser> members) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -403,9 +404,9 @@ class TeamDetailsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Active Team Tasks Details',
-            style: TextStyle(
+          Text(
+            'Active Team Tasks Details'.tr(context),
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Color(0xFF0F172A),
@@ -413,12 +414,12 @@ class TeamDetailsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           if (tasks.isEmpty)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(16.0),
                 child: Text(
-                  'No active tasks found.',
-                  style: TextStyle(color: Color(0xFF94A3B8)),
+                  'No active tasks found.'.tr(context),
+                  style: const TextStyle(color: Color(0xFF94A3B8)),
                 ),
               ),
             )
@@ -440,7 +441,7 @@ class TeamDetailsScreen extends StatelessWidget {
                     task.title,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text('Assigned to: ${assignee.fullName} | Deadline: ${task.deadline}'),
+                  subtitle: Text('Assigned to'.tr(context) + ': ${assignee.fullName} | ' + 'Deadline'.tr(context) + ': ${task.deadline}'),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -450,7 +451,7 @@ class TeamDetailsScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      task.status,
+                      task.status.tr(context),
                       style: TextStyle(
                         color: task.status == 'Completed' || task.status == 'Approved'
                             ? Colors.green

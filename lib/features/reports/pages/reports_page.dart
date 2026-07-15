@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/colors/app_colors.dart';
 import '../../../core/network/mock_database.dart';
 import '../../../responsive/responsive_layout.dart';
+import '../../../core/localization/translate_extension.dart';
 
 class ReportsPage extends StatefulWidget {
   const ReportsPage({super.key});
@@ -92,7 +93,7 @@ class _ReportsPageState extends State<ReportsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'System Performance Reports',
+                        'System Performance Reports'.tr(context),
                         style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 22.sp,
@@ -101,7 +102,7 @@ class _ReportsPageState extends State<ReportsPage> {
                       ),
                       SizedBox(height: 4.h),
                       Text(
-                        'Review analytical reports and output metrics',
+                        'Review analytical reports and output metrics'.tr(context),
                         style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 13.sp,
@@ -122,7 +123,7 @@ class _ReportsPageState extends State<ReportsPage> {
                           Icons.picture_as_pdf,
                           color: Colors.red,
                         ),
-                        label: const Text('Export PDF'),
+                        label: Text('Export PDF'.tr(context)),
                       ),
                       SizedBox(width: 8.w),
                       OutlinedButton.icon(
@@ -132,7 +133,7 @@ class _ReportsPageState extends State<ReportsPage> {
                           _generateReportContent(db),
                         ),
                         icon: const Icon(Icons.table_view, color: Colors.green),
-                        label: const Text('Export Excel'),
+                        label: Text('Export Excel'.tr(context)),
                       ),
                       SizedBox(width: 8.w),
                       ElevatedButton.icon(
@@ -142,9 +143,9 @@ class _ReportsPageState extends State<ReportsPage> {
                           _generateReportContent(db),
                         ),
                         icon: const Icon(Icons.print, color: Colors.white),
-                        label: const Text(
-                          'Print Report',
-                          style: TextStyle(color: Colors.white),
+                        label: Text(
+                          'Print Report'.tr(context),
+                          style: const TextStyle(color: Colors.white),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
@@ -165,7 +166,7 @@ class _ReportsPageState extends State<ReportsPage> {
                   return Padding(
                     padding: EdgeInsets.only(right: 8.w),
                     child: ChoiceChip(
-                      label: Text(range),
+                      label: Text(range.tr(context)),
                       selected: isSelected,
                       onSelected: (val) async {
                         if (range == 'Custom Range') {
@@ -194,7 +195,7 @@ class _ReportsPageState extends State<ReportsPage> {
                   _customDateRange != null) ...[
                 SizedBox(height: 12.h),
                 Text(
-                  'Filtering from: ${DateFormat('yyyy-MM-dd').format(_customDateRange!.start)} to ${DateFormat('yyyy-MM-dd').format(_customDateRange!.end)}',
+                  'Filtering from'.tr(context) + ': ${DateFormat('yyyy-MM-dd').format(_customDateRange!.start)} ' + 'to'.tr(context) + ' ${DateFormat('yyyy-MM-dd').format(_customDateRange!.end)}',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
@@ -209,14 +210,15 @@ class _ReportsPageState extends State<ReportsPage> {
                 mainAxisSpacing: 16.h,
                 childAspectRatio: 1.5,
                 children: [
-                  _buildStatTile('Best Team', bestTeam, Colors.blue),
-                  _buildStatTile('Best Leader', bestLeader, Colors.purple),
-                  _buildStatTile('Best Member', bestMember, Colors.green),
-                  _buildStatTile('Best Manager', bestManager, Colors.orange),
-                  _buildStatTile('Worst Team', worstTeam, Colors.redAccent),
-                  _buildStatTile('Worst Leader', worstLeader, Colors.redAccent),
-                  _buildStatTile('Worst Member', worstMember, Colors.redAccent),
+                  _buildStatTile(context, 'Best Team', bestTeam, Colors.blue),
+                  _buildStatTile(context, 'Best Leader', bestLeader, Colors.purple),
+                  _buildStatTile(context, 'Best Member', bestMember, Colors.green),
+                  _buildStatTile(context, 'Best Manager', bestManager, Colors.orange),
+                  _buildStatTile(context, 'Worst Team', worstTeam, Colors.redAccent),
+                  _buildStatTile(context, 'Worst Leader', worstLeader, Colors.redAccent),
+                  _buildStatTile(context, 'Worst Member', worstMember, Colors.redAccent),
                   _buildStatTile(
+                    context,
                     'Worst Manager',
                     worstManager,
                     Colors.redAccent,
@@ -239,7 +241,7 @@ class _ReportsPageState extends State<ReportsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'University Task Statistics',
+                              'University Task Statistics'.tr(context),
                               style: TextStyle(
                                 fontSize: 16.sp,
                                 fontWeight: FontWeight.bold,
@@ -247,6 +249,7 @@ class _ReportsPageState extends State<ReportsPage> {
                             ),
                             const Divider(height: 24),
                             _buildReportProgressBar(
+                              context,
                               'Tasks Approved / Completed',
                               completedTasks,
                               totalTasks,
@@ -254,6 +257,7 @@ class _ReportsPageState extends State<ReportsPage> {
                             ),
                             SizedBox(height: 16.h),
                             _buildReportProgressBar(
+                              context,
                               'Delayed Tasks',
                               delayedTasks,
                               totalTasks,
@@ -261,6 +265,7 @@ class _ReportsPageState extends State<ReportsPage> {
                             ),
                             SizedBox(height: 16.h),
                             _buildReportProgressBar(
+                              context,
                               'Rejected Submissions',
                               rejectedTasks,
                               totalTasks,
@@ -282,7 +287,7 @@ class _ReportsPageState extends State<ReportsPage> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Text(
-                              'Complaint Stats',
+                              'Complaint Stats'.tr(context),
                               style: TextStyle(
                                 fontSize: 16.sp,
                                 fontWeight: FontWeight.bold,
@@ -306,7 +311,7 @@ class _ReportsPageState extends State<ReportsPage> {
                                   ),
                                   Center(
                                     child: Text(
-                                      '$resolvedComplaints/$totalComplaints\nResolved',
+                                      '$resolvedComplaints/$totalComplaints\n' + 'Resolved'.tr(context),
                                       textAlign: TextAlign.center,
                                       style: TextStyle(
                                         fontSize: 11.sp,
@@ -331,7 +336,7 @@ class _ReportsPageState extends State<ReportsPage> {
     );
   }
 
-  Widget _buildStatTile(String label, String value, Color color) {
+  Widget _buildStatTile(BuildContext context, String label, String value, Color color) {
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
@@ -346,7 +351,7 @@ class _ReportsPageState extends State<ReportsPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            label,
+            label.tr(context),
             style: TextStyle(
               color: Colors.grey[500],
               fontSize: 11.sp,
@@ -355,7 +360,7 @@ class _ReportsPageState extends State<ReportsPage> {
           ),
           SizedBox(height: 4.h),
           Text(
-            value,
+            value.tr(context),
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 13.sp,
@@ -370,6 +375,7 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   Widget _buildReportProgressBar(
+    BuildContext context,
     String title,
     int count,
     int total,
@@ -382,8 +388,8 @@ class _ReportsPageState extends State<ReportsPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text('$count of $total (${(pct * 100).toInt()}%)'),
+            Text(title.tr(context), style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text('$count ' + 'of'.tr(context) + ' $total (${(pct * 100).toInt()}%)'),
           ],
         ),
         SizedBox(height: 6.h),
@@ -432,7 +438,7 @@ Resolved complaints: ${db.complaints.where((c) => c.status == 'Resolved').length
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
         title: Text(
-          'Exporting Report as $mode',
+          'Exporting Report as'.tr(context) + ' $mode',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         content: SizedBox(
@@ -462,7 +468,7 @@ Resolved complaints: ${db.complaints.where((c) => c.status == 'Resolved').length
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            child: Text('Close'.tr(context)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -470,12 +476,12 @@ Resolved complaints: ${db.complaints.where((c) => c.status == 'Resolved').length
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    'Successfully downloaded/printed report as $mode',
+                    'Successfully downloaded/printed report as'.tr(context) + ' $mode',
                   ),
                 ),
               );
             },
-            child: Text('Download $mode'),
+            child: Text('Download'.tr(context) + ' $mode'),
           ),
         ],
       ),

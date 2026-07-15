@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../model/user_role_model.dart';
 import '../../cubit/users_cubit.dart';
+import '../../../../core/localization/translate_extension.dart';
 import 'edit_user_dialog_widget.dart';
 import 'delete_confirm_dialog_widget.dart';
 
@@ -23,11 +24,11 @@ class UserDataTable extends StatelessWidget {
           horizontalMargin: 24,
           headingRowHeight: 56,
           dataRowHeight: 72,
-          columns: const [
+          columns: [
             DataColumn(
               label: Text(
-                'USER',
-                style: TextStyle(
+                'USER'.tr(context),
+                style: const TextStyle(
                   color: Color(0xFF64748B),
                   fontWeight: FontWeight.bold,
                 ),
@@ -35,8 +36,8 @@ class UserDataTable extends StatelessWidget {
             ),
             DataColumn(
               label: Text(
-                'USERNAME',
-                style: TextStyle(
+                'USERNAME'.tr(context),
+                style: const TextStyle(
                   color: Color(0xFF64748B),
                   fontWeight: FontWeight.bold,
                 ),
@@ -44,8 +45,8 @@ class UserDataTable extends StatelessWidget {
             ),
             DataColumn(
               label: Text(
-                'ROLE',
-                style: TextStyle(
+                'ROLE'.tr(context),
+                style: const TextStyle(
                   color: Color(0xFF64748B),
                   fontWeight: FontWeight.bold,
                 ),
@@ -53,8 +54,8 @@ class UserDataTable extends StatelessWidget {
             ),
             DataColumn(
               label: Text(
-                'DEPARTMENT',
-                style: TextStyle(
+                'DEPARTMENT'.tr(context),
+                style: const TextStyle(
                   color: Color(0xFF64748B),
                   fontWeight: FontWeight.bold,
                 ),
@@ -62,8 +63,8 @@ class UserDataTable extends StatelessWidget {
             ),
             DataColumn(
               label: Text(
-                'STATUS',
-                style: TextStyle(
+                'STATUS'.tr(context),
+                style: const TextStyle(
                   color: Color(0xFF64748B),
                   fontWeight: FontWeight.bold,
                 ),
@@ -71,8 +72,8 @@ class UserDataTable extends StatelessWidget {
             ),
             DataColumn(
               label: Text(
-                'LAST ACTIVE',
-                style: TextStyle(
+                'LAST ACTIVE'.tr(context),
+                style: const TextStyle(
                   color: Color(0xFF64748B),
                   fontWeight: FontWeight.bold,
                 ),
@@ -80,8 +81,8 @@ class UserDataTable extends StatelessWidget {
             ),
             DataColumn(
               label: Text(
-                'ACTIONS',
-                style: TextStyle(
+                'ACTIONS'.tr(context),
+                style: const TextStyle(
                   color: Color(0xFF64748B),
                   fontWeight: FontWeight.bold,
                 ),
@@ -184,7 +185,7 @@ class UserDataTable extends StatelessWidget {
                 Icon(roleIcon, size: 12, color: roleColor),
                 const SizedBox(width: 4),
                 Text(
-                  user.role,
+                  user.role.tr(context),
                   style: TextStyle(
                     color: roleColor,
                     fontWeight: FontWeight.bold,
@@ -220,7 +221,7 @@ class UserDataTable extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                user.isActive ? 'Active' : 'Inactive',
+                user.isActive ? 'Active'.tr(context) : 'Inactive'.tr(context),
                 style: TextStyle(
                   color: user.isActive
                       ? const Color(0xFF10B981)

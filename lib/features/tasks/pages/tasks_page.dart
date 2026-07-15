@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/localization/translate_extension.dart';
 import '../../../core/colors/app_colors.dart';
 import '../../../core/network/mock_database.dart';
 import '../../../responsive/responsive_layout.dart';
@@ -185,7 +186,7 @@ class _TasksPageState extends State<TasksPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _currentTab == 'Tasks' ? 'Tasks Board' : 'Tickets Board',
+                        (_currentTab == 'Tasks' ? 'Tasks Board' : 'Tickets Board').tr(context),
                         style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 22.sp,
@@ -194,9 +195,9 @@ class _TasksPageState extends State<TasksPage> {
                       ),
                       SizedBox(height: 4.h),
                       Text(
-                        _currentTab == 'Tasks'
+                        (_currentTab == 'Tasks'
                             ? 'Monitor, search and filter all assigned task deliverables'
-                            : 'Monitor, search and filter high-level team deliverables (Tickets)',
+                            : 'Monitor, search and filter high-level team deliverables (Tickets)').tr(context),
                         style: TextStyle(color: Colors.grey[600], fontSize: 13.sp),
                       ),
                     ],
@@ -222,7 +223,7 @@ class _TasksPageState extends State<TasksPage> {
                                   borderRadius: BorderRadius.circular(10.r),
                                 ),
                                 child: Text(
-                                  view,
+                                  view.tr(context),
                                   style: TextStyle(
                                     color: isSelected ? Colors.white : Colors.grey[700],
                                     fontSize: 12.sp,
@@ -239,7 +240,7 @@ class _TasksPageState extends State<TasksPage> {
                         ElevatedButton.icon(
                           onPressed: () => _showAddTaskDialog(context),
                           icon: const Icon(Icons.add, color: Colors.white),
-                          label: const Text('Add Task', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          label: Text('Add Task'.tr(context), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
@@ -250,7 +251,7 @@ class _TasksPageState extends State<TasksPage> {
                         ElevatedButton.icon(
                           onPressed: () => _showAddTicketDialog(context),
                           icon: const Icon(Icons.add, color: Colors.white),
-                          label: const Text('Add Ticket', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          label: Text('Add Ticket'.tr(context), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
@@ -354,7 +355,7 @@ class _TasksPageState extends State<TasksPage> {
           boxShadow: isSelected ? [BoxShadow(color: AppColors.primary.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4))] : [],
         ),
         child: Text(
-          label,
+          label.tr(context),
           style: TextStyle(
             color: isSelected ? Colors.white : Colors.grey[700],
             fontWeight: FontWeight.bold,
@@ -376,9 +377,9 @@ class _TasksPageState extends State<TasksPage> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
-          hint: Text(label),
+          hint: Text(label.tr(context)),
           items: options
-              .map((o) => DropdownMenuItem(value: o, child: Text(o, style: TextStyle(fontSize: 12.sp))))
+              .map((o) => DropdownMenuItem(value: o, child: Text(o.tr(context), style: TextStyle(fontSize: 12.sp))))
               .toList(),
           onChanged: onChanged,
         ),
@@ -389,7 +390,14 @@ class _TasksPageState extends State<TasksPage> {
   // --- 1. TABLE VIEW ---
   Widget _buildTableView(List<UnifiedItem> items, String role) {
     if (items.isEmpty) {
-      return Center(child: Text('No ${_currentTab.toLowerCase()} matching criteria.'));
+      return Center(
+        child: Text(
+          (_currentTab == 'Tasks'
+                  ? 'No tasks matching criteria.'
+                  : 'No tickets matching criteria.')
+              .tr(context),
+        ),
+      );
     }
 
     return Container(
@@ -408,14 +416,14 @@ class _TasksPageState extends State<TasksPage> {
               data: Theme.of(context).copyWith(dividerColor: const Color(0xFFE2E8F0)),
               child: DataTable(
                 columns: [
-                  DataColumn(label: Text('Title', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
+                  DataColumn(label: Text('Title'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
                   if (_currentTab == 'Tasks')
-                    DataColumn(label: Text('Assignee', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
-                  DataColumn(label: Text('Team / Dept', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
-                  DataColumn(label: Text('Priority', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
-                  DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
-                  DataColumn(label: Text('Deadline', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
-                  DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
+                    DataColumn(label: Text('Assignee'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
+                  DataColumn(label: Text('Team / Dept'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
+                  DataColumn(label: Text('Priority'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
+                  DataColumn(label: Text('Status'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
+                  DataColumn(label: Text('Deadline'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
+                  DataColumn(label: Text('Actions'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
                 ],
                 rows: items.map((item) {
                   return DataRow(cells: [
@@ -430,7 +438,7 @@ class _TasksPageState extends State<TasksPage> {
                         borderRadius: BorderRadius.circular(6.r),
                       ),
                       child: Text(
-                        item.priority,
+                        item.priority.tr(context),
                         style: TextStyle(
                           color: item.priority == 'HIGH' ? const Color(0xFFEB5757) : const Color(0xFFF2C94C),
                           fontSize: 10.sp,
@@ -438,7 +446,7 @@ class _TasksPageState extends State<TasksPage> {
                         ),
                       ),
                     )),
-                    DataCell(Text(item.status, style: const TextStyle(fontWeight: FontWeight.bold))),
+                    DataCell(Text(item.status.tr(context), style: const TextStyle(fontWeight: FontWeight.bold))),
                     DataCell(Text(item.deadline)),
                     DataCell(Row(
                       children: [
@@ -447,25 +455,25 @@ class _TasksPageState extends State<TasksPage> {
                             TextButton.icon(
                               onPressed: () => _showSubmissionDialog(context, item.id),
                               icon: const Icon(Icons.upload_file, size: 14),
-                              label: const Text('Submit Work'),
+                              label: Text('Submit Work'.tr(context)),
                             ),
                           if ((role == 'Team Leader' || role == 'Manager') && item.status == 'Submitted')
                             TextButton(
                               onPressed: () => context.go('/review-center'),
-                              child: const Text('Review', style: TextStyle(color: Colors.orange)),
+                              child: Text('Review'.tr(context), style: const TextStyle(color: Colors.orange)),
                             ),
                           if (item.status == 'Completed' || item.status == 'Approved' || item.status == 'Approved With Suggestions')
                             TextButton.icon(
                               onPressed: () => _showViewTaskSubmissionDialog(context, item.originalObject as MockTask),
                               icon: const Icon(Icons.visibility_outlined, size: 14, color: Colors.blue),
-                              label: const Text('View', style: TextStyle(color: Colors.blue)),
+                              label: Text('View'.tr(context), style: const TextStyle(color: Colors.blue)),
                             ),
                         ] else ...[
                           if (role == 'Manager')
                             TextButton.icon(
                               onPressed: () => _showUpdateTicketStatusDialog(context, item.id),
                               icon: const Icon(Icons.edit_note, size: 14, color: Colors.orange),
-                              label: const Text('Update Status', style: TextStyle(color: Colors.orange)),
+                              label: Text('Update Status'.tr(context), style: const TextStyle(color: Colors.orange)),
                             )
                         ],
                       ],

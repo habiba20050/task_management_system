@@ -7,6 +7,8 @@ import '../../../core/network/mock_database.dart';
 import '../../../responsive/responsive_layout.dart';
 import '../../../shared/widgets/notification_drawer.dart';
 import '../../auth/cubit/auth_cubit.dart';
+import '../../language/cubit/language_cubit.dart';
+import '../../../core/localization/translate_extension.dart';
 
 class DashboardPage extends StatefulWidget {
   final bool showMyTasks;
@@ -17,10 +19,9 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  String _currentLanguage = 'EN';
-
   @override
   Widget build(BuildContext context) {
+    final _currentLanguage = context.watch<LanguageCubit>().state;
     final isDesktop = ResponsiveLayout.isDesktop(context);
     final authState = context.watch<AuthCubit>().state;
 
@@ -67,6 +68,7 @@ class _DashboardPageState extends State<DashboardPage> {
   // --- Shared Header ---
   Widget _buildHeader(BuildContext context, user, bool isDark) {
     final isDesktop = ResponsiveLayout.isDesktop(context);
+    final _currentLanguage = context.watch<LanguageCubit>().state;
     return Row(
       children: [
         Expanded(
@@ -153,6 +155,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildLanguageSelector(BuildContext context, bool isDark) {
+    final currentLanguage = context.watch<LanguageCubit>().state;
     return Container(
       padding: EdgeInsets.all(2.w),
       decoration: BoxDecoration(
@@ -162,8 +165,8 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildLangBtn('EN', _currentLanguage == 'EN', isDark),
-          _buildLangBtn('AR', _currentLanguage == 'AR', isDark),
+          _buildLangBtn('EN', currentLanguage == 'EN', isDark),
+          _buildLangBtn('AR', currentLanguage == 'AR', isDark),
         ],
       ),
     );
@@ -171,7 +174,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildLangBtn(String label, bool isSelected, bool isDark) {
     return GestureDetector(
-      onTap: () => setState(() => _currentLanguage = label),
+      onTap: () => context.read<LanguageCubit>().changeLanguage(label),
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
         decoration: BoxDecoration(
@@ -565,7 +568,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                         SizedBox(height: 2.h),
                         Text(
-                          item.label,
+                          item.label.tr(context),
                           style: TextStyle(
                             color: isDark ? Colors.white60 : Colors.grey[500],
                             fontSize: 12.sp,
@@ -599,7 +602,7 @@ class _DashboardPageState extends State<DashboardPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Team Rankings (Progress)',
+            'Team Rankings (Progress)'.tr(context),
             style: TextStyle(
               color: isDark ? Colors.white : AppColors.textPrimary,
               fontSize: 16.sp,
@@ -633,7 +636,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
                 subtitle: Text(
-                  'Progress Percentage: ${team.progress.toInt()}%',
+                  'Progress Percentage'.tr(context) + ': ${team.progress.toInt()}%',
                   style: TextStyle(
                     color: isDark ? Colors.white60 : Colors.grey,
                   ),
@@ -666,7 +669,7 @@ class _DashboardPageState extends State<DashboardPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Recent Complaints',
+            'Recent Complaints'.tr(context),
             style: TextStyle(
               color: isDark ? Colors.white : AppColors.textPrimary,
               fontSize: 16.sp,
@@ -676,7 +679,7 @@ class _DashboardPageState extends State<DashboardPage> {
           SizedBox(height: 16.h),
           if (complaints.isEmpty)
             Text(
-              'No complaints registered.',
+              'No complaints registered.'.tr(context),
               style: TextStyle(color: isDark ? Colors.white60 : Colors.grey),
             )
           else
@@ -734,7 +737,7 @@ class _DashboardPageState extends State<DashboardPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Deliverables Waiting Review ($pendingReviews)',
+                'Deliverables Waiting Review'.tr(context) + ' ($pendingReviews)',
                 style: TextStyle(
                   color: isDark ? Colors.white : AppColors.textPrimary,
                   fontSize: 16.sp,
@@ -743,14 +746,14 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               TextButton(
                 onPressed: () => context.go('/review-center'),
-                child: const Text('Go to Review Center'),
+                child: Text('Go to Review Center'.tr(context)),
               ),
             ],
           ),
           SizedBox(height: 16.h),
           if (submittedTasks.isEmpty)
             Text(
-              'No tasks awaiting review.',
+              'No tasks awaiting review.'.tr(context),
               style: TextStyle(color: isDark ? Colors.white60 : Colors.grey),
             )
           else
@@ -798,7 +801,7 @@ class _DashboardPageState extends State<DashboardPage> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            'Project Health Score',
+            'Project Health Score'.tr(context),
             style: TextStyle(
               color: isDark ? Colors.white : AppColors.textPrimary,
               fontSize: 16.sp,
@@ -833,7 +836,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           SizedBox(height: 16.h),
           Text(
-            'All systems operational',
+            'All systems operational'.tr(context),
             style: TextStyle(
               color: Colors.green,
               fontWeight: FontWeight.bold,
@@ -859,7 +862,7 @@ class _DashboardPageState extends State<DashboardPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Team Members Performance',
+            'Team Members Performance'.tr(context),
             style: TextStyle(
               color: isDark ? Colors.white : AppColors.textPrimary,
               fontSize: 16.sp,
@@ -889,7 +892,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                     ),
                     subtitle: Text(
-                      'Points: ${m.points} | Score: ${m.finalScore.toInt()}%',
+                      'Points'.tr(context) + ': ${m.points} | ' + 'Score'.tr(context) + ': ${m.finalScore.toInt()}%',
                       style: TextStyle(
                         color: isDark ? Colors.white70 : Colors.grey[600],
                       ),
@@ -900,7 +903,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         padding: EdgeInsets.symmetric(horizontal: 10.w),
                         backgroundColor: AppColors.primary,
                       ),
-                      child: const Text('View Evaluation'),
+                      child: Text('View Evaluation'.tr(context)),
                     ),
                   ),
                 )
@@ -928,7 +931,7 @@ class _DashboardPageState extends State<DashboardPage> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
-            'Team Productivity',
+            'Team Productivity'.tr(context),
             style: TextStyle(
               color: isDark ? Colors.white : AppColors.textPrimary,
               fontSize: 16.sp,

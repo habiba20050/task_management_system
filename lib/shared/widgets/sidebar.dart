@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/colors/app_colors.dart';
+import '../../core/localization/translate_extension.dart';
 import '../../features/auth/cubit/auth_cubit.dart';
 import '../../responsive/responsive_layout.dart';
 
@@ -75,7 +76,7 @@ class Sidebar extends StatelessWidget {
                       ),
                       SizedBox(height: 4.h),
                       Text(
-                        'Task & Ticket Management',
+                        'Task & Ticket Management'.tr(context),
                         style: TextStyle(
                           color: const Color(0xFF041831), // Dark navy
                           fontSize: ResponsiveLayout.isTablet(context)
@@ -359,7 +360,7 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
                 ),
                 Expanded(
                   child: Text(
-                    widget.label,
+                    widget.label.tr(context),
                     style: TextStyle(
                       color: contentColor,
                       fontSize: ResponsiveLayout.isTablet(context)

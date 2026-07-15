@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/localization/translate_extension.dart';
 import '../../cubit/users_cubit.dart';
 
 class UsersFilterBar extends StatefulWidget {
@@ -31,8 +32,8 @@ class _UsersFilterBarState extends State<UsersFilterBar> {
               onChanged: (value) {
                 context.read<UsersCubit>().searchUsers(value);
               },
-              decoration: const InputDecoration(
-                hintText: 'Search users by name or email...',
+              decoration: InputDecoration(
+                hintText: 'Search users...'.tr(context),
                 hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
                 prefixIcon: Icon(
                   Icons.search,
@@ -75,7 +76,7 @@ class _UsersFilterBarState extends State<UsersFilterBar> {
                     ),
                   ),
                   child: Text(
-                    tab,
+                    tab.tr(context),
                     style: TextStyle(
                       color: isSelected
                           ? Colors.white

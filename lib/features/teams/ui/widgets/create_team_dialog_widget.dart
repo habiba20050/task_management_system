@@ -4,6 +4,7 @@ import '../../cubit/teams_cubit.dart';
 import '../../model/team_model.dart';
 import '../../../../core/network/mock_database.dart';
 import '../../../auth/cubit/auth_cubit.dart';
+import '../../../../core/localization/translate_extension.dart';
 
 class CreateTeamDialogWidget extends StatefulWidget {
   final TeamModel? teamToEdit;
@@ -89,7 +90,7 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.teamToEdit != null ? 'Edit Team' : 'Create New Team',
+                          widget.teamToEdit != null ? 'Edit Team'.tr(context) : 'Create New Team'.tr(context),
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -99,8 +100,8 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
                         const SizedBox(height: 6),
                         Text(
                           widget.teamToEdit != null
-                              ? 'Update team details, leader and members.'
-                              : 'Set up a new team, assign a leader and select members.',
+                              ? 'Update team details, leader and members.'.tr(context)
+                              : 'Set up a new team, assign a leader and select members.'.tr(context),
                           style: const TextStyle(
                             fontSize: 13,
                             color: Color(0xFF94A3B8),
@@ -129,7 +130,7 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
                   controller: _teamNameController,
                   style: const TextStyle(color: Color(0xFF1E293B), fontSize: 15),
                   decoration: _buildInputDecoration('e.g., Software Engineering Team'),
-                  validator: (val) => val == null || val.isEmpty ? 'Team name is required' : null,
+                  validator: (val) => val == null || val.isEmpty ? 'Team name is required'.tr(context) : null,
                 ),
                 const SizedBox(height: 20),
 
@@ -138,9 +139,9 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: _selectedDepartment,
-                  hint: const Text(
-                    'Select Department',
-                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 15),
+                  hint: Text(
+                    'Select Department'.tr(context),
+                    style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 15),
                   ),
                   icon: const Icon(
                     Icons.keyboard_arrow_down,
@@ -148,10 +149,10 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
                   ),
                   decoration: _buildInputDecoration(''),
                   items: ['Computer Science', 'IT Services', 'CS Dept', 'Business', 'Math Dept', 'Engineering']
-                      .map((label) => DropdownMenuItem(value: label, child: Text(label)))
+                      .map((label) => DropdownMenuItem(value: label, child: Text(label.tr(context))))
                       .toList(),
                   onChanged: (val) => setState(() => _selectedDepartment = val),
-                  validator: (val) => val == null ? 'Department is required' : null,
+                  validator: (val) => val == null ? 'Department is required'.tr(context) : null,
                 ),
                 const SizedBox(height: 20),
 
@@ -160,9 +161,9 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: _selectedLeaderId,
-                  hint: const Text(
-                    'Select a team leader...',
-                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 15),
+                  hint: Text(
+                    'Select a team leader...'.tr(context),
+                    style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 15),
                   ),
                   icon: const Icon(
                     Icons.keyboard_arrow_down,
@@ -173,7 +174,7 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
                       .map((l) => DropdownMenuItem(value: l.id, child: Text(l.fullName)))
                       .toList(),
                   onChanged: (val) => setState(() => _selectedLeaderId = val),
-                  validator: (val) => val == null ? 'Team leader is required' : null,
+                  validator: (val) => val == null ? 'Team leader is required'.tr(context) : null,
                 ),
                 const SizedBox(height: 20),
 
@@ -232,9 +233,9 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(
+                        child: Text(
+                          'Cancel'.tr(context),
+                          style: const TextStyle(
                             color: Color(0xFF1E293B),
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -249,7 +250,7 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
                           if (_formKey.currentState!.validate()) {
                             if (_selectedMemberIds.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Please select at least one team member.')),
+                                SnackBar(content: Text('Please select at least one team member.'.tr(context))),
                               );
                               return;
                             }
@@ -305,7 +306,7 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
                           elevation: 0,
                         ),
                         child: Text(
-                          widget.teamToEdit != null ? 'Save Changes' : 'Create Team',
+                          (widget.teamToEdit != null ? 'Save Changes' : 'Create Team').tr(context),
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -326,7 +327,7 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
 
   Widget _buildFieldLabel(String label) {
     return Text(
-      label,
+      label.tr(context),
       style: const TextStyle(
         fontSize: 15,
         fontWeight: FontWeight.w600,

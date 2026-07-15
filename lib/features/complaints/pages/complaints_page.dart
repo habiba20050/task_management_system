@@ -6,6 +6,8 @@ import '../../../core/network/mock_database.dart';
 import '../../../responsive/responsive_layout.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../auth/cubit/auth_cubit.dart';
+import '../../language/cubit/language_cubit.dart';
+import '../../../core/localization/translate_extension.dart';
 
 class ComplaintsPage extends StatefulWidget {
   const ComplaintsPage({super.key});
@@ -19,38 +21,35 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
   final TextEditingController _resolutionController = TextEditingController();
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    _resolutionController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final isDesktop = ResponsiveLayout.isDesktop(context);
     final authState = context.watch<AuthCubit>().state;
+    final dynamic user = authState is AuthSuccess
+        ? authState.user
+        : MockUser(id: '', email: '', fullName: 'Member'.tr(context), role: 'Team Member', department: '');
 
-    if (authState is! AuthSuccess) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+    final db = MockDatabase.instance;
 
-    final user = authState.user;
-    final role = user.role;
-
-    final complaints = MockDatabase.instance.complaints.where((c) {
-      final matchesSearch =
-          c.title.toLowerCase().contains(
-            _searchController.text.toLowerCase(),
-          ) ||
-          c.description.toLowerCase().contains(
-            _searchController.text.toLowerCase(),
-          );
-
-      // Let members only see their own complaints, while Admins/Managers/Leaders see all related complaints
-      if (role == 'Team Member') {
-        return matchesSearch && c.submitterId == user.id;
+    final complaints = db.complaints.where((c) {
+      // 1. Role-based visibility
+      if (user.role == 'Team Member' && c.submitterId != user.id) {
+        return false;
       }
-      return matchesSearch;
+      if (user.role == 'Team Leader' && c.submitterId != user.id) {
+        // Leaders can see their own complaints, or team members' complaints if they target their team
+        // For simplicity of the mockup, show leader's own complaints or open team issues
+        if (c.submitterId != user.id && c.targetType != 'Team') {
+          return false;
+        }
+      }
+
+      // 2. Search filter
+      final query = _searchController.text.toLowerCase();
+      if (query.isNotEmpty) {
+        return c.title.toLowerCase().contains(query) ||
+            c.description.toLowerCase().contains(query);
+      }
+      return true;
     }).toList();
 
     return Scaffold(
@@ -68,7 +67,7 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Complaints & Investigations',
+                        'Complaints & Investigations'.tr(context),
                         style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 22.sp,
@@ -77,7 +76,7 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
                       ),
                       SizedBox(height: 4.h),
                       Text(
-                        'Submit and track issues, workload, or deadline complaints',
+                        'Submit and track issues, workload, or deadline complaints'.tr(context),
                         style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 13.sp,
@@ -88,9 +87,9 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
                   ElevatedButton.icon(
                     onPressed: () => _showSubmitComplaintDialog(context, user),
                     icon: const Icon(Icons.add, color: Colors.white),
-                    label: const Text(
-                      'File Complaint',
-                      style: TextStyle(
+                    label: Text(
+                      'File Complaint'.tr(context),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
@@ -122,7 +121,7 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
                   controller: _searchController,
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
-                    hintText: 'Search complaints by title...',
+                    hintText: 'Search complaints by title...'.tr(context),
                     hintStyle: TextStyle(
                       color: Colors.grey[400],
                       fontSize: 13.sp,
@@ -142,7 +141,7 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
 
               Expanded(
                 child: complaints.isEmpty
-                    ? const Center(child: Text('No complaints registered.'))
+                    ? Center(child: Text('No complaints registered.'.tr(context)))
                     : ListView.separated(
                         itemCount: complaints.length,
                         separatorBuilder: (context, index) =>
@@ -174,78 +173,97 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
                                   ),
                                   SizedBox(height: 8.h),
                                   Text(
-                                    'Submitted by: ${c.submitterName} (${c.submitterRole}) on ${c.date}',
+                                    'Submitted by'.tr(context) + ': ${c.submitterName} (${c.submitterRole}) on ${c.date}',
                                     style: TextStyle(
-                                      color: Colors.grey[600],
+                                      color: Colors.grey[500],
                                       fontSize: 12.sp,
                                     ),
                                   ),
-                                  Text(
-                                    'Target: ${c.targetType} - ${c.targetName}',
-                                    style: TextStyle(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12.sp,
-                                    ),
-                                  ),
-                                  const Divider(),
+                                  SizedBox(height: 12.h),
                                   Text(
                                     c.description,
                                     style: TextStyle(
-                                      fontSize: 14.sp,
-                                      color: Colors.grey[800],
+                                      fontSize: 13.sp,
+                                      color: Colors.grey[700],
                                       height: 1.4,
                                     ),
                                   ),
-                                  if (c.resolutionNotes.isNotEmpty) ...[
-                                    SizedBox(height: 12.h),
-                                    Container(
-                                      padding: EdgeInsets.all(12.w),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green[50],
-                                        borderRadius: BorderRadius.circular(
-                                          8.r,
-                                        ),
-                                        border: Border.all(
-                                          color: Colors.green[200]!,
+                                  SizedBox(height: 12.h),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.warning_amber_rounded,
+                                        size: 14.sp,
+                                        color: Colors.orange,
+                                      ),
+                                      SizedBox(width: 4.w),
+                                      Text(
+                                        'Target Name'.tr(context) + ': ${c.targetName} (${c.targetType.tr(context)})',
+                                        style: TextStyle(
+                                          fontSize: 12.sp,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.grey[600],
                                         ),
                                       ),
-                                      child: Text(
-                                        'Resolution Notes: ${c.resolutionNotes}',
-                                        style: TextStyle(
-                                          color: Colors.green[800],
-                                          fontSize: 13.sp,
-                                        ),
+                                    ],
+                                  ),
+                                  if (c.resolutionNotes != null &&
+                                      c.resolutionNotes!.isNotEmpty) ...[
+                                    const Divider(),
+                                    SizedBox(height: 8.h),
+                                    Text(
+                                      'Resolution Notes'.tr(context) + ':',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13.sp,
+                                        color: Colors.green[700],
+                                      ),
+                                    ),
+                                    SizedBox(height: 4.h),
+                                    Text(
+                                      c.resolutionNotes!,
+                                      style: TextStyle(
+                                        fontSize: 13.sp,
+                                        color: Colors.grey[800],
+                                        fontStyle: FontStyle.italic,
                                       ),
                                     ),
                                   ],
-                                  if (role != 'Team Member' &&
-                                      c.status != 'Resolved' &&
-                                      c.status != 'Closed') ...[
+                                  if (user.role == 'Admin' ||
+                                      user.role == 'Manager') ...[
                                     const Divider(),
+                                    SizedBox(height: 8.h),
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.end,
                                       children: [
-                                        OutlinedButton(
+                                        ElevatedButton(
                                           onPressed: () =>
                                               _handleUpdateComplaint(
-                                                context,
-                                                c.id,
-                                                'Under Investigation',
-                                              ),
-                                          child: const Text('Investigate'),
+                                            context,
+                                            c.id,
+                                            'Under Investigation',
+                                          ),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.amber[700],
+                                          ),
+                                          child: Text(
+                                            'Mark Investigating'.tr(context),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                            ),
+                                          ),
                                         ),
                                         SizedBox(width: 12.w),
                                         ElevatedButton(
                                           onPressed: () =>
                                               _handleUpdateComplaint(
-                                                context,
-                                                c.id,
-                                                'Resolved',
-                                              ),
-                                          child: const Text(
-                                            'Mark Resolved',
-                                            style: TextStyle(
+                                            context,
+                                            c.id,
+                                            'Resolved',
+                                          ),
+                                          child: Text(
+                                            'Mark Resolved'.tr(context),
+                                            style: const TextStyle(
                                               color: Colors.white,
                                             ),
                                           ),
@@ -278,7 +296,7 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
     }
     return Chip(
       label: Text(
-        status,
+        status.tr(context),
         style: const TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.bold,
@@ -299,9 +317,9 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: Colors.white,
-          title: const Text(
-            'Submit a Complaint',
-            style: TextStyle(fontWeight: FontWeight.bold),
+          title: Text(
+            'Submit a Complaint'.tr(context),
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           content: SingleChildScrollView(
             child: SizedBox(
@@ -311,29 +329,28 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
                 children: [
                   TextField(
                     controller: titleCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Complaint Title',
+                    decoration: InputDecoration(
+                      labelText: 'Complaint Title'.tr(context),
                     ),
                   ),
                   SizedBox(height: 12.h),
                   DropdownButtonFormField<String>(
                     initialValue: targetType,
-                    decoration: const InputDecoration(
-                      labelText: 'Complaint Target',
+                    decoration: InputDecoration(
+                      labelText: 'Complaint Target'.tr(context),
                     ),
-                    items:
-                        [
-                              'Member',
-                              'Team Leader',
-                              'Manager',
-                              'Team',
-                              'Workload Issue',
-                              'Deadline Issue',
-                            ]
-                            .map(
-                              (t) => DropdownMenuItem(value: t, child: Text(t)),
-                            )
-                            .toList(),
+                    items: [
+                      'Member',
+                      'Team Leader',
+                      'Manager',
+                      'Team',
+                      'Workload Issue',
+                      'Deadline Issue',
+                    ]
+                        .map(
+                          (t) => DropdownMenuItem(value: t, child: Text(t.tr(context))),
+                        )
+                        .toList(),
                     onChanged: (val) {
                       if (val != null) {
                         setDialogState(() => targetType = val);
@@ -343,16 +360,16 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
                   SizedBox(height: 12.h),
                   TextField(
                     controller: targetNameCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Target Identifier / Name',
-                      hintText: 'e.g. Sarah Ahmed, Budget Task',
+                    decoration: InputDecoration(
+                      labelText: 'Target Identifier / Name'.tr(context),
+                      hintText: 'e.g. Sarah Ahmed, Budget Task'.tr(context),
                     ),
                   ),
                   SizedBox(height: 12.h),
                   TextField(
                     controller: descCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Complaint Details / Context',
+                    decoration: InputDecoration(
+                      labelText: 'Complaint Details / Context'.tr(context),
                     ),
                     maxLines: 3,
                   ),
@@ -363,7 +380,7 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: Text('Cancel'.tr(context)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -373,7 +390,7 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
                       MockComplaint(
                         id: DateTime.now().millisecondsSinceEpoch.toString(),
                         submitterId: user.id,
-                        submitterName: user.fullName ?? 'Member',
+                        submitterName: user.fullName ?? 'Member'.tr(context),
                         submitterRole: user.role,
                         targetType: targetType,
                         targetId: 't1',
@@ -387,15 +404,15 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
                   });
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
+                    SnackBar(
                       content: Text(
-                        'Complaint submitted and escalated successfully.',
+                        'Complaint submitted and escalated successfully.'.tr(context),
                       ),
                     ),
                   );
                 }
               },
-              child: const Text('Submit'),
+              child: Text('Submit'.tr(context)),
             ),
           ],
         ),
@@ -413,21 +430,21 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
         title: Text(
-          'Update Complaint Status to: $status',
+          'Update Complaint Status to:'.tr(context) + ' ' + status.tr(context),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         content: TextField(
           controller: _resolutionController,
-          decoration: const InputDecoration(
-            labelText: 'Notes / Comments',
-            hintText: 'Enter resolution notes or status details...',
+          decoration: InputDecoration(
+            labelText: 'Notes / Comments'.tr(context),
+            hintText: 'Enter resolution notes or status details...'.tr(context),
           ),
           maxLines: 3,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text('Cancel'.tr(context)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -441,10 +458,10 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
               _resolutionController.clear();
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Complaint status updated to: $status')),
+                SnackBar(content: Text('Complaint status updated successfully.'.tr(context))),
               );
             },
-            child: const Text('Update'),
+            child: Text('Update'.tr(context)),
           ),
         ],
       ),
