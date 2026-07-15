@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubit/users_cubit.dart';
 
 class UsersFilterBar extends StatefulWidget {
-  const UsersFilterBar({Key? key}) : super(key: key);
+  const UsersFilterBar({super.key});
 
   @override
   State<UsersFilterBar> createState() => _UsersFilterBarState();
@@ -11,7 +11,7 @@ class UsersFilterBar extends StatefulWidget {
 
 class _UsersFilterBarState extends State<UsersFilterBar> {
   String _selectedTab = 'All';
-  final List<String> _tabs = ['All', 'Admin', 'Manager', 'Member'];
+  final List<String> _tabs = ['All', 'Admin', 'Manager', 'Team Leader', 'Member'];
 
   @override
   Widget build(BuildContext context) {
@@ -65,9 +65,7 @@ class _UsersFilterBarState extends State<UsersFilterBar> {
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFF0F4C81)
-                        : Colors.white,
+                    color: isSelected ? const Color(0xFF0F4C81) : Colors.white,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: isSelected

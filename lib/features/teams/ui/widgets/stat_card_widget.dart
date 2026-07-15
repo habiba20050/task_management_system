@@ -8,13 +8,13 @@ class StatCardWidget extends StatelessWidget {
   final String title;
 
   const StatCardWidget({
-    Key? key,
+    super.key,
     required this.icon,
     required this.iconColor,
     required this.iconBgColor,
     required this.value,
     required this.title,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -57,10 +57,7 @@ class StatCardWidget extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF94A3B8),
-                ),
+                style: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
               ),
             ],
           ),

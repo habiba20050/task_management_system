@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/colors/app_colors.dart';
 import '../../../core/network/mock_database.dart';
 import '../../../responsive/responsive_layout.dart';
-import '../../../shared/widgets/custom_button.dart';
 import '../../auth/cubit/auth_cubit.dart';
 
 class ReviewCenterPage extends StatefulWidget {
@@ -27,7 +26,7 @@ class _ReviewCenterPageState extends State<ReviewCenterPage> {
   Widget build(BuildContext context) {
     final isDesktop = ResponsiveLayout.isDesktop(context);
     final authState = context.watch<AuthCubit>().state;
-    
+
     if (authState is! AuthSuccess) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -41,10 +40,21 @@ class _ReviewCenterPageState extends State<ReviewCenterPage> {
       // Find team leader's team
       final team = MockDatabase.instance.teams.firstWhere(
         (t) => t.leaderId == user.id,
-        orElse: () => MockTeam(id: '', name: '', managerId: '', leaderId: '', memberIds: []),
+        orElse: () => MockTeam(
+          id: '',
+          name: '',
+          managerId: '',
+          department: '',
+          leaderId: '',
+          memberIds: [],
+        ),
       );
       tasksWaitingReview = MockDatabase.instance.tasks
-          .where((t) => t.status == 'Submitted' && team.memberIds.contains(t.assignedMemberId))
+          .where(
+            (t) =>
+                t.status == 'Submitted' &&
+                team.memberIds.contains(t.assignedMemberId),
+          )
           .toList();
     } else if (role == 'Manager') {
       // Show all submitted tasks or tickets
@@ -54,7 +64,7 @@ class _ReviewCenterPageState extends State<ReviewCenterPage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFEDF2F7),
+      backgroundColor: AppColors.dashboardBg,
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.all(isDesktop ? 32.w : 16.w),
@@ -71,7 +81,7 @@ class _ReviewCenterPageState extends State<ReviewCenterPage> {
               ),
               SizedBox(height: 4.h),
               Text(
-                role == 'Manager' 
+                role == 'Manager'
                     ? 'Review final deliverables from Team Leaders'
                     : 'Evaluate and grade submitted member task deliverables',
                 style: TextStyle(color: Colors.grey[600], fontSize: 13.sp),
@@ -88,13 +98,21 @@ class _ReviewCenterPageState extends State<ReviewCenterPage> {
                       )
                     : ListView.separated(
                         itemCount: tasksWaitingReview.length,
-                        separatorBuilder: (context, index) => SizedBox(height: 16.h),
+                        separatorBuilder: (context, index) =>
+                            SizedBox(height: 16.h),
                         itemBuilder: (context, index) {
                           final task = tasksWaitingReview[index];
-                          final submitter = MockDatabase.instance.users.firstWhere(
-                            (u) => u.id == task.assignedMemberId,
-                            orElse: () => MockUser(id: '', email: '', fullName: 'Unknown Member', role: '', department: ''),
-                          );
+                          final submitter = MockDatabase.instance.users
+                              .firstWhere(
+                                (u) => u.id == task.assignedMemberId,
+                                orElse: () => MockUser(
+                                  id: '',
+                                  email: '',
+                                  fullName: 'Unknown Member',
+                                  role: '',
+                                  department: '',
+                                ),
+                              );
 
                           return Card(
                             color: Colors.white,
@@ -105,7 +123,8 @@ class _ReviewCenterPageState extends State<ReviewCenterPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         task.title,
@@ -116,29 +135,49 @@ class _ReviewCenterPageState extends State<ReviewCenterPage> {
                                         ),
                                       ),
                                       Chip(
-                                        label: Text('Priority: ${task.priority}'),
-                                        backgroundColor: const Color(0xFFEFF6FF),
+                                        label: Text(
+                                          'Priority: ${task.priority}',
+                                        ),
+                                        backgroundColor: const Color(
+                                          0xFFEFF6FF,
+                                        ),
                                       ),
                                     ],
                                   ),
                                   SizedBox(height: 8.h),
                                   Text(
                                     'Submitted by: ${submitter.fullName} (${submitter.email})',
-                                    style: TextStyle(color: Colors.grey[600], fontSize: 12.sp),
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 12.sp,
+                                    ),
                                   ),
                                   SizedBox(height: 12.h),
                                   Text(
                                     'Submission Notes: ${task.notes ?? 'No comments provided.'}',
-                                    style: TextStyle(fontSize: 13.sp, color: Colors.grey[800]),
+                                    style: TextStyle(
+                                      fontSize: 13.sp,
+                                      color: Colors.grey[800],
+                                    ),
                                   ),
                                   SizedBox(height: 12.h),
                                   Wrap(
                                     spacing: 12.w,
                                     children: [
-                                      if (task.githubLink != null && task.githubLink!.isNotEmpty)
-                                        _buildLinkChip(Icons.code, 'GitHub Repo', task.githubLink!),
-                                      if (task.prLink != null && task.prLink!.isNotEmpty)
-                                        _buildLinkChip(Icons.alt_route, 'Pull Request', task.prLink!),
+                                      if (task.githubLink != null &&
+                                          task.githubLink!.isNotEmpty)
+                                        _buildLinkChip(
+                                          Icons.code,
+                                          'GitHub Repo',
+                                          task.githubLink!,
+                                        ),
+                                      if (task.prLink != null &&
+                                          task.prLink!.isNotEmpty)
+                                        _buildLinkChip(
+                                          Icons.alt_route,
+                                          'Pull Request',
+                                          task.prLink!,
+                                        ),
                                     ],
                                   ),
                                   const Divider(),
@@ -147,37 +186,63 @@ class _ReviewCenterPageState extends State<ReviewCenterPage> {
                                     mainAxisAlignment: MainAxisAlignment.end,
                                     children: [
                                       OutlinedButton(
-                                        onPressed: () => _handleReview(context, task.id, 'Needs Changes'),
+                                        onPressed: () => _handleReview(
+                                          context,
+                                          task.id,
+                                          'Needs Changes',
+                                        ),
                                         style: OutlinedButton.styleFrom(
                                           foregroundColor: Colors.orange,
-                                          side: const BorderSide(color: Colors.orange),
+                                          side: const BorderSide(
+                                            color: Colors.orange,
+                                          ),
                                         ),
                                         child: const Text('Request Changes'),
                                       ),
                                       SizedBox(width: 12.w),
                                       OutlinedButton(
-                                        onPressed: () => _handleReview(context, task.id, 'Rejected'),
+                                        onPressed: () => _handleReview(
+                                          context,
+                                          task.id,
+                                          'Rejected',
+                                        ),
                                         style: OutlinedButton.styleFrom(
                                           foregroundColor: Colors.red,
-                                          side: const BorderSide(color: Colors.red),
+                                          side: const BorderSide(
+                                            color: Colors.red,
+                                          ),
                                         ),
                                         child: const Text('Reject Deliverable'),
                                       ),
                                       SizedBox(width: 12.w),
                                       ElevatedButton(
-                                        onPressed: () => _handleReview(context, task.id, 'Approved With Suggestions'),
+                                        onPressed: () => _handleReview(
+                                          context,
+                                          task.id,
+                                          'Approved With Suggestions',
+                                        ),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.blue[700],
                                         ),
-                                        child: const Text('Approve with Suggestions', style: TextStyle(color: Colors.white)),
+                                        child: const Text(
+                                          'Approve with Suggestions',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
                                       ),
                                       SizedBox(width: 12.w),
                                       ElevatedButton(
-                                        onPressed: () => _handleReview(context, task.id, 'Approved'),
+                                        onPressed: () => _handleReview(
+                                          context,
+                                          task.id,
+                                          'Approved',
+                                        ),
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.green[700],
                                         ),
-                                        child: const Text('Approve Task', style: TextStyle(color: Colors.white)),
+                                        child: const Text(
+                                          'Approve Task',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -210,7 +275,11 @@ class _ReviewCenterPageState extends State<ReviewCenterPage> {
           SizedBox(width: 6.w),
           Text(
             label,
-            style: TextStyle(fontSize: 11.sp, color: const Color(0xFF334155), decoration: TextDecoration.underline),
+            style: TextStyle(
+              fontSize: 11.sp,
+              color: const Color(0xFF334155),
+              decoration: TextDecoration.underline,
+            ),
           ),
         ],
       ),
@@ -222,7 +291,10 @@ class _ReviewCenterPageState extends State<ReviewCenterPage> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        title: Text('Review Action: $status', style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          'Review Action: $status',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: TextField(
           controller: _feedbackController,
           decoration: const InputDecoration(
@@ -248,7 +320,11 @@ class _ReviewCenterPageState extends State<ReviewCenterPage> {
               _feedbackController.clear();
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Review completed successfully with status: $status')),
+                SnackBar(
+                  content: Text(
+                    'Review completed successfully with status: $status',
+                  ),
+                ),
               );
             },
             child: const Text('Submit Review'),

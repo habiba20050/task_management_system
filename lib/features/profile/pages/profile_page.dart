@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/colors/app_colors.dart';
 import '../../../responsive/responsive_layout.dart';
 import '../../../shared/widgets/custom_button.dart';
@@ -23,9 +22,11 @@ class _ProfilePageState extends State<ProfilePage> {
   final TextEditingController _phoneController = TextEditingController();
 
   // Form 2 Controllers
-  final TextEditingController _currentPasswordController = TextEditingController();
+  final TextEditingController _currentPasswordController =
+      TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   // Locked fields
   String _username = '';
@@ -119,17 +120,25 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.error_outline, size: 48.sp, color: AppColors.error),
+                    Icon(
+                      Icons.error_outline,
+                      size: 48.sp,
+                      color: AppColors.error,
+                    ),
                     SizedBox(height: 16.h),
                     Text(
                       state.message,
-                      style: TextStyle(fontSize: 14.sp, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        color: AppColors.textSecondary,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 16.h),
                     CustomButton(
                       text: 'Retry',
-                      onPressed: () => context.read<ProfileCubit>().loadProfile(),
+                      onPressed: () =>
+                          context.read<ProfileCubit>().loadProfile(),
                     ),
                   ],
                 ),
@@ -274,7 +283,10 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildPersonalInformationForm(BuildContext context, ProfileState state) {
+  Widget _buildPersonalInformationForm(
+    BuildContext context,
+    ProfileState state,
+  ) {
     final isDesktop = ResponsiveLayout.isDesktop(context);
     final isUpdateLoading = state is UpdateProfileLoading;
 
@@ -307,25 +319,37 @@ class _ProfilePageState extends State<ProfilePage> {
           if (isDesktop) ...[
             Row(
               children: [
-                Expanded(child: _buildLockedField('Username (locked)', _username)),
+                Expanded(
+                  child: _buildLockedField('Username (locked)', _username),
+                ),
                 SizedBox(width: 24.w),
-                Expanded(child: _buildLockedField('Email Address (locked)', _email)),
+                Expanded(
+                  child: _buildLockedField('Email Address (locked)', _email),
+                ),
               ],
             ),
             SizedBox(height: 16.h),
             Row(
               children: [
-                Expanded(child: _buildInputField('Full Name', _fullNameController)),
+                Expanded(
+                  child: _buildInputField('Full Name', _fullNameController),
+                ),
                 SizedBox(width: 24.w),
-                Expanded(child: _buildInputField('Job Title', _jobTitleController)),
+                Expanded(
+                  child: _buildInputField('Job Title', _jobTitleController),
+                ),
               ],
             ),
             SizedBox(height: 16.h),
             Row(
               children: [
-                Expanded(child: _buildInputField('Department', _deptController)),
+                Expanded(
+                  child: _buildInputField('Department', _deptController),
+                ),
                 SizedBox(width: 24.w),
-                Expanded(child: _buildInputField('Phone Number', _phoneController)),
+                Expanded(
+                  child: _buildInputField('Phone Number', _phoneController),
+                ),
               ],
             ),
           ] else ...[
@@ -357,7 +381,9 @@ class _ProfilePageState extends State<ProfilePage> {
               backgroundColor: const Color(0xFF0A448C),
               foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.r),
+              ),
             ),
             child: isUpdateLoading
                 ? SizedBox(
@@ -370,7 +396,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   )
                 : Text(
                     'Save Changes',
-                    style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
           ),
         ],
@@ -401,7 +430,11 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           Row(
             children: [
-              Icon(Icons.lock_outline, color: const Color(0xFF0A448C), size: 20.sp),
+              Icon(
+                Icons.lock_outline,
+                color: const Color(0xFF0A448C),
+                size: 20.sp,
+              ),
               SizedBox(width: 8.w),
               Text(
                 'Change Password',
@@ -414,20 +447,44 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
           SizedBox(height: 20.h),
-          _buildPasswordField('Current Password', _currentPasswordController, 'Enter your current password'),
+          _buildPasswordField(
+            'Current Password',
+            _currentPasswordController,
+            'Enter your current password',
+          ),
           SizedBox(height: 16.h),
           if (isDesktop) ...[
             Row(
               children: [
-                Expanded(child: _buildPasswordField('New Password', _newPasswordController, 'New password')),
+                Expanded(
+                  child: _buildPasswordField(
+                    'New Password',
+                    _newPasswordController,
+                    'New password',
+                  ),
+                ),
                 SizedBox(width: 24.w),
-                Expanded(child: _buildPasswordField('Confirm New Password', _confirmPasswordController, 'Confirm new password')),
+                Expanded(
+                  child: _buildPasswordField(
+                    'Confirm New Password',
+                    _confirmPasswordController,
+                    'Confirm new password',
+                  ),
+                ),
               ],
             ),
           ] else ...[
-            _buildPasswordField('New Password', _newPasswordController, 'New password'),
+            _buildPasswordField(
+              'New Password',
+              _newPasswordController,
+              'New password',
+            ),
             SizedBox(height: 16.h),
-            _buildPasswordField('Confirm New Password', _confirmPasswordController, 'Confirm new password'),
+            _buildPasswordField(
+              'Confirm New Password',
+              _confirmPasswordController,
+              'Confirm new password',
+            ),
           ],
           SizedBox(height: 20.h),
           Container(
@@ -436,7 +493,9 @@ class _ProfilePageState extends State<ProfilePage> {
             decoration: BoxDecoration(
               color: const Color(0xFFFFF9E6),
               borderRadius: BorderRadius.circular(8.r),
-              border: Border.all(color: const Color(0xFFF2C94C).withOpacity(0.2)),
+              border: Border.all(
+                color: const Color(0xFFF2C94C).withOpacity(0.2),
+              ),
             ),
             child: Text(
               'Password must be at least 8 characters, include at least one uppercase letter, one number, and one special character (@, #, !, etc.).',
@@ -456,14 +515,18 @@ class _ProfilePageState extends State<ProfilePage> {
                     if (_currentPasswordController.text.isEmpty ||
                         _newPasswordController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please fill all password fields.')),
+                        const SnackBar(
+                          content: Text('Please fill all password fields.'),
+                        ),
                       );
                       return;
                     }
                     if (_newPasswordController.text !=
                         _confirmPasswordController.text) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Passwords do not match.')),
+                        const SnackBar(
+                          content: Text('Passwords do not match.'),
+                        ),
                       );
                       return;
                     }
@@ -476,7 +539,9 @@ class _ProfilePageState extends State<ProfilePage> {
               backgroundColor: const Color(0xFF0A448C),
               foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.r),
+              ),
             ),
             child: isPasswordLoading
                 ? SizedBox(
@@ -490,11 +555,18 @@ class _ProfilePageState extends State<ProfilePage> {
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.lock_outline, size: 16.sp, color: Colors.white),
+                      Icon(
+                        Icons.lock_outline,
+                        size: 16.sp,
+                        color: Colors.white,
+                      ),
                       SizedBox(width: 8.w),
                       Text(
                         'Update Password',
-                        style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -572,7 +644,10 @@ class _ProfilePageState extends State<ProfilePage> {
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16.w,
+                vertical: 10.h,
+              ),
             ),
             style: TextStyle(fontSize: 13.sp, color: AppColors.textPrimary),
           ),
@@ -581,7 +656,11 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildPasswordField(String label, TextEditingController controller, String hint) {
+  Widget _buildPasswordField(
+    String label,
+    TextEditingController controller,
+    String hint,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -610,7 +689,10 @@ class _ProfilePageState extends State<ProfilePage> {
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16.w,
+                vertical: 10.h,
+              ),
             ),
             style: TextStyle(fontSize: 13.sp, color: AppColors.textPrimary),
           ),

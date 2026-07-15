@@ -2,12 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubit/teams_cubit.dart';
 import '../../model/team_model.dart';
+import '../../../../core/network/mock_database.dart';
+import '../../../auth/cubit/auth_cubit.dart';
 
 class CreateTeamDialogWidget extends StatefulWidget {
   final TeamModel? teamToEdit;
-  const CreateTeamDialogWidget({Key? key, this.teamToEdit}) : super(key: key);
+  const CreateTeamDialogWidget({super.key, this.teamToEdit});
 
-  static void show(BuildContext context, TeamsCubit cubit, {TeamModel? teamToEdit}) {
+  static void show(
+    BuildContext context,
+    TeamsCubit cubit, {
+    TeamModel? teamToEdit,
+  }) {
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -24,12 +30,11 @@ class CreateTeamDialogWidget extends StatefulWidget {
 
 class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
   final _formKey = GlobalKey<FormState>();
-  
-  // التحكم في نصوص المدخلات
+
   final _teamNameController = TextEditingController();
   String? _selectedDepartment;
-  String? _selectedLeader;
-  String? _selectedMember;
+  String? _selectedLeaderId;
+  List<String> _selectedMemberIds = [];
 
   @override
   void initState() {
@@ -37,7 +42,16 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
     if (widget.teamToEdit != null) {
       _teamNameController.text = widget.teamToEdit!.name;
       _selectedDepartment = widget.teamToEdit!.department;
-      _selectedLeader = widget.teamToEdit!.leaderName;
+      
+      final db = MockDatabase.instance;
+      final mockTeam = db.teams.firstWhere(
+        (t) => t.id == widget.teamToEdit!.id,
+        orElse: () => MockTeam(id: '', name: '', managerId: '', department: '', leaderId: '', memberIds: []),
+      );
+      if (mockTeam.id.isNotEmpty) {
+        _selectedLeaderId = mockTeam.leaderId;
+        _selectedMemberIds = List.from(mockTeam.memberIds);
+      }
     }
   }
 
@@ -49,186 +63,267 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final db = MockDatabase.instance;
+    final leaders = db.users.where((u) => u.role == 'Team Leader').toList();
+    final members = db.users.where((u) => u.role == 'Team Member').toList();
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       elevation: 10,
       backgroundColor: Colors.white,
       child: Container(
-        width: 550, // تحديد عرض متناسق تماماً مع تصميم الـ Web/Tablet بالصورة
+        width: 580,
         padding: const EdgeInsets.all(32),
         child: Form(
           key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. الهيدر (العنوان وزر الإغلاق X)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.teamToEdit != null ? 'Edit Team' : 'Create New Team',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0F172A),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header (Title and X close)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.teamToEdit != null ? 'Edit Team' : 'Create New Team',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F172A),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        widget.teamToEdit != null ? 'Update team details and leader.' : 'Set up a new team and assign a leader.',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF94A3B8),
+                        const SizedBox(height: 6),
+                        Text(
+                          widget.teamToEdit != null
+                              ? 'Update team details, leader and members.'
+                              : 'Set up a new team, assign a leader and select members.',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF94A3B8),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, color: Color(0xFF94A3B8), size: 22),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              const Divider(color: Color(0xFFF1F5F9), thickness: 1),
-              const SizedBox(height: 24),
-
-              // 2. حقل اسم الفريق (Team Name)
-              _buildFieldLabel('Team Name'),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _teamNameController,
-                style: const TextStyle(color: Color(0xFF1E293B), fontSize: 15),
-                decoration: _buildInputDecoration('e.g., Web Development Team'),
-              ),
-              const SizedBox(height: 24),
-
-              // 3. حقل القسم (Department Dropdown)
-              _buildFieldLabel('Department'),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: _selectedDepartment,
-                hint: const Text('e.g., CS Department', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 15)),
-                icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
-                decoration: _buildInputDecoration(''),
-                items: ['CS Department', 'IS Department', 'Engineering Dept']
-                    .map((label) => DropdownMenuItem(value: label, child: Text(label)))
-                    .toList(),
-                onChanged: (val) => setState(() => _selectedDepartment = val),
-              ),
-              const SizedBox(height: 24),
-
-              // 4. حقل قائد الفريق (Team Leader Dropdown)
-              _buildFieldLabel('Team Leader'),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: _selectedLeader,
-                hint: const Text('Search for a team member...', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 15)),
-                icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
-                decoration: _buildInputDecoration(''),
-                items: ['Prof. Khalid Mansour', 'Dr. Ali Rashed']
-                    .map((label) => DropdownMenuItem(value: label, child: Text(label)))
-                    .toList(),
-                onChanged: (val) => setState(() => _selectedLeader = val),
-              ),
-              const SizedBox(height: 24),
-
-              // 5. حقل الأعضاء (Member Dropdown)
-              _buildFieldLabel('Member'),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: _selectedMember,
-                hint: const Text('Search for a member...', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 15)),
-                icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
-                decoration: _buildInputDecoration(''),
-                items: ['Ahmed Hamada', 'Mohamed Ali', 'Doha Mohamed']
-                    .map((label) => DropdownMenuItem(value: label, child: Text(label)))
-                    .toList(),
-                onChanged: (val) => setState(() => _selectedMember = val),
-              ),
-              const SizedBox(height: 36),
-
-              // 6. أزرار التحكم السفلية (Cancel & Create Team)
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
+                      ],
+                    ),
+                    IconButton(
                       onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold, fontSize: 16),
+                      icon: const Icon(
+                        Icons.close,
+                        color: Color(0xFF94A3B8),
+                        size: 22,
                       ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Divider(color: Color(0xFFF1F5F9), thickness: 1),
+                const SizedBox(height: 20),
+
+                // Team Name
+                _buildFieldLabel('Team Name'),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _teamNameController,
+                  style: const TextStyle(color: Color(0xFF1E293B), fontSize: 15),
+                  decoration: _buildInputDecoration('e.g., Software Engineering Team'),
+                  validator: (val) => val == null || val.isEmpty ? 'Team name is required' : null,
+                ),
+                const SizedBox(height: 20),
+
+                // Department Dropdown
+                _buildFieldLabel('Department'),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: _selectedDepartment,
+                  hint: const Text(
+                    'Select Department',
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 15),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          final name = _teamNameController.text;
-                          final dept = _selectedDepartment ?? 'General';
-                          final leaderName = _selectedLeader ?? 'Prof. Khalid Mansour';
-                          final leaderInitials = leaderName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase();
-                          
-                          if (widget.teamToEdit != null) {
-                            final updatedTeam = TeamModel(
-                              id: widget.teamToEdit!.id,
-                              name: name,
-                              department: dept,
-                              leaderName: leaderName,
-                              leaderInitials: leaderInitials,
-                              membersCount: widget.teamToEdit!.membersCount,
-                              totalTasks: widget.teamToEdit!.totalTasks,
-                              completedTasks: widget.teamToEdit!.completedTasks,
-                            );
-                            context.read<TeamsCubit>().updateTeam(updatedTeam);
-                          } else {
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Color(0xFF64748B),
+                  ),
+                  decoration: _buildInputDecoration(''),
+                  items: ['Computer Science', 'IT Services', 'CS Dept', 'Business', 'Math Dept', 'Engineering']
+                      .map((label) => DropdownMenuItem(value: label, child: Text(label)))
+                      .toList(),
+                  onChanged: (val) => setState(() => _selectedDepartment = val),
+                  validator: (val) => val == null ? 'Department is required' : null,
+                ),
+                const SizedBox(height: 20),
+
+                // Team Leader Dropdown
+                _buildFieldLabel('Team Leader'),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: _selectedLeaderId,
+                  hint: const Text(
+                    'Select a team leader...',
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 15),
+                  ),
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Color(0xFF64748B),
+                  ),
+                  decoration: _buildInputDecoration(''),
+                  items: leaders
+                      .map((l) => DropdownMenuItem(value: l.id, child: Text(l.fullName)))
+                      .toList(),
+                  onChanged: (val) => setState(() => _selectedLeaderId = val),
+                  validator: (val) => val == null ? 'Team leader is required' : null,
+                ),
+                const SizedBox(height: 20),
+
+                // Members Multi-Select Checkboxes
+                _buildFieldLabel('Team Members'),
+                const SizedBox(height: 8),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEDF2F7),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: ListView(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      children: members.map((m) {
+                        final isChecked = _selectedMemberIds.contains(m.id);
+                        return CheckboxListTile(
+                          title: Text(m.fullName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                          subtitle: Text(m.email, style: const TextStyle(fontSize: 12)),
+                          value: isChecked,
+                          activeColor: const Color(0xFF0F4C81),
+                          onChanged: (val) {
+                            setState(() {
+                              if (val == true) {
+                                _selectedMemberIds.add(m.id);
+                              } else {
+                                _selectedMemberIds.remove(m.id);
+                              }
+                            });
+                          },
+                          controlAffinity: ListTileControlAffinity.leading,
+                          contentPadding: EdgeInsets.zero,
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Cancel and Submit buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: const BorderSide(
+                            color: Color(0xFFE2E8F0),
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Color(0xFF1E293B),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (_formKey.currentState!.validate()) {
+                            if (_selectedMemberIds.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Please select at least one team member.')),
+                              );
+                              return;
+                            }
+
+                            final name = _teamNameController.text;
+                            final dept = _selectedDepartment ?? 'Computer Science';
+                            final leaderUser = db.users.firstWhere((u) => u.id == _selectedLeaderId);
+
+                            // Get current manager ID
+                            final authState = context.read<AuthCubit>().state;
+                            final managerId = authState is AuthSuccess ? authState.user.id : '2';
+
                             final newTeam = TeamModel(
-                              id: DateTime.now().millisecondsSinceEpoch.toString(),
+                              id: widget.teamToEdit?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
                               name: name,
                               department: dept,
-                              leaderName: leaderName,
-                              leaderInitials: leaderInitials,
-                              membersCount: 4,
-                              totalTasks: 50,
-                              completedTasks: 0,
+                              leaderName: leaderUser.fullName,
+                              leaderInitials: leaderUser.fullName
+                                  .split(' ')
+                                  .map((e) => e.isNotEmpty ? e[0] : '')
+                                  .take(2)
+                                  .join()
+                                  .toUpperCase(),
+                              membersCount: _selectedMemberIds.length,
+                              totalTasks: widget.teamToEdit?.totalTasks ?? 0,
+                              completedTasks: widget.teamToEdit?.completedTasks ?? 0,
                             );
-                            context.read<TeamsCubit>().addTeam(newTeam);
+
+                            if (widget.teamToEdit != null) {
+                              context.read<TeamsCubit>().updateTeam(
+                                    newTeam,
+                                    _selectedMemberIds,
+                                    managerId,
+                                    _selectedLeaderId!,
+                                  );
+                            } else {
+                              context.read<TeamsCubit>().addTeam(
+                                    newTeam,
+                                    _selectedMemberIds,
+                                    managerId,
+                                    _selectedLeaderId!,
+                                  );
+                            }
+                            Navigator.pop(context);
                           }
-                          Navigator.pop(context);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0F4C81), // نفس اللون الأزرق الداكن بالتصميم
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        widget.teamToEdit != null ? 'Save Changes' : 'Create Team',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0F4C81),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          widget.teamToEdit != null ? 'Save Changes' : 'Create Team',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              )
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  // ويجت مخصصة لعناوين الحقول لتوحيد الـ Style وحجم الخط
   Widget _buildFieldLabel(String label) {
     return Text(
       label,
@@ -240,12 +335,11 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
     );
   }
 
-  // ستايل موحد لجميع حقول الإدخال والـ Dropdowns لمطابقة خلفية التصميم الرمادية الفاتحة وبدون حدود حادة
   InputDecoration _buildInputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 15),
-      fillColor: const Color(0xFFEDF2F7), // لون الخلفية الرمادي الفاتح للحقول
+      fillColor: const Color(0xFFEDF2F7),
       filled: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(

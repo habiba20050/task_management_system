@@ -1,35 +1,101 @@
 import 'package:flutter/material.dart';
 import '../../model/team_model.dart';
+import '../../../../core/network/mock_database.dart';
 
 class TeamDetailsScreen extends StatelessWidget {
   final TeamModel team;
-  // أضفنا مدير الفريق هنا لمحاكاة الطلب رقم 9
-  final String createdByManager = "Eng. Mohamed Ali"; 
 
-  const TeamDetailsScreen({Key? key, required this.team}) : super(key: key);
+  const TeamDetailsScreen({super.key, required this.team});
 
   @override
   Widget build(BuildContext context) {
+    final db = MockDatabase.instance;
+
+    // Fetch live data from MockDatabase using the team's id
+    final mockTeam = db.teams.firstWhere(
+      (t) => t.id == team.id,
+      orElse: () => MockTeam(
+        id: team.id,
+        name: team.name,
+        managerId: '2', // default manager Prof. Khalid
+        department: team.department,
+        leaderId: '3',  // default leader Eng. Nour
+        memberIds: ['4', '5'],
+      ),
+    );
+
+    // Fetch Manager
+    final manager = db.users.firstWhere(
+      (u) => u.id == mockTeam.managerId,
+      orElse: () => MockUser(
+        id: '2',
+        email: 'manager@aitu.edu',
+        fullName: 'Prof. Khalid Mansour',
+        role: 'Manager',
+        department: team.department,
+      ),
+    );
+
+    // Fetch Team Leader
+    final leader = db.users.firstWhere(
+      (u) => u.id == mockTeam.leaderId,
+      orElse: () => MockUser(
+        id: '3',
+        email: 'leader@aitu.edu',
+        fullName: team.leaderName,
+        role: 'Team Leader',
+        department: team.department,
+      ),
+    );
+
+    // Fetch members
+    final members = db.users.where((u) => mockTeam.memberIds.contains(u.id)).toList();
+
+    // Fetch team tasks (tasks assigned to members in the team)
+    final memberIdsSet = mockTeam.memberIds.toSet();
+    final tasks = db.tasks.where((t) => memberIdsSet.contains(t.assignedMemberId)).toList();
+    final completedTasks = tasks.where((t) => t.status == 'Completed' || t.status == 'Approved' || t.status == 'Approved With Suggestions').toList();
+    final totalTasksCount = tasks.length;
+    final completedTasksCount = completedTasks.length;
+    final remainingTasksCount = totalTasksCount - completedTasksCount;
+    final double completionRate = totalTasksCount > 0 ? completedTasksCount / totalTasksCount : 0.0;
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       elevation: 10,
       backgroundColor: const Color(0xFFEDF2F7),
       child: Container(
         width: 1000,
-        height: 650,
+        height: 680,
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
+            // Header Row
             Row(
               children: [
                 ElevatedButton.icon(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back, size: 16, color: Colors.white),
-                  label: const Text('Back to Teams', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  icon: const Icon(
+                    Icons.arrow_back,
+                    size: 16,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    'Back to Teams',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0F4C81),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 20),
@@ -56,24 +122,26 @@ class TeamDetailsScreen extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Left Column (Management & Progress)
                     Expanded(
                       flex: 1,
                       child: Column(
                         children: [
-                          _buildManagementCard(),
+                          _buildManagementCard(manager, leader),
                           const SizedBox(height: 20),
-                          _buildProgressCard(),
+                          _buildProgressCard(completedTasksCount, remainingTasksCount, totalTasksCount, completionRate),
                         ],
                       ),
                     ),
                     const SizedBox(width: 20),
+                    // Right Column (Members & Tasks details)
                     Expanded(
                       flex: 2,
                       child: Column(
                         children: [
-                          _buildMembersList(),
+                          _buildMembersList(members, tasks),
                           const SizedBox(height: 20),
-                          _buildTeamTasksList(),
+                          _buildTeamTasksList(tasks, members),
                         ],
                       ),
                     ),
@@ -87,52 +155,117 @@ class TeamDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildManagementCard() {
+  Widget _buildManagementCard(MockUser manager, MockUser leader) {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Team Supervision', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+          const Text(
+            'Team Supervision',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0F172A),
+            ),
+          ),
           const SizedBox(height: 20),
-          _buildUserTile(team.leaderName, team.leaderInitials, 'TEAM LEADER', const Color(0xFFFFFBEB), Colors.orange),
+          _buildUserTile(
+            leader.fullName,
+            leader.fullName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase(),
+            'TEAM LEADER',
+            const Color(0xFFFFFBEB),
+            Colors.orange,
+          ),
           const SizedBox(height: 16),
-          _buildUserTile(createdByManager, 'MA', 'ADDED BY MANAGER', const Color(0xFFEFF6FF), Colors.blue),
+          _buildUserTile(
+            manager.fullName,
+            manager.fullName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase(),
+            'PROJECT MANAGER',
+            const Color(0xFFEFF6FF),
+            Colors.blue,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildUserTile(String name, String initials, String role, Color bgColor, Color textColor) {
+  Widget _buildUserTile(
+    String name,
+    String initials,
+    String role,
+    Color bgColor,
+    Color textColor,
+  ) {
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         children: [
-          CircleAvatar(backgroundColor: textColor, radius: 18, child: Text(initials, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
+          CircleAvatar(
+            backgroundColor: textColor,
+            radius: 18,
+            child: Text(
+              initials,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(role, style: TextStyle(color: textColor, fontSize: 10, fontWeight: FontWeight.bold)),
+              Text(
+                role,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(name, style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1E293B))),
+              Text(
+                name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
             ],
-          )
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildProgressCard() {
+  Widget _buildProgressCard(int completed, int remaining, int total, double rate) {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Task Completion', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+          const Text(
+            'Task Score & Completion',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0F172A),
+            ),
+          ),
           const SizedBox(height: 20),
           Center(
             child: Stack(
@@ -142,65 +275,194 @@ class TeamDetailsScreen extends StatelessWidget {
                   width: 120,
                   height: 120,
                   child: CircularProgressIndicator(
-                    value: team.progress,
+                    value: rate,
                     strokeWidth: 10,
                     backgroundColor: const Color(0xFFE2E8F0),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFF10B981),
+                    ),
                   ),
                 ),
-                Text('${team.completionPercentage.toInt()}%', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+                Text(
+                  '${(rate * 100).toInt()}%',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF10B981),
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Completed: ${team.completedTasks}', style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
-              Text('Total Tasks: ${team.totalTasks}', style: const TextStyle(color: Color(0xFF64748B))),
+              Column(
+                children: [
+                  const Text('Completed', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  const SizedBox(height: 4),
+                  Text('$completed', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16)),
+                ],
+              ),
+              Column(
+                children: [
+                  const Text('Remaining', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  const SizedBox(height: 4),
+                  Text('$remaining', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 16)),
+                ],
+              ),
+              Column(
+                children: [
+                  const Text('Total Tasks', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  const SizedBox(height: 4),
+                  Text('$total', style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16)),
+                ],
+              ),
             ],
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMembersList() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Members (${team.membersCount})', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-          const SizedBox(height: 16),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: team.membersCount,
-            separatorBuilder: (_, __) => const Divider(color: Color(0xFFF1F5F9)),
-            itemBuilder: (context, index) => ListTile(
-              leading: const CircleAvatar(backgroundColor: Color(0xFF64748B), child: Icon(Icons.person, color: Colors.white)),
-              title: Text('Team Member ${index + 1}', style: const TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: const Text('Member Role / Track'),
-              trailing: OutlinedButton(onPressed: () {}, child: const Text('View Profile')),
-            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTeamTasksList() {
+  Widget _buildMembersList(List<MockUser> members, List<MockTask> tasks) {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Text('Active Team Tickets / Tasks', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-          SizedBox(height: 16),
-          Center(child: Padding(padding: EdgeInsets.all(16.0), child: Text('Tasks list query filter goes here...', style: TextStyle(color: Color(0xFF94A3B8))))),
+        children: [
+          Text(
+            'Members (${members.length})',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (members.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Text('No members assigned to this team.', style: TextStyle(color: Colors.grey)),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: members.length,
+              separatorBuilder: (_, _) => const Divider(color: Color(0xFFF1F5F9)),
+              itemBuilder: (context, index) {
+                final member = members[index];
+                final initials = member.fullName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase();
+                final memberTasks = tasks.where((t) => t.assignedMemberId == member.id).toList();
+
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: const Color(0xFF64748B),
+                    child: Text(
+                      initials,
+                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  title: Text(
+                    member.fullName,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text('${memberTasks.length} tasks taken'),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F8EE),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${member.points} Points',
+                      style: const TextStyle(color: Color(0xFF27AE60), fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeamTasksList(List<MockTask> tasks, List<MockUser> members) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Active Team Tasks Details',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (tasks.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  'No active tasks found.',
+                  style: TextStyle(color: Color(0xFF94A3B8)),
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: tasks.length,
+              separatorBuilder: (_, _) => const Divider(color: Color(0xFFF1F5F9)),
+              itemBuilder: (context, index) {
+                final task = tasks[index];
+                final assignee = members.firstWhere(
+                  (u) => u.id == task.assignedMemberId,
+                  orElse: () => MockUser(id: '', email: '', fullName: 'Unassigned', role: '', department: ''),
+                );
+
+                return ListTile(
+                  title: Text(
+                    task.title,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text('Assigned to: ${assignee.fullName} | Deadline: ${task.deadline}'),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: task.status == 'Completed' || task.status == 'Approved'
+                          ? const Color(0xFFE8F8EE)
+                          : const Color(0xFFFFF9E6),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      task.status,
+                      style: TextStyle(
+                        color: task.status == 'Completed' || task.status == 'Approved'
+                            ? Colors.green
+                            : Colors.orange,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );

@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:fl_chart/fl_chart.dart';
 import '../../../core/colors/app_colors.dart';
 import '../../../core/network/mock_database.dart';
 import '../../../responsive/responsive_layout.dart';
-import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/notification_drawer.dart';
 import '../../auth/cubit/auth_cubit.dart';
 
@@ -25,11 +23,9 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget build(BuildContext context) {
     final isDesktop = ResponsiveLayout.isDesktop(context);
     final authState = context.watch<AuthCubit>().state;
-    
+
     if (authState is! AuthSuccess) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final user = authState.user;
@@ -78,7 +74,9 @@ class _DashboardPageState extends State<DashboardPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _currentLanguage == 'EN' ? 'Dashboard Overview' : 'لوحة التحكم العامة',
+                _currentLanguage == 'EN'
+                    ? 'Dashboard Overview'
+                    : 'لوحة التحكم العامة',
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: isDesktop ? 22.sp : 18.sp,
@@ -87,7 +85,7 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               SizedBox(height: 4.h),
               Text(
-                _currentLanguage == 'EN' 
+                _currentLanguage == 'EN'
                     ? 'Welcome back, ${user.fullName} (${user.role})'
                     : 'مرحباً بعودتك، ${user.fullName} (${user.role})',
                 style: TextStyle(
@@ -131,7 +129,10 @@ class _DashboardPageState extends State<DashboardPage> {
                       shape: BoxShape.circle,
                     ),
                     child: Text(
-                      MockDatabase.instance.notifications.where((n) => n.userId == user.id && !n.isRead).length.toString(),
+                      MockDatabase.instance.notifications
+                          .where((n) => n.userId == user.id && !n.isRead)
+                          .length
+                          .toString(),
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 8.sp,
@@ -180,7 +181,9 @@ class _DashboardPageState extends State<DashboardPage> {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.grey[600]),
+            color: isSelected
+                ? Colors.white
+                : (isDark ? Colors.white70 : Colors.grey[600]),
             fontSize: 11.sp,
             fontWeight: FontWeight.bold,
           ),
@@ -204,30 +207,66 @@ class _DashboardPageState extends State<DashboardPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildStatsRow(isDark, [
-          _StatData(Icons.shield_outlined, 'Managers', totalManagers.toString(), const Color(0xFF2F80ED), const Color(0xFFEAF2FF)),
-          _StatData(Icons.workspace_premium_outlined, 'Leaders', totalLeaders.toString(), const Color(0xFF27AE60), const Color(0xFFE8F8EE)),
-          _StatData(Icons.people_outline, 'Members', totalMembers.toString(), const Color(0xFFF2C94C), const Color(0xFFFFF9E6)),
-          _StatData(Icons.assignment_outlined, 'Projects', totalProjects.toString(), const Color(0xFFEB5757), const Color(0xFFFFECEB)),
+          _StatData(
+            Icons.shield_outlined,
+            'Managers',
+            totalManagers.toString(),
+            const Color(0xFF2F80ED),
+            const Color(0xFFEAF2FF),
+          ),
+          _StatData(
+            Icons.workspace_premium_outlined,
+            'Leaders',
+            totalLeaders.toString(),
+            const Color(0xFF27AE60),
+            const Color(0xFFE8F8EE),
+          ),
+          _StatData(
+            Icons.people_outline,
+            'Members',
+            totalMembers.toString(),
+            const Color(0xFFF2C94C),
+            const Color(0xFFFFF9E6),
+          ),
+          _StatData(
+            Icons.assignment_outlined,
+            'Projects',
+            totalProjects.toString(),
+            const Color(0xFFEB5757),
+            const Color(0xFFFFECEB),
+          ),
         ]),
         SizedBox(height: 24.h),
         _buildStatsRow(isDark, [
-          _StatData(Icons.group_work_outlined, 'Teams', totalTeams.toString(), Colors.purple, const Color(0xFFF3E8FF)),
-          _StatData(Icons.label_outline, 'Tickets', totalTickets.toString(), Colors.teal, const Color(0xFFE6FFFA)),
-          _StatData(Icons.checklist_outlined, 'Tasks', totalTasks.toString(), Colors.indigo, const Color(0xFFE0E7FF)),
+          _StatData(
+            Icons.group_work_outlined,
+            'Teams',
+            totalTeams.toString(),
+            Colors.purple,
+            const Color(0xFFF3E8FF),
+          ),
+          _StatData(
+            Icons.label_outline,
+            'Tickets',
+            totalTickets.toString(),
+            Colors.teal,
+            const Color(0xFFE6FFFA),
+          ),
+          _StatData(
+            Icons.checklist_outlined,
+            'Tasks',
+            totalTasks.toString(),
+            Colors.indigo,
+            const Color(0xFFE0E7FF),
+          ),
         ]),
         SizedBox(height: 24.h),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              flex: 2,
-              child: _buildRankingsCard(isDark),
-            ),
+            Expanded(flex: 2, child: _buildRankingsCard(isDark)),
             SizedBox(width: 24.w),
-            Expanded(
-              flex: 1,
-              child: _buildRecentComplaintsPanel(isDark),
-            ),
+            Expanded(flex: 1, child: _buildRecentComplaintsPanel(isDark)),
           ],
         ),
       ],
@@ -240,17 +279,50 @@ class _DashboardPageState extends State<DashboardPage> {
     final totalTeams = db.teams.length;
     final totalLeaders = db.users.where((u) => u.role == 'Team Leader').length;
     final totalProjects = db.projects.length;
-    final delayedTasks = db.tasks.where((t) => t.status != 'Approved' && t.status != 'Completed' && DateTime.tryParse(t.deadline)?.isBefore(DateTime.now()) == true).length;
-    final pendingReviews = db.tasks.where((t) => t.status == 'Submitted' || t.status == 'Under Review').length;
+    final delayedTasks = db.tasks
+        .where(
+          (t) =>
+              t.status != 'Approved' &&
+              t.status != 'Completed' &&
+              DateTime.tryParse(t.deadline)?.isBefore(DateTime.now()) == true,
+        )
+        .length;
+    final pendingReviews = db.tasks
+        .where((t) => t.status == 'Submitted' || t.status == 'Under Review')
+        .length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildStatsRow(isDark, [
-          _StatData(Icons.group_work_outlined, 'Teams Count', totalTeams.toString(), const Color(0xFF2F80ED), const Color(0xFFEAF2FF)),
-          _StatData(Icons.workspace_premium_outlined, 'Leaders Count', totalLeaders.toString(), const Color(0xFF27AE60), const Color(0xFFE8F8EE)),
-          _StatData(Icons.assignment_outlined, 'Projects Count', totalProjects.toString(), const Color(0xFFF2C94C), const Color(0xFFFFF9E6)),
-          _StatData(Icons.warning_amber_outlined, 'Delayed Tasks', delayedTasks.toString(), const Color(0xFFEB5757), const Color(0xFFFFECEB)),
+          _StatData(
+            Icons.group_work_outlined,
+            'Teams Count',
+            totalTeams.toString(),
+            const Color(0xFF2F80ED),
+            const Color(0xFFEAF2FF),
+          ),
+          _StatData(
+            Icons.workspace_premium_outlined,
+            'Leaders Count',
+            totalLeaders.toString(),
+            const Color(0xFF27AE60),
+            const Color(0xFFE8F8EE),
+          ),
+          _StatData(
+            Icons.assignment_outlined,
+            'Projects Count',
+            totalProjects.toString(),
+            const Color(0xFFF2C94C),
+            const Color(0xFFFFF9E6),
+          ),
+          _StatData(
+            Icons.warning_amber_outlined,
+            'Delayed Tasks',
+            delayedTasks.toString(),
+            const Color(0xFFEB5757),
+            const Color(0xFFFFECEB),
+          ),
         ]),
         SizedBox(height: 24.h),
         Row(
@@ -258,13 +330,13 @@ class _DashboardPageState extends State<DashboardPage> {
           children: [
             Expanded(
               flex: 2,
-              child: _buildDeliverablesWaitingReviewCard(isDark, pendingReviews),
+              child: _buildDeliverablesWaitingReviewCard(
+                isDark,
+                pendingReviews,
+              ),
             ),
             SizedBox(width: 24.w),
-            Expanded(
-              flex: 1,
-              child: _buildProjectHealthScoreCard(isDark),
-            ),
+            Expanded(flex: 1, child: _buildProjectHealthScoreCard(isDark)),
           ],
         ),
       ],
@@ -274,21 +346,68 @@ class _DashboardPageState extends State<DashboardPage> {
   // --- Team Leader Dashboard ---
   Widget _buildLeaderDashboard(BuildContext context, bool isDark) {
     final db = MockDatabase.instance;
-    final team = db.teams.firstWhere((t) => t.leaderId == '3', orElse: () => MockTeam(id: '', name: 'My Team', managerId: '', leaderId: '', memberIds: []));
+    final team = db.teams.firstWhere(
+      (t) => t.leaderId == '3',
+      orElse: () => MockTeam(
+        id: '',
+        name: 'My Team',
+        managerId: '',
+        department: '',
+        leaderId: '',
+        memberIds: [],
+      ),
+    );
     final memberCount = team.memberIds.length;
-    final teamTasks = db.tasks.where((t) => team.memberIds.contains(t.assignedMemberId)).toList();
-    final activeTasks = teamTasks.where((t) => t.status == 'Assigned' || t.status == 'In Progress').length;
-    final pendingReviews = teamTasks.where((t) => t.status == 'Submitted' || t.status == 'Under Review').length;
-    final delayedTasks = teamTasks.where((t) => t.status != 'Approved' && t.status != 'Completed' && DateTime.tryParse(t.deadline)?.isBefore(DateTime.now()) == true).length;
+    final teamTasks = db.tasks
+        .where((t) => team.memberIds.contains(t.assignedMemberId))
+        .toList();
+    final activeTasks = teamTasks
+        .where((t) => t.status == 'Assigned' || t.status == 'In Progress')
+        .length;
+    final pendingReviews = teamTasks
+        .where((t) => t.status == 'Submitted' || t.status == 'Under Review')
+        .length;
+    final delayedTasks = teamTasks
+        .where(
+          (t) =>
+              t.status != 'Approved' &&
+              t.status != 'Completed' &&
+              DateTime.tryParse(t.deadline)?.isBefore(DateTime.now()) == true,
+        )
+        .length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildStatsRow(isDark, [
-          _StatData(Icons.people_outline, 'Team Members', memberCount.toString(), const Color(0xFF2F80ED), const Color(0xFFEAF2FF)),
-          _StatData(Icons.checklist_outlined, 'Active Tasks', activeTasks.toString(), const Color(0xFF27AE60), const Color(0xFFE8F8EE)),
-          _StatData(Icons.rate_review_outlined, 'Pending Reviews', pendingReviews.toString(), const Color(0xFFF2C94C), const Color(0xFFFFF9E6)),
-          _StatData(Icons.warning_amber_outlined, 'Delayed Tasks', delayedTasks.toString(), const Color(0xFFEB5757), const Color(0xFFFFECEB)),
+          _StatData(
+            Icons.people_outline,
+            'Team Members',
+            memberCount.toString(),
+            const Color(0xFF2F80ED),
+            const Color(0xFFEAF2FF),
+          ),
+          _StatData(
+            Icons.checklist_outlined,
+            'Active Tasks',
+            activeTasks.toString(),
+            const Color(0xFF27AE60),
+            const Color(0xFFE8F8EE),
+          ),
+          _StatData(
+            Icons.rate_review_outlined,
+            'Pending Reviews',
+            pendingReviews.toString(),
+            const Color(0xFFF2C94C),
+            const Color(0xFFFFF9E6),
+          ),
+          _StatData(
+            Icons.warning_amber_outlined,
+            'Delayed Tasks',
+            delayedTasks.toString(),
+            const Color(0xFFEB5757),
+            const Color(0xFFFFECEB),
+          ),
         ]),
         SizedBox(height: 24.h),
         Row(
@@ -310,31 +429,78 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   // --- Team Member Dashboard ---
-  Widget _buildMemberDashboard(BuildContext context, String memberId, bool isDark) {
+  Widget _buildMemberDashboard(
+    BuildContext context,
+    String memberId,
+    bool isDark,
+  ) {
     final db = MockDatabase.instance;
-    final myTasks = db.tasks.where((t) => t.assignedMemberId == memberId).toList();
-    final userDetails = db.users.firstWhere((u) => u.id == memberId, orElse: () => MockUser(id: '', email: '', fullName: '', role: '', department: ''));
-    final completedCount = myTasks.where((t) => t.status == 'Approved' || t.status == 'Completed').length;
-    final pendingCount = myTasks.where((t) => t.status == 'Assigned' || t.status == 'In Progress' || t.status == 'Needs Changes').length;
-    final overdueCount = myTasks.where((t) => t.status != 'Approved' && t.status != 'Completed' && DateTime.tryParse(t.deadline)?.isBefore(DateTime.now()) == true).length;
+    final myTasks = db.tasks
+        .where((t) => t.assignedMemberId == memberId)
+        .toList();
+    final userDetails = db.users.firstWhere(
+      (u) => u.id == memberId,
+      orElse: () =>
+          MockUser(id: '', email: '', fullName: '', role: '', department: ''),
+    );
+    final completedCount = myTasks
+        .where((t) => t.status == 'Approved' || t.status == 'Completed')
+        .length;
+    final pendingCount = myTasks
+        .where(
+          (t) =>
+              t.status == 'Assigned' ||
+              t.status == 'In Progress' ||
+              t.status == 'Needs Changes',
+        )
+        .length;
+    final overdueCount = myTasks
+        .where(
+          (t) =>
+              t.status != 'Approved' &&
+              t.status != 'Completed' &&
+              DateTime.tryParse(t.deadline)?.isBefore(DateTime.now()) == true,
+        )
+        .length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildStatsRow(isDark, [
-          _StatData(Icons.emoji_events_outlined, 'Current Points', userDetails.points.toString(), const Color(0xFF2F80ED), const Color(0xFFEAF2FF)),
-          _StatData(Icons.check_circle_outline, 'Completed Tasks', completedCount.toString(), const Color(0xFF27AE60), const Color(0xFFE8F8EE)),
-          _StatData(Icons.hourglass_empty_outlined, 'Pending Tasks', pendingCount.toString(), const Color(0xFFF2C94C), const Color(0xFFFFF9E6)),
-          _StatData(Icons.warning_amber_rounded, 'Overdue Deadlines', overdueCount.toString(), const Color(0xFFEB5757), const Color(0xFFFFECEB)),
+          _StatData(
+            Icons.emoji_events_outlined,
+            'Current Points',
+            userDetails.points.toString(),
+            const Color(0xFF2F80ED),
+            const Color(0xFFEAF2FF),
+          ),
+          _StatData(
+            Icons.check_circle_outline,
+            'Completed Tasks',
+            completedCount.toString(),
+            const Color(0xFF27AE60),
+            const Color(0xFFE8F8EE),
+          ),
+          _StatData(
+            Icons.hourglass_empty_outlined,
+            'Pending Tasks',
+            pendingCount.toString(),
+            const Color(0xFFF2C94C),
+            const Color(0xFFFFF9E6),
+          ),
+          _StatData(
+            Icons.warning_amber_rounded,
+            'Overdue Deadlines',
+            overdueCount.toString(),
+            const Color(0xFFEB5757),
+            const Color(0xFFFFECEB),
+          ),
         ]),
         SizedBox(height: 24.h),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              flex: 2,
-              child: _buildMemberTasksList(isDark, myTasks),
-            ),
+            Expanded(flex: 2, child: _buildMemberTasksList(isDark, myTasks)),
             SizedBox(width: 24.w),
             Expanded(
               flex: 1,
@@ -350,65 +516,78 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildStatsRow(bool isDark, List<_StatData> items) {
     return Row(
-      children: items.map((item) => Expanded(
-        child: Container(
-          margin: EdgeInsets.symmetric(horizontal: 8.w),
-          padding: EdgeInsets.all(18.w),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF242432) : Colors.white,
-            borderRadius: BorderRadius.circular(16.r),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(12.w),
+      children: items
+          .map(
+            (item) => Expanded(
+              child: Container(
+                margin: EdgeInsets.symmetric(horizontal: 8.w),
+                padding: EdgeInsets.all(18.w),
                 decoration: BoxDecoration(
-                  color: isDark ? item.bgColor.withOpacity(0.1) : item.bgColor,
-                  shape: BoxShape.circle,
+                  color: isDark ? const Color(0xFF242432) : Colors.white,
+                  borderRadius: BorderRadius.circular(16.r),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.02),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                child: Icon(item.icon, color: item.iconColor, size: 22.sp),
-              ),
-              SizedBox(width: 16.w),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.value,
-                    style: TextStyle(
-                      color: isDark ? Colors.white : AppColors.textPrimary,
-                      fontSize: 24.sp,
-                      fontWeight: FontWeight.bold,
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(12.w),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? item.bgColor.withOpacity(0.1)
+                            : item.bgColor,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        item.icon,
+                        color: item.iconColor,
+                        size: 22.sp,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 2.h),
-                  Text(
-                    item.label,
-                    style: TextStyle(
-                      color: isDark ? Colors.white60 : Colors.grey[500],
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
+                    SizedBox(width: 16.w),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.value,
+                          style: TextStyle(
+                            color: isDark
+                                ? Colors.white
+                                : AppColors.textPrimary,
+                            fontSize: 24.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 2.h),
+                        Text(
+                          item.label,
+                          style: TextStyle(
+                            color: isDark ? Colors.white60 : Colors.grey[500],
+                            fontSize: 12.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ],
-          ),
-        ),
-      )).toList(),
+            ),
+          )
+          .toList(),
     );
   }
 
   Widget _buildRankingsCard(bool isDark) {
     final db = MockDatabase.instance;
     // Show teams or members rankings
-    final teamsSorted = List<MockTeam>.from(db.teams)..sort((a, b) => b.progress.compareTo(a.progress));
+    final teamsSorted = List<MockTeam>.from(db.teams)
+      ..sort((a, b) => b.progress.compareTo(a.progress));
 
     return Container(
       padding: EdgeInsets.all(24.w),
@@ -438,10 +617,27 @@ class _DashboardPageState extends State<DashboardPage> {
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: AppColors.aituBlue.withOpacity(0.1),
-                  child: Text('#${index + 1}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.aituBlue)),
+                  child: Text(
+                    '#${index + 1}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.aituBlue,
+                    ),
+                  ),
                 ),
-                title: Text(team.name, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
-                subtitle: Text('Progress Percentage: ${team.progress.toInt()}%', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey)),
+                title: Text(
+                  team.name,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : AppColors.textPrimary,
+                  ),
+                ),
+                subtitle: Text(
+                  'Progress Percentage: ${team.progress.toInt()}%',
+                  style: TextStyle(
+                    color: isDark ? Colors.white60 : Colors.grey,
+                  ),
+                ),
                 trailing: SizedBox(
                   width: 100.w,
                   child: LinearProgressIndicator(
@@ -479,18 +675,40 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           SizedBox(height: 16.h),
           if (complaints.isEmpty)
-            Text('No complaints registered.', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey))
+            Text(
+              'No complaints registered.',
+              style: TextStyle(color: isDark ? Colors.white60 : Colors.grey),
+            )
           else
             Column(
-              children: complaints.map((c) => Card(
-                color: isDark ? const Color(0xFF1E1E28) : Colors.grey[100],
-                child: ListTile(
-                  title: Text(c.title, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
-                  subtitle: Text('${c.targetName} (${c.status})', style: TextStyle(color: isDark ? Colors.white70 : Colors.grey[600])),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                  onTap: () => context.go('/complaints'),
-                ),
-              )).toList(),
+              children: complaints
+                  .map(
+                    (c) => Card(
+                      color: isDark
+                          ? const Color(0xFF1E1E28)
+                          : Colors.grey[100],
+                      child: ListTile(
+                        title: Text(
+                          c.title,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? Colors.white
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${c.targetName} (${c.status})',
+                          style: TextStyle(
+                            color: isDark ? Colors.white70 : Colors.grey[600],
+                          ),
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                        onTap: () => context.go('/complaints'),
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
         ],
       ),
@@ -499,7 +717,9 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildDeliverablesWaitingReviewCard(bool isDark, int pendingReviews) {
     final db = MockDatabase.instance;
-    final submittedTasks = db.tasks.where((t) => t.status == 'Submitted').toList();
+    final submittedTasks = db.tasks
+        .where((t) => t.status == 'Submitted')
+        .toList();
 
     return Container(
       padding: EdgeInsets.all(24.w),
@@ -529,7 +749,10 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           SizedBox(height: 16.h),
           if (submittedTasks.isEmpty)
-            Text('No tasks awaiting review.', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey))
+            Text(
+              'No tasks awaiting review.',
+              style: TextStyle(color: isDark ? Colors.white60 : Colors.grey),
+            )
           else
             ListView.separated(
               shrinkWrap: true,
@@ -539,9 +762,23 @@ class _DashboardPageState extends State<DashboardPage> {
               itemBuilder: (context, index) {
                 final task = submittedTasks[index];
                 return ListTile(
-                  title: Text(task.title, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
-                  subtitle: Text('Submitted Work Notes: ${task.notes ?? 'No comments'}', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey)),
-                  trailing: const Chip(label: Text('Submitted'), backgroundColor: Colors.amberAccent),
+                  title: Text(
+                    task.title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Submitted Work Notes: ${task.notes ?? 'No comments'}',
+                    style: TextStyle(
+                      color: isDark ? Colors.white60 : Colors.grey,
+                    ),
+                  ),
+                  trailing: const Chip(
+                    label: Text('Submitted'),
+                    backgroundColor: Colors.amberAccent,
+                  ),
                 );
               },
             ),
@@ -584,7 +821,11 @@ class _DashboardPageState extends State<DashboardPage> {
                 Center(
                   child: Text(
                     '85%',
-                    style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 22.sp,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
+                    ),
                   ),
                 ),
               ],
@@ -593,7 +834,11 @@ class _DashboardPageState extends State<DashboardPage> {
           SizedBox(height: 16.h),
           Text(
             'All systems operational',
-            style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13.sp),
+            style: TextStyle(
+              color: Colors.green,
+              fontWeight: FontWeight.bold,
+              fontSize: 13.sp,
+            ),
           ),
         ],
       ),
@@ -623,22 +868,43 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           SizedBox(height: 16.h),
           Column(
-            children: members.map((m) => ListTile(
-              leading: CircleAvatar(
-                backgroundColor: AppColors.aituRed.withOpacity(0.1),
-                child: Text(m.fullName[0], style: const TextStyle(color: AppColors.aituRed, fontWeight: FontWeight.bold)),
-              ),
-              title: Text(m.fullName, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
-              subtitle: Text('Points: ${m.points} | Score: ${m.finalScore.toInt()}%', style: TextStyle(color: isDark ? Colors.white70 : Colors.grey[600])),
-              trailing: ElevatedButton(
-                onPressed: () => context.go('/evaluations'),
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: 10.w),
-                  backgroundColor: AppColors.primary,
-                ),
-                child: const Text('View Evaluation'),
-              ),
-            )).toList(),
+            children: members
+                .map(
+                  (m) => ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: AppColors.aituRed.withOpacity(0.1),
+                      child: Text(
+                        m.fullName[0],
+                        style: const TextStyle(
+                          color: AppColors.aituRed,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      m.fullName,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AppColors.textPrimary,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Points: ${m.points} | Score: ${m.finalScore.toInt()}%',
+                      style: TextStyle(
+                        color: isDark ? Colors.white70 : Colors.grey[600],
+                      ),
+                    ),
+                    trailing: ElevatedButton(
+                      onPressed: () => context.go('/evaluations'),
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(horizontal: 10.w),
+                        backgroundColor: AppColors.primary,
+                      ),
+                      child: const Text('View Evaluation'),
+                    ),
+                  ),
+                )
+                .toList(),
           ),
         ],
       ),
@@ -646,7 +912,9 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildTeamProductivityCard(bool isDark, List<MockTask> tasks) {
-    final completed = tasks.where((t) => t.status == 'Approved' || t.status == 'Completed').length;
+    final completed = tasks
+        .where((t) => t.status == 'Approved' || t.status == 'Completed')
+        .length;
     final total = tasks.length;
     final rate = total == 0 ? 0.0 : (completed / total);
 
@@ -683,7 +951,11 @@ class _DashboardPageState extends State<DashboardPage> {
                 Center(
                   child: Text(
                     '${(rate * 100).toInt()}%',
-                    style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 22.sp,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
+                    ),
                   ),
                 ),
               ],
@@ -692,7 +964,10 @@ class _DashboardPageState extends State<DashboardPage> {
           SizedBox(height: 16.h),
           Text(
             '$completed of $total tasks completed',
-            style: TextStyle(color: isDark ? Colors.white70 : Colors.grey, fontSize: 13.sp),
+            style: TextStyle(
+              color: isDark ? Colors.white70 : Colors.grey,
+              fontSize: 13.sp,
+            ),
           ),
         ],
       ),
@@ -728,7 +1003,10 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           SizedBox(height: 16.h),
           if (tasks.isEmpty)
-            Text('No tasks assigned to you.', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey))
+            Text(
+              'No tasks assigned to you.',
+              style: TextStyle(color: isDark ? Colors.white60 : Colors.grey),
+            )
           else
             ListView.separated(
               shrinkWrap: true,
@@ -738,15 +1016,31 @@ class _DashboardPageState extends State<DashboardPage> {
               itemBuilder: (context, index) {
                 final task = tasks[index];
                 return ListTile(
-                  title: Text(task.title, style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary)),
-                  subtitle: Text('Deadline: ${task.deadline} | Status: ${task.status}', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey)),
+                  title: Text(
+                    task.title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : AppColors.textPrimary,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Deadline: ${task.deadline} | Status: ${task.status}',
+                    style: TextStyle(
+                      color: isDark ? Colors.white60 : Colors.grey,
+                    ),
+                  ),
                   trailing: Icon(
                     task.status == 'Approved' || task.status == 'Completed'
                         ? Icons.check_circle
-                        : (task.status == 'Needs Changes' ? Icons.error : Icons.radio_button_unchecked),
-                    color: task.status == 'Approved' || task.status == 'Completed'
+                        : (task.status == 'Needs Changes'
+                              ? Icons.error
+                              : Icons.radio_button_unchecked),
+                    color:
+                        task.status == 'Approved' || task.status == 'Completed'
                         ? Colors.green
-                        : (task.status == 'Needs Changes' ? Colors.red : Colors.grey),
+                        : (task.status == 'Needs Changes'
+                              ? Colors.red
+                              : Colors.grey),
                   ),
                 );
               },
@@ -784,10 +1078,20 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             child: Column(
               children: [
-                Text('Total Points', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey[500], fontSize: 13.sp)),
+                Text(
+                  'Total Points',
+                  style: TextStyle(
+                    color: isDark ? Colors.white60 : Colors.grey[500],
+                    fontSize: 13.sp,
+                  ),
+                ),
                 Text(
                   user.points.toString(),
-                  style: TextStyle(fontSize: 32.sp, fontWeight: FontWeight.bold, color: AppColors.aituRed),
+                  style: TextStyle(
+                    fontSize: 32.sp,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.aituRed,
+                  ),
                 ),
               ],
             ),
@@ -795,12 +1099,19 @@ class _DashboardPageState extends State<DashboardPage> {
           SizedBox(height: 16.h),
           Text(
             'Efficiency Score: ${user.finalScore.toInt()}%',
-            style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.textPrimary, fontSize: 14.sp),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : AppColors.textPrimary,
+              fontSize: 14.sp,
+            ),
           ),
           SizedBox(height: 8.h),
           Text(
             'Keep completing tasks early to boost points!',
-            style: TextStyle(color: isDark ? Colors.white60 : Colors.grey[600], fontSize: 11.sp),
+            style: TextStyle(
+              color: isDark ? Colors.white60 : Colors.grey[600],
+              fontSize: 11.sp,
+            ),
             textAlign: TextAlign.center,
           ),
         ],

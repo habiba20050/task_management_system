@@ -10,7 +10,7 @@ class TeamCardWidget extends StatelessWidget {
   // تم تعريف اسم المدير بشكل ثابت هنا، ويمكنك تمريره من الـ Model مستقبلاً حسب حاجة قاعدة البيانات
   final String createdByManager = "Eng. Mohamed Ali";
 
-  const TeamCardWidget({Key? key, required this.team}) : super(key: key);
+  const TeamCardWidget({super.key, required this.team});
 
   @override
   Widget build(BuildContext context) {
@@ -41,8 +41,8 @@ class TeamCardWidget extends StatelessWidget {
                   child: Text(
                     team.name,
                     style: const TextStyle(
-                      fontSize: 18, 
-                      fontWeight: FontWeight.bold, 
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                       color: Color(0xFF0F172A),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -85,12 +85,12 @@ class TeamCardWidget extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                team.department, 
+                team.department,
                 style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
               ),
             ),
             const SizedBox(height: 16),
-            
+
             // 3. المشرفين: تحديد الـ Team Leader والـ Manager الذي أضاف الفريق (تعديل طلب 9)
             Column(
               children: [
@@ -120,9 +120,21 @@ class TeamCardWidget extends StatelessWidget {
             // 4. الإحصائيات المصغرة لعدد الأعضاء ونسبة الإنجاز (تعديل طلب 8)
             Row(
               children: [
-                Expanded(child: _buildMiniStat('${team.membersCount}', 'Members', const Color(0xFF1E293B))),
+                Expanded(
+                  child: _buildMiniStat(
+                    '${team.membersCount}',
+                    'Members',
+                    const Color(0xFF1E293B),
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _buildMiniStat('${team.completionPercentage.toInt()}%', 'Completion', const Color(0xFF10B981))),
+                Expanded(
+                  child: _buildMiniStat(
+                    '${team.completionPercentage.toInt()}%',
+                    'Completion',
+                    const Color(0xFF10B981),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 20),
@@ -131,10 +143,17 @@ class TeamCardWidget extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Task Progress', style: TextStyle(color: Color(0xFF64748B), fontSize: 13)),
+                const Text(
+                  'Task Progress',
+                  style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                ),
                 Text(
-                  '${team.completedTasks}/${team.totalTasks} tasks', 
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B), fontSize: 13),
+                  '${team.completedTasks}/${team.totalTasks} tasks',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E293B),
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -144,7 +163,9 @@ class TeamCardWidget extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: team.progress,
                 backgroundColor: const Color(0xFFE2E8F0),
-                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  Color(0xFF10B981),
+                ),
                 minHeight: 6,
               ),
             ),
@@ -152,15 +173,15 @@ class TeamCardWidget extends StatelessWidget {
 
             // 6. الأزرار التفاعلية السفلية للقائمة المنسدلة والتفاصيل
             _buildDropdownButton(
-              title: 'View Members (${team.membersCount})', 
-              leadingIcon: Icons.people_outline, 
+              title: 'View Members (${team.membersCount})',
+              leadingIcon: Icons.people_outline,
               isPrimary: false,
               onTap: () {},
             ),
             const SizedBox(height: 10),
             _buildDropdownButton(
-              title: 'View Details', 
-              leadingIcon: Icons.open_in_new, 
+              title: 'View Details',
+              leadingIcon: Icons.open_in_new,
               isPrimary: true,
               onTap: () => _navigateToDetails(context),
             ),
@@ -190,41 +211,70 @@ class TeamCardWidget extends StatelessWidget {
   }) {
     return Container(
       padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: cardBg, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: avatarBg, 
-            radius: 14, 
-            child: Text(initials, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+            backgroundColor: avatarBg,
+            radius: 14,
+            child: Text(
+              initials,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(role, style: TextStyle(color: roleColor, fontSize: 9, fontWeight: FontWeight.bold)),
                 Text(
-                  name, 
-                  style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1E293B), fontSize: 12),
+                  role,
+                  style: TextStyle(
+                    color: roleColor,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1E293B),
+                    fontSize: 12,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
   }
 
   // بناء الأزرار الصغيرة للتعديل والحذف
-  Widget _buildIconButton(IconData icon, Color color, Color bgColor, VoidCallback onTap) {
+  Widget _buildIconButton(
+    IconData icon,
+    Color color,
+    Color bgColor,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(8),
+        ),
         child: Icon(icon, color: color, size: 18),
       ),
     );
@@ -234,12 +284,25 @@ class TeamCardWidget extends StatelessWidget {
   Widget _buildMiniStat(String value, String label, Color valueColor) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Column(
         children: [
-          Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: valueColor)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: valueColor,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
+          Text(
+            label,
+            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+          ),
         ],
       ),
     );
@@ -247,8 +310,8 @@ class TeamCardWidget extends StatelessWidget {
 
   // بناء الأزرار السفلية العريضة
   Widget _buildDropdownButton({
-    required String title, 
-    required IconData leadingIcon, 
+    required String title,
+    required IconData leadingIcon,
     required bool isPrimary,
     required VoidCallback onTap,
   }) {
@@ -266,19 +329,26 @@ class TeamCardWidget extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(leadingIcon, color: isPrimary ? Colors.white : const Color(0xFF64748B), size: 18),
+                Icon(
+                  leadingIcon,
+                  color: isPrimary ? Colors.white : const Color(0xFF64748B),
+                  size: 18,
+                ),
                 const SizedBox(width: 10),
                 Text(
-                  title, 
+                  title,
                   style: TextStyle(
-                    color: isPrimary ? Colors.white : const Color(0xFF1E293B), 
-                    fontWeight: FontWeight.w600, 
+                    color: isPrimary ? Colors.white : const Color(0xFF1E293B),
+                    fontWeight: FontWeight.w600,
                     fontSize: 14,
                   ),
                 ),
               ],
             ),
-            Icon(Icons.keyboard_arrow_down, color: isPrimary ? Colors.white : const Color(0xFF64748B)),
+            Icon(
+              Icons.keyboard_arrow_down,
+              color: isPrimary ? Colors.white : const Color(0xFF64748B),
+            ),
           ],
         ),
       ),

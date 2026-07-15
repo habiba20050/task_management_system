@@ -22,6 +22,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'teams_state.dart';
 import '../model/team_model.dart';
 import '../repository/teams_repository.dart';
+import '../../../../core/network/mock_database.dart';
 
 class TeamsCubit extends Cubit<TeamsState> {
   final TeamsRepository teamsRepository;
@@ -61,23 +62,42 @@ class TeamsCubit extends Cubit<TeamsState> {
   }
 
   // إضافة فريق جديد
-  void addTeam(TeamModel team) {
-    _allTeams.add(team);
-    emit(TeamsLoaded(List.from(_allTeams)));
+  void addTeam(TeamModel teamModel, List<String> memberIds, String managerId, String leaderId) {
+    final db = MockDatabase.instance;
+    db.addTeam(MockTeam(
+      id: teamModel.id,
+      name: teamModel.name,
+      managerId: managerId,
+      department: teamModel.department,
+      leaderId: leaderId,
+      memberIds: memberIds,
+    ));
+    fetchTeams();
   }
 
   // تعديل بيانات فريق
-  void updateTeam(TeamModel team) {
-    final index = _allTeams.indexWhere((t) => t.id == team.id);
-    if (index != -1) {
-      _allTeams[index] = team;
-      emit(TeamsLoaded(List.from(_allTeams)));
+  void updateTeam(TeamModel teamModel, List<String> memberIds, String managerId, String leaderId) {
+    final db = MockDatabase.instance;
+    final idx = db.teams.indexWhere((t) => t.id == teamModel.id);
+    if (idx != -1) {
+      db.teams[idx] = MockTeam(
+        id: teamModel.id,
+        name: teamModel.name,
+        managerId: managerId,
+        department: teamModel.department,
+        leaderId: leaderId,
+        memberIds: memberIds,
+      );
+      db.save();
+      fetchTeams();
     }
   }
 
   // حذف فريق
   void deleteTeam(String id) {
-    _allTeams.removeWhere((t) => t.id == id);
-    emit(TeamsLoaded(List.from(_allTeams)));
+    final db = MockDatabase.instance;
+    db.teams.removeWhere((t) => t.id == id);
+    db.save();
+    fetchTeams();
   }
 }

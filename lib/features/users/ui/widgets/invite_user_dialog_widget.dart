@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class InviteUserDialogWidget extends StatefulWidget {
-  const InviteUserDialogWidget({Key? key}) : super(key: key);
+  const InviteUserDialogWidget({super.key});
 
   // ميثود استاتيكية آمنة لفتح الـ Dialog من أي مكان بالتطبيق
   static void show(BuildContext context) {
@@ -18,7 +18,7 @@ class InviteUserDialogWidget extends StatefulWidget {
 
 class _InviteUserDialogWidgetState extends State<InviteUserDialogWidget> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // حقول التحكم في النصوص والمدخلات
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -79,62 +79,86 @@ class _InviteUserDialogWidgetState extends State<InviteUserDialogWidget> {
                     ),
                     IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close, color: Color(0xFF94A3B8), size: 20),
+                      icon: const Icon(
+                        Icons.close,
+                        color: Color(0xFF94A3B8),
+                        size: 20,
+                      ),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
-          
+
                 // 2. حقل الاسم الكامل (Full Name)
                 _buildFieldLabel('Full Name *'),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _fullNameController,
-                  style: const TextStyle(color: Color(0xFF1E293B), fontSize: 14),
+                  style: const TextStyle(
+                    color: Color(0xFF1E293B),
+                    fontSize: 14,
+                  ),
                   decoration: _buildInputDecoration('e.g., Dr. Mona Said'),
-                  validator: (val) => val!.isEmpty ? 'Full name is required' : null,
+                  validator: (val) =>
+                      val!.isEmpty ? 'Full name is required' : null,
                 ),
                 const SizedBox(height: 20),
-          
+
                 // 3. حقل البريد الإلكتروني (Email Address)
                 _buildFieldLabel('Email Address *'),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
-                  style: const TextStyle(color: Color(0xFF1E293B), fontSize: 14),
+                  style: const TextStyle(
+                    color: Color(0xFF1E293B),
+                    fontSize: 14,
+                  ),
                   decoration: _buildInputDecoration('user@aitu.edu.eg'),
-                  validator: (val) => val!.isEmpty ? 'Email address is required' : null,
+                  validator: (val) =>
+                      val!.isEmpty ? 'Email address is required' : null,
                 ),
                 const SizedBox(height: 20),
-          
+
                 // 4. حقل تعيين الدور (Assign Role)
                 _buildFieldLabel('Assign Role'),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: _selectedRole,
-                  hint: const Text('Select a role', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14)),
-                  icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                  initialValue: _selectedRole,
+                  hint: const Text(
+                    'Select a role',
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                  ),
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Color(0xFF64748B),
+                  ),
                   decoration: _buildInputDecoration(''),
                   items: ['Admin', 'Manager', 'Member']
-                      .map((role) => DropdownMenuItem(value: role, child: Text(role)))
+                      .map(
+                        (role) =>
+                            DropdownMenuItem(value: role, child: Text(role)),
+                      )
                       .toList(),
                   onChanged: (val) => setState(() => _selectedRole = val),
                 ),
                 const SizedBox(height: 20),
-          
+
                 // 5. حقل القسم (Department)
                 _buildFieldLabel('Department'),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _departmentController,
-                  style: const TextStyle(color: Color(0xFF1E293B), fontSize: 14),
+                  style: const TextStyle(
+                    color: Color(0xFF1E293B),
+                    fontSize: 14,
+                  ),
                   decoration: _buildInputDecoration(''),
                 ),
                 const SizedBox(height: 32),
-          
+
                 // 6. أزرار التحكم السفلية (Cancel & Send Invitation)
                 Row(
                   children: [
@@ -143,12 +167,21 @@ class _InviteUserDialogWidgetState extends State<InviteUserDialogWidget> {
                         onPressed: () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          side: const BorderSide(
+                            color: Color(0xFFE2E8F0),
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         child: const Text(
                           'Cancel',
-                          style: TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold, fontSize: 15),
+                          style: TextStyle(
+                            color: Color(0xFF1E293B),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
                         ),
                       ),
                     ),
@@ -160,28 +193,36 @@ class _InviteUserDialogWidgetState extends State<InviteUserDialogWidget> {
                           if (_formKey.currentState!.validate()) {
                             // تخرين مرجع الـ Navigator لحماية السياق (Context) من التضارب والـ Assertion Error
                             final navigator = Navigator.of(context);
-                            
+
                             // هنا يتم وضع منطق استدعاء الـ Cubit مستقبلاً، مثل:
                             // context.read<UsersCubit>().inviteUser(...);
-                            
+
                             // الإغلاق الآمن للـ Dialog
                             navigator.pop();
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0F4C81), // اللون الكحلي المطابق للتصميم تماماً
+                          backgroundColor: const Color(
+                            0xFF0F4C81,
+                          ), // اللون الكحلي المطابق للتصميم تماماً
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           elevation: 0,
                         ),
                         child: const Text(
                           'Send Invitation',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
                         ),
                       ),
                     ),
                   ],
-                )
+                ),
               ],
             ),
           ),

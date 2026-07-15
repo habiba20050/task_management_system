@@ -27,7 +27,7 @@ class _EvaluationsPageState extends State<EvaluationsPage> {
     final role = user.role;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFEDF2F7),
+      backgroundColor: AppColors.dashboardBg,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.all(isDesktop ? 32.w : 16.w),

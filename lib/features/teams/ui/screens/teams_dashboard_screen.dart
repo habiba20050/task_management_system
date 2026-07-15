@@ -4,11 +4,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../cubit/teams_cubit.dart';
 import '../../cubit/teams_state.dart';
 import '../widgets/create_team_dialog_widget.dart';
+import 'team_details_screen.dart';
 import '../../../../core/colors/app_colors.dart';
 import '../../../../responsive/responsive_layout.dart';
 
 class TeamsDashboardScreen extends StatefulWidget {
-  const TeamsDashboardScreen({Key? key}) : super(key: key);
+  const TeamsDashboardScreen({super.key});
 
   @override
   State<TeamsDashboardScreen> createState() => _TeamsDashboardScreenState();
@@ -23,7 +24,7 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
     final isDesktop = ResponsiveLayout.isDesktop(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.dashboardBg,
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.all(isDesktop ? 32.w : 16.w),
@@ -57,17 +58,28 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                   ),
                   ElevatedButton.icon(
                     onPressed: () {
-                      CreateTeamDialogWidget.show(context, context.read<TeamsCubit>());
+                      CreateTeamDialogWidget.show(
+                        context,
+                        context.read<TeamsCubit>(),
+                      );
                     },
                     icon: const Icon(Icons.add, size: 18, color: Colors.white),
                     label: const Text(
                       'Add New Team',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 20.w,
+                        vertical: 16.h,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
                     ),
                   ),
                 ],
@@ -93,8 +105,14 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                         },
                         decoration: InputDecoration(
                           hintText: 'Search teams by name or leader...',
-                          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13.sp),
-                          prefixIcon: const Icon(Icons.search, color: AppColors.primary),
+                          hintStyle: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 13.sp,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: AppColors.primary,
+                          ),
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
@@ -114,12 +132,24 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: _selectedDept,
-                        items: ['All', 'IT Services', 'CS Dept', 'Business', 'Math Dept']
-                            .map((dept) => DropdownMenuItem(
-                                  value: dept,
-                                  child: Text(dept, style: TextStyle(fontSize: 13.sp)),
-                                ))
-                            .toList(),
+                        items:
+                            [
+                                  'All',
+                                  'IT Services',
+                                  'CS Dept',
+                                  'Business',
+                                  'Math Dept',
+                                ]
+                                .map(
+                                  (dept) => DropdownMenuItem(
+                                    value: dept,
+                                    child: Text(
+                                      dept,
+                                      style: TextStyle(fontSize: 13.sp),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
                         onChanged: (val) {
                           if (val != null) {
                             setState(() {
@@ -139,18 +169,40 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                 builder: (context, state) {
                   if (state is TeamsLoaded) {
                     final totalTeams = state.teams.length;
-                    final totalMembers = state.teams.fold<int>(0, (sum, team) => sum + team.membersCount);
+                    final totalMembers = state.teams.fold<int>(
+                      0,
+                      (sum, team) => sum + team.membersCount,
+                    );
                     final avgProgress = totalTeams == 0
                         ? 0.0
-                        : state.teams.fold<double>(0, (sum, team) => sum + team.completionPercentage) / totalTeams;
+                        : state.teams.fold<double>(
+                                0,
+                                (sum, team) => sum + team.completionPercentage,
+                              ) /
+                              totalTeams;
 
                     return Row(
                       children: [
-                        _buildStatWidget('Active Teams', totalTeams.toString(), Icons.groups_outlined, Colors.blue),
+                        _buildStatWidget(
+                          'Active Teams',
+                          totalTeams.toString(),
+                          Icons.groups_outlined,
+                          Colors.blue,
+                        ),
                         SizedBox(width: 16.w),
-                        _buildStatWidget('Assigned Members', totalMembers.toString(), Icons.person_outline, Colors.green),
+                        _buildStatWidget(
+                          'Assigned Members',
+                          totalMembers.toString(),
+                          Icons.person_outline,
+                          Colors.green,
+                        ),
                         SizedBox(width: 16.w),
-                        _buildStatWidget('Avg Completion', '${avgProgress.toInt()}%', Icons.trending_up, Colors.purple),
+                        _buildStatWidget(
+                          'Avg Completion',
+                          '${avgProgress.toInt()}%',
+                          Icons.trending_up,
+                          Colors.purple,
+                        ),
                       ],
                     );
                   }
@@ -167,9 +219,16 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                       return const Center(child: CircularProgressIndicator());
                     } else if (state is TeamsLoaded) {
                       final filtered = state.teams.where((t) {
-                        final matchesSearch = t.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                            t.leaderName.toLowerCase().contains(_searchQuery.toLowerCase());
-                        final matchesDept = _selectedDept == 'All' || t.department == _selectedDept;
+                        final matchesSearch =
+                            t.name.toLowerCase().contains(
+                              _searchQuery.toLowerCase(),
+                            ) ||
+                            t.leaderName.toLowerCase().contains(
+                              _searchQuery.toLowerCase(),
+                            );
+                        final matchesDept =
+                            _selectedDept == 'All' ||
+                            t.department == _selectedDept;
                         return matchesSearch && matchesDept;
                       }).toList();
 
@@ -183,6 +242,7 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                       }
 
                       return Container(
+                        width: double.infinity,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16.r),
@@ -192,66 +252,181 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                           borderRadius: BorderRadius.circular(16.r),
                           child: SingleChildScrollView(
                             scrollDirection: Axis.vertical,
-                            child: Theme(
-                              data: Theme.of(context).copyWith(
-                                dividerColor: const Color(0xFFE2E8F0),
-                              ),
-                              child: DataTable(
-                                columns: [
-                                  DataColumn(label: Text('Team Name', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
-                                  DataColumn(label: Text('Department', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
-                                  DataColumn(label: Text('Team Leader', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
-                                  DataColumn(label: Text('Members', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
-                                  DataColumn(label: Text('Completion Rate', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
-                                ],
-                                rows: filtered.map((t) {
-                                  return DataRow(cells: [
-                                    DataCell(Row(
-                                      children: [
-                                        Icon(Icons.group_work_outlined, color: AppColors.primary, size: 18.sp),
-                                        SizedBox(width: 8.w),
-                                        Text(t.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                      ],
-                                    )),
-                                    DataCell(Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFEAF2FF),
-                                        borderRadius: BorderRadius.circular(6.r),
-                                      ),
-                                      child: Text(
-                                        t.department,
-                                        style: TextStyle(color: const Color(0xFF0A448C), fontSize: 11.sp, fontWeight: FontWeight.bold),
-                                      ),
-                                    )),
-                                    DataCell(Row(
-                                      children: [
-                                        CircleAvatar(
-                                          radius: 12.r,
-                                          backgroundColor: AppColors.aituRed.withOpacity(0.1),
-                                          child: Text(t.leaderInitials, style: TextStyle(fontSize: 10.sp, color: AppColors.aituRed, fontWeight: FontWeight.bold)),
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Theme(
+                                data: Theme.of(
+                                  context,
+                                ).copyWith(dividerColor: const Color(0xFFE2E8F0)),
+                                child: DataTable(
+                                  columnSpacing: isDesktop ? 40.w : 20.w,
+                                  columns: [
+                                    DataColumn(
+                                      label: Text(
+                                        'Team Name',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13.sp,
                                         ),
-                                        SizedBox(width: 8.w),
-                                        Text(t.leaderName),
-                                      ],
-                                    )),
-                                    DataCell(Text('${t.membersCount} members')),
-                                    DataCell(Row(
-                                      children: [
-                                        SizedBox(
-                                          width: 80.w,
-                                          child: LinearProgressIndicator(
-                                            value: t.progress,
-                                            backgroundColor: Colors.grey[200],
-                                            color: AppColors.primary,
+                                      ),
+                                    ),
+                                    DataColumn(
+                                      label: Text(
+                                        'Department',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13.sp,
+                                        ),
+                                      ),
+                                    ),
+                                    DataColumn(
+                                      label: Text(
+                                        'Team Leader',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13.sp,
+                                        ),
+                                      ),
+                                    ),
+                                    DataColumn(
+                                      label: Text(
+                                        'Members',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13.sp,
+                                        ),
+                                      ),
+                                    ),
+                                    DataColumn(
+                                      label: Text(
+                                        'Completion Rate',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13.sp,
+                                        ),
+                                      ),
+                                    ),
+                                    DataColumn(
+                                      label: Text(
+                                        'Actions',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13.sp,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  rows: filtered.map((t) {
+                                    return DataRow(
+                                      cells: [
+                                        DataCell(
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.group_work_outlined,
+                                                color: AppColors.primary,
+                                                size: 18.sp,
+                                              ),
+                                              SizedBox(width: 8.w),
+                                              Text(
+                                                t.name,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                        SizedBox(width: 8.w),
-                                        Text('${t.completionPercentage.toInt()}%', style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold)),
+                                        DataCell(
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 8.w,
+                                              vertical: 4.h,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFEAF2FF),
+                                              borderRadius: BorderRadius.circular(
+                                                6.r,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              t.department,
+                                              style: TextStyle(
+                                                color: const Color(0xFF0A448C),
+                                                fontSize: 11.sp,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        DataCell(
+                                          Row(
+                                            children: [
+                                              CircleAvatar(
+                                                radius: 12.r,
+                                                backgroundColor: AppColors.aituRed
+                                                    .withOpacity(0.1),
+                                                child: Text(
+                                                  t.leaderInitials,
+                                                  style: TextStyle(
+                                                    fontSize: 10.sp,
+                                                    color: AppColors.aituRed,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                              SizedBox(width: 8.w),
+                                              Text(t.leaderName),
+                                            ],
+                                          ),
+                                        ),
+                                        DataCell(
+                                          Text('${t.membersCount} members'),
+                                        ),
+                                        DataCell(
+                                          Row(
+                                            children: [
+                                              SizedBox(
+                                                width: 80.w,
+                                                child: LinearProgressIndicator(
+                                                  value: t.progress,
+                                                  backgroundColor:
+                                                      Colors.grey[200],
+                                                  color: AppColors.primary,
+                                                ),
+                                              ),
+                                              SizedBox(width: 8.w),
+                                              Text(
+                                                '${t.completionPercentage.toInt()}%',
+                                                style: TextStyle(
+                                                  fontSize: 12.sp,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        DataCell(
+                                          TextButton(
+                                            onPressed: () {
+                                              showDialog(
+                                                context: context,
+                                                builder: (context) => TeamDetailsScreen(team: t),
+                                              );
+                                            },
+                                            child: const Text(
+                                              'More',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.primary,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
                                       ],
-                                    )),
-                                  ]);
-                                }).toList(),
+                                    );
+                                  }).toList(),
+                                ),
                               ),
                             ),
                           ),
@@ -269,7 +444,12 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
     );
   }
 
-  Widget _buildStatWidget(String label, String value, IconData icon, Color color) {
+  Widget _buildStatWidget(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Expanded(
       child: Container(
         padding: EdgeInsets.all(16.w),
@@ -292,9 +472,19 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(value, style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
                 SizedBox(height: 2.h),
-                Text(label, style: TextStyle(fontSize: 11.sp, color: Colors.grey[500])),
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 11.sp, color: Colors.grey[500]),
+                ),
               ],
             ),
           ],

@@ -21,7 +21,6 @@ import '../../features/complaints/pages/complaints_page.dart';
 import '../../features/evaluations/pages/evaluations_page.dart';
 import '../../features/tasks/pages/review_center_page.dart';
 import '../../features/projects/pages/project_management_page.dart';
-import '../../features/tasks/pages/tickets_page.dart';
 
 class AppRouter {
   AppRouter._();
@@ -113,14 +112,14 @@ class AppRouter {
       GoRoute(
         path: tasks,
         name: 'tasks',
-        builder: (context, state) =>
-            const MainLayout(title: 'Tasks', child: TasksPage()),
-      ),
-      GoRoute(
-        path: tickets,
-        name: 'tickets',
-        builder: (context, state) =>
-            const MainLayout(title: 'Tickets', child: TicketsPage()),
+        builder: (context, state) {
+          final authState = context.read<AuthCubit>().state;
+          final role = authState is AuthSuccess ? authState.user.role : 'Team Member';
+          return MainLayout(
+            title: role == 'Team Member' ? 'My Tasks' : 'Tasks',
+            child: const TasksPage(),
+          );
+        },
       ),
       GoRoute(
         path: taskDetails,
@@ -137,7 +136,7 @@ class AppRouter {
         path: team,
         name: 'team',
         builder: (context, state) => MainLayout(
-          title: 'Team',
+          title: 'Teams',
           child: BlocProvider(
             create: (context) =>
                 getIt<TeamsCubit>()
@@ -188,8 +187,14 @@ class AppRouter {
       GoRoute(
         path: evaluations,
         name: 'evaluations',
-        builder: (context, state) => const MainLayout(
-            title: 'Evaluations', child: EvaluationsPage()),
+        builder: (context, state) {
+          final authState = context.read<AuthCubit>().state;
+          final role = authState is AuthSuccess ? authState.user.role : 'Team Member';
+          return MainLayout(
+            title: role == 'Team Member' ? 'Score & Achievements' : 'Evaluations',
+            child: const EvaluationsPage(),
+          );
+        },
       ),
       GoRoute(
         path: reviewCenter,

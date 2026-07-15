@@ -136,12 +136,7 @@ class Sidebar extends StatelessWidget {
                   isSelected: _isRouteSelected(context, '/tasks'),
                 ));
 
-                navWidgets.add(_SidebarNavItem(
-                  icon: Icons.label_important_outline,
-                  label: role == 'Team Member' ? 'My Tickets' : 'Tickets',
-                  route: '/tickets',
-                  isSelected: _isRouteSelected(context, '/tickets'),
-                ));
+
 
                 if (role == 'Manager' || role == 'Team Leader') {
                   navWidgets.add(_SidebarNavItem(

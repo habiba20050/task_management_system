@@ -5,7 +5,7 @@ import '../../cubit/teams_cubit.dart';
 class TopBarWidget extends StatelessWidget {
   final int teamCount;
 
-  TopBarWidget({Key? key, required this.teamCount}) : super(key: key);
+  const TopBarWidget({super.key, required this.teamCount});
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +34,11 @@ class TopBarWidget extends StatelessWidget {
               decoration: const InputDecoration(
                 hintText: 'Search teams or departments...',
                 hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-                prefixIcon: Icon(Icons.search, color: Color(0xFF0F4C81), size: 18),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: Color(0xFF0F4C81),
+                  size: 18,
+                ),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(vertical: 10),
               ),
@@ -43,7 +47,13 @@ class TopBarWidget extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 16),
-        Text('$teamCount of $teamCount teams', style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
+        Text(
+          '$teamCount of $teamCount teams',
+          style: const TextStyle(
+            color: Color(0xFF64748B),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ],
     );
   }

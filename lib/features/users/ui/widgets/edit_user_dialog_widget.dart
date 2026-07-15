@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../model/user_role_model.dart';
+import '../../cubit/users_cubit.dart';
 
 class EditUserDialogWidget extends StatefulWidget {
   final UserRoleModel user;
 
-  const EditUserDialogWidget({Key? key, required this.user}) : super(key: key);
+  const EditUserDialogWidget({super.key, required this.user});
 
-  static void show(BuildContext context, UserRoleModel user) {
+  static void show(BuildContext context, UserRoleModel user, UsersCubit cubit) {
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) => EditUserDialogWidget(user: user),
+      builder: (context) => BlocProvider.value(
+        value: cubit,
+        child: EditUserDialogWidget(user: user),
+      ),
     );
   }
 
@@ -20,7 +25,7 @@ class EditUserDialogWidget extends StatefulWidget {
 
 class _EditUserDialogWidgetState extends State<EditUserDialogWidget> {
   final _formKey = GlobalKey<FormState>();
-  
+
   late TextEditingController _fullNameController;
   late TextEditingController _emailController;
   late TextEditingController _departmentController;
@@ -66,11 +71,19 @@ class _EditUserDialogWidgetState extends State<EditUserDialogWidget> {
                 children: [
                   const Text(
                     'Edit User Details',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A),
+                    ),
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, color: Color(0xFF94A3B8), size: 20),
+                    icon: const Icon(
+                      Icons.close,
+                      color: Color(0xFF94A3B8),
+                      size: 20,
+                    ),
                   ),
                 ],
               ),
@@ -100,10 +113,13 @@ class _EditUserDialogWidgetState extends State<EditUserDialogWidget> {
               _buildFieldLabel('Role'),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: _selectedRole,
+                initialValue: _selectedRole,
                 decoration: _buildInputDecoration(''),
-                items: ['Admin', 'Manager', 'Member']
-                    .map((role) => DropdownMenuItem(value: role, child: Text(role)))
+                items: ['Admin', 'Manager', 'Team Leader', 'Team Member']
+                    .map(
+                      (role) =>
+                          DropdownMenuItem(value: role, child: Text(role)),
+                    )
                     .toList(),
                 onChanged: (val) => setState(() => _selectedRole = val),
               ),
@@ -125,7 +141,7 @@ class _EditUserDialogWidgetState extends State<EditUserDialogWidget> {
                   _buildFieldLabel('Account Status (Active)'),
                   Switch(
                     value: _isActive,
-                    activeColor: const Color(0xFF10B981),
+                    activeThumbColor: const Color(0xFF10B981),
                     onChanged: (val) => setState(() => _isActive = val),
                   ),
                 ],
@@ -141,9 +157,17 @@ class _EditUserDialogWidgetState extends State<EditUserDialogWidget> {
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         side: const BorderSide(color: Color(0xFFE2E8F0)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: const Text('Cancel', style: TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: Color(0xFF1E293B),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -151,23 +175,39 @@ class _EditUserDialogWidgetState extends State<EditUserDialogWidget> {
                     child: ElevatedButton(
                       onPressed: () {
                         if (_formKey.currentState!.validate()) {
-                          final navigator = Navigator.of(context);
-                          // هنا يمكنك استدعاء دالة التحديث في الـ Cubit مستقبلاً:
-                          // context.read<UsersCubit>().updateUser(...);
-                          navigator.pop();
+                          final updated = UserRoleModel(
+                            id: widget.user.id,
+                            name: _fullNameController.text,
+                            email: _emailController.text,
+                            username: widget.user.username,
+                            role: _selectedRole ?? widget.user.role,
+                            department: _departmentController.text,
+                            isActive: _isActive,
+                            lastActive: widget.user.lastActive,
+                          );
+                          context.read<UsersCubit>().updateUser(updated);
+                          Navigator.pop(context);
                         }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF0F4C81),
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         elevation: 0,
                       ),
-                      child: const Text('Save Changes', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Save Changes',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ],
-              )
+              ),
             ],
           ),
         ),
@@ -176,7 +216,14 @@ class _EditUserDialogWidgetState extends State<EditUserDialogWidget> {
   }
 
   Widget _buildFieldLabel(String label) {
-    return Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF334155)));
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF334155),
+      ),
+    );
   }
 
   InputDecoration _buildInputDecoration(String hint) {
@@ -185,9 +232,18 @@ class _EditUserDialogWidgetState extends State<EditUserDialogWidget> {
       fillColor: Colors.white,
       filled: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF0F4C81), width: 1.5)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFF0F4C81), width: 1.5),
+      ),
     );
   }
 }

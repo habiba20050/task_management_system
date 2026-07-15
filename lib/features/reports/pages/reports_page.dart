@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../core/colors/app_colors.dart';
 import '../../../core/network/mock_database.dart';
 import '../../../responsive/responsive_layout.dart';
-import '../../auth/cubit/auth_cubit.dart';
 
 class ReportsPage extends StatefulWidget {
   const ReportsPage({super.key});
@@ -15,7 +13,8 @@ class ReportsPage extends StatefulWidget {
 }
 
 class _ReportsPageState extends State<ReportsPage> {
-  String _selectedRange = 'Month'; // 'Day' | 'Week' | 'Month' | 'Year' | 'Custom'
+  String _selectedRange =
+      'Month'; // 'Day' | 'Week' | 'Month' | 'Year' | 'Custom'
   DateTimeRange? _customDateRange;
 
   @override
@@ -25,18 +24,36 @@ class _ReportsPageState extends State<ReportsPage> {
 
     // Calculate metrics dynamically
     final totalTasks = db.tasks.length;
-    final completedTasks = db.tasks.where((t) => t.status == 'Approved' || t.status == 'Completed').length;
-    final delayedTasks = db.tasks.where((t) => t.status != 'Approved' && t.status != 'Completed' && DateTime.tryParse(t.deadline)?.isBefore(DateTime.now()) == true).length;
-    
-    final double approvalRate = totalTasks == 0 ? 0.0 : (completedTasks / totalTasks) * 100;
+    final completedTasks = db.tasks
+        .where((t) => t.status == 'Approved' || t.status == 'Completed')
+        .length;
+    final delayedTasks = db.tasks
+        .where(
+          (t) =>
+              t.status != 'Approved' &&
+              t.status != 'Completed' &&
+              DateTime.tryParse(t.deadline)?.isBefore(DateTime.now()) == true,
+        )
+        .length;
+
+    final double approvalRate = totalTasks == 0
+        ? 0.0
+        : (completedTasks / totalTasks) * 100;
     final rejectedTasks = db.tasks.where((t) => t.status == 'Rejected').length;
-    final double rejectionRate = totalTasks == 0 ? 0.0 : (rejectedTasks / totalTasks) * 100;
+    final double rejectionRate = totalTasks == 0
+        ? 0.0
+        : (rejectedTasks / totalTasks) * 100;
 
     // Best/Worst members
     final members = db.users.where((u) => u.role == 'Team Member').toList();
-    final sortedMembers = List<MockUser>.from(members)..sort((a, b) => b.points.compareTo(a.points));
-    final bestMember = sortedMembers.isNotEmpty ? sortedMembers.first.fullName : 'N/A';
-    final worstMember = sortedMembers.length > 1 ? sortedMembers.last.fullName : 'N/A';
+    final sortedMembers = List<MockUser>.from(members)
+      ..sort((a, b) => b.points.compareTo(a.points));
+    final bestMember = sortedMembers.isNotEmpty
+        ? sortedMembers.first.fullName
+        : 'N/A';
+    final worstMember = sortedMembers.length > 1
+        ? sortedMembers.last.fullName
+        : 'N/A';
 
     // Best/Worst Leaders
     final leaders = db.users.where((u) => u.role == 'Team Leader').toList();
@@ -49,15 +66,18 @@ class _ReportsPageState extends State<ReportsPage> {
     final worstManager = managers.length > 1 ? managers.last.fullName : 'N/A';
 
     // Best/Worst Team
-    final sortedTeams = List<MockTeam>.from(db.teams)..sort((a, b) => b.progress.compareTo(a.progress));
+    final sortedTeams = List<MockTeam>.from(db.teams)
+      ..sort((a, b) => b.progress.compareTo(a.progress));
     final bestTeam = sortedTeams.isNotEmpty ? sortedTeams.first.name : 'N/A';
     final worstTeam = sortedTeams.length > 1 ? sortedTeams.last.name : 'N/A';
 
     final totalComplaints = db.complaints.length;
-    final resolvedComplaints = db.complaints.where((c) => c.status == 'Resolved' || c.status == 'Closed').length;
+    final resolvedComplaints = db.complaints
+        .where((c) => c.status == 'Resolved' || c.status == 'Closed')
+        .length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFEDF2F7),
+      backgroundColor: AppColors.dashboardBg,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.all(isDesktop ? 32.w : 16.w),
@@ -82,7 +102,10 @@ class _ReportsPageState extends State<ReportsPage> {
                       SizedBox(height: 4.h),
                       Text(
                         'Review analytical reports and output metrics',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 13.sp),
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 13.sp,
+                        ),
                       ),
                     ],
                   ),
@@ -90,22 +113,42 @@ class _ReportsPageState extends State<ReportsPage> {
                   Row(
                     children: [
                       OutlinedButton.icon(
-                        onPressed: () => _showExportModal(context, 'PDF', _generateReportContent(db)),
-                        icon: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                        onPressed: () => _showExportModal(
+                          context,
+                          'PDF',
+                          _generateReportContent(db),
+                        ),
+                        icon: const Icon(
+                          Icons.picture_as_pdf,
+                          color: Colors.red,
+                        ),
                         label: const Text('Export PDF'),
                       ),
                       SizedBox(width: 8.w),
                       OutlinedButton.icon(
-                        onPressed: () => _showExportModal(context, 'Excel', _generateReportContent(db)),
+                        onPressed: () => _showExportModal(
+                          context,
+                          'Excel',
+                          _generateReportContent(db),
+                        ),
                         icon: const Icon(Icons.table_view, color: Colors.green),
                         label: const Text('Export Excel'),
                       ),
                       SizedBox(width: 8.w),
                       ElevatedButton.icon(
-                        onPressed: () => _showExportModal(context, 'Print', _generateReportContent(db)),
+                        onPressed: () => _showExportModal(
+                          context,
+                          'Print',
+                          _generateReportContent(db),
+                        ),
                         icon: const Icon(Icons.print, color: Colors.white),
-                        label: const Text('Print Report', style: TextStyle(color: Colors.white)),
-                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                        label: const Text(
+                          'Print Report',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                        ),
                       ),
                     ],
                   ),
@@ -115,7 +158,9 @@ class _ReportsPageState extends State<ReportsPage> {
 
               // Filter Tabs
               Row(
-                children: ['Day', 'Week', 'Month', 'Year', 'Custom Range'].map((range) {
+                children: ['Day', 'Week', 'Month', 'Year', 'Custom Range'].map((
+                  range,
+                ) {
                   final isSelected = _selectedRange == range;
                   return Padding(
                     padding: EdgeInsets.only(right: 8.w),
@@ -145,7 +190,8 @@ class _ReportsPageState extends State<ReportsPage> {
                   );
                 }).toList(),
               ),
-              if (_selectedRange == 'Custom Range' && _customDateRange != null) ...[
+              if (_selectedRange == 'Custom Range' &&
+                  _customDateRange != null) ...[
                 SizedBox(height: 12.h),
                 Text(
                   'Filtering from: ${DateFormat('yyyy-MM-dd').format(_customDateRange!.start)} to ${DateFormat('yyyy-MM-dd').format(_customDateRange!.end)}',
@@ -170,7 +216,11 @@ class _ReportsPageState extends State<ReportsPage> {
                   _buildStatTile('Worst Team', worstTeam, Colors.redAccent),
                   _buildStatTile('Worst Leader', worstLeader, Colors.redAccent),
                   _buildStatTile('Worst Member', worstMember, Colors.redAccent),
-                  _buildStatTile('Worst Manager', worstManager, Colors.redAccent),
+                  _buildStatTile(
+                    'Worst Manager',
+                    worstManager,
+                    Colors.redAccent,
+                  ),
                 ],
               ),
               SizedBox(height: 24.h),
@@ -188,13 +238,34 @@ class _ReportsPageState extends State<ReportsPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('University Task Statistics', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
+                            Text(
+                              'University Task Statistics',
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             const Divider(height: 24),
-                            _buildReportProgressBar('Tasks Approved / Completed', completedTasks, totalTasks, Colors.green),
+                            _buildReportProgressBar(
+                              'Tasks Approved / Completed',
+                              completedTasks,
+                              totalTasks,
+                              Colors.green,
+                            ),
                             SizedBox(height: 16.h),
-                            _buildReportProgressBar('Delayed Tasks', delayedTasks, totalTasks, Colors.red),
+                            _buildReportProgressBar(
+                              'Delayed Tasks',
+                              delayedTasks,
+                              totalTasks,
+                              Colors.red,
+                            ),
                             SizedBox(height: 16.h),
-                            _buildReportProgressBar('Rejected Submissions', rejectedTasks, totalTasks, Colors.orange),
+                            _buildReportProgressBar(
+                              'Rejected Submissions',
+                              rejectedTasks,
+                              totalTasks,
+                              Colors.orange,
+                            ),
                           ],
                         ),
                       ),
@@ -210,7 +281,13 @@ class _ReportsPageState extends State<ReportsPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Text('Complaint Stats', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold)),
+                            Text(
+                              'Complaint Stats',
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             const Divider(height: 24),
                             SizedBox(
                               width: 100.w,
@@ -219,7 +296,10 @@ class _ReportsPageState extends State<ReportsPage> {
                                 fit: StackFit.expand,
                                 children: [
                                   CircularProgressIndicator(
-                                    value: totalComplaints == 0 ? 0.0 : (resolvedComplaints / totalComplaints),
+                                    value: totalComplaints == 0
+                                        ? 0.0
+                                        : (resolvedComplaints /
+                                              totalComplaints),
                                     strokeWidth: 8.w,
                                     backgroundColor: Colors.grey[200],
                                     color: Colors.redAccent,
@@ -228,7 +308,10 @@ class _ReportsPageState extends State<ReportsPage> {
                                     child: Text(
                                       '$resolvedComplaints/$totalComplaints\nResolved',
                                       textAlign: TextAlign.center,
-                                      style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold),
+                                      style: TextStyle(
+                                        fontSize: 11.sp,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -254,17 +337,30 @@ class _ReportsPageState extends State<ReportsPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12.r),
-        border: Border(left: BorderSide(color: color, width: 4.w)),
+        border: Border(
+          left: BorderSide(color: color, width: 4.w),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 11.sp, fontWeight: FontWeight.bold)),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[500],
+              fontSize: 11.sp,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           SizedBox(height: 4.h),
           Text(
             value,
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13.sp,
+              color: AppColors.textPrimary,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -273,7 +369,12 @@ class _ReportsPageState extends State<ReportsPage> {
     );
   }
 
-  Widget _buildReportProgressBar(String title, int count, int total, Color color) {
+  Widget _buildReportProgressBar(
+    String title,
+    int count,
+    int total,
+    Color color,
+  ) {
     final double pct = total == 0 ? 0.0 : (count / total);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -330,7 +431,10 @@ Resolved complaints: ${db.complaints.where((c) => c.status == 'Resolved').length
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        title: Text('Exporting Report as $mode', style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          'Exporting Report as $mode',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: SizedBox(
           width: 500.w,
           child: Column(
@@ -338,11 +442,17 @@ Resolved complaints: ${db.complaints.where((c) => c.status == 'Resolved').length
             children: [
               Container(
                 padding: EdgeInsets.all(12.w),
-                decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8.r)),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
                 child: SingleChildScrollView(
                   child: Text(
                     content,
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 11,
+                    ),
                   ),
                 ),
               ),
@@ -358,7 +468,11 @@ Resolved complaints: ${db.complaints.where((c) => c.status == 'Resolved').length
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Successfully downloaded/printed report as $mode')),
+                SnackBar(
+                  content: Text(
+                    'Successfully downloaded/printed report as $mode',
+                  ),
+                ),
               );
             },
             child: Text('Download $mode'),
@@ -398,18 +512,23 @@ class ReportsDatabase {
     ReportModel(
       id: '1',
       title: 'Q2 System Vulnerability Scan Report',
-      content: 'Completed the security audit scan across all primary subnets. Patched three high-risk vulnerabilities on the enrollment server. System latency remains within standard deviation limits, and port scans show no anomalous behavior.',
+      content:
+          'Completed the security audit scan across all primary subnets. Patched three high-risk vulnerabilities on the enrollment server. System latency remains within standard deviation limits, and port scans show no anomalous behavior.',
       taskName: 'Security Vulnerability Assessment',
       department: 'IT Services',
       teamName: 'IT Infrastructure Team',
       submitter: 'Dr. Karim Tarek',
       date: 'Jun 22, 2026',
-      attachments: const ['vulnerability_scan_results.pdf', 'enrollment_server_logs.txt'],
+      attachments: const [
+        'vulnerability_scan_results.pdf',
+        'enrollment_server_logs.txt',
+      ],
     ),
     ReportModel(
       id: '2',
       title: 'LMS API Performance Optimization Report',
-      content: 'Optimized third-party database calls in the student portal, reducing API load time by 34%. All integrations tested successfully under simulated concurrent loads of up to 5,000 active sessions.',
+      content:
+          'Optimized third-party database calls in the student portal, reducing API load time by 34%. All integrations tested successfully under simulated concurrent loads of up to 5,000 active sessions.',
       taskName: 'API Integration Review',
       department: 'CS Dept',
       teamName: 'Software Engineering Team',
@@ -420,13 +539,17 @@ class ReportsDatabase {
     ReportModel(
       id: '3',
       title: 'Department Budget Alignment Review',
-      content: 'Analyzed departmental expense reports for Q1. Alignments are within the projected margin of error, but recommendations for software license consolidation have been detailed in the attachments.',
+      content:
+          'Analyzed departmental expense reports for Q1. Alignments are within the projected margin of error, but recommendations for software license consolidation have been detailed in the attachments.',
       taskName: 'Annual Budget Report',
       department: 'Business',
       teamName: 'Finance Management',
       submitter: 'Dr. Samira Hegazi',
       date: 'Jun 15, 2026',
-      attachments: const ['consolidated_licenses.pdf', 'q1_budget_allocation.csv'],
+      attachments: const [
+        'consolidated_licenses.pdf',
+        'q1_budget_allocation.csv',
+      ],
     ),
   ];
 }

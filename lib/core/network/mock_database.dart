@@ -87,6 +87,10 @@ class MockProject {
   final String priority; // 'HIGH' | 'MEDIUM' | 'LOW'
   String status; // 'Pending' | 'In Progress' | 'Completed' | 'Suspended'
   String? assignedLeaderId;
+  List<String> assignedTeamIds;
+  String? managerId;
+  List<String> projectLinks;
+  List<String> projectFiles;
 
   MockProject({
     required this.id,
@@ -97,6 +101,10 @@ class MockProject {
     required this.priority,
     required this.status,
     this.assignedLeaderId,
+    this.assignedTeamIds = const [],
+    this.managerId,
+    this.projectLinks = const [],
+    this.projectFiles = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -108,6 +116,10 @@ class MockProject {
         'priority': priority,
         'status': status,
         'assignedLeaderId': assignedLeaderId,
+        'assignedTeamIds': assignedTeamIds,
+        'managerId': managerId,
+        'projectLinks': projectLinks,
+        'projectFiles': projectFiles,
       };
 
   factory MockProject.fromJson(Map<String, dynamic> json) => MockProject(
@@ -119,6 +131,10 @@ class MockProject {
         priority: json['priority'] as String,
         status: json['status'] as String,
         assignedLeaderId: json['assignedLeaderId'] as String?,
+        assignedTeamIds: List<String>.from(json['assignedTeamIds'] as List? ?? []),
+        managerId: json['managerId'] as String?,
+        projectLinks: List<String>.from(json['projectLinks'] as List? ?? []),
+        projectFiles: List<String>.from(json['projectFiles'] as List? ?? []),
       );
 }
 
@@ -126,6 +142,7 @@ class MockTeam {
   final String id;
   final String name;
   final String managerId;
+  final String department;
   String leaderId;
   List<String> memberIds;
   double progress;
@@ -134,6 +151,7 @@ class MockTeam {
     required this.id,
     required this.name,
     required this.managerId,
+    required this.department,
     required this.leaderId,
     required this.memberIds,
     this.progress = 0.0,
@@ -143,6 +161,7 @@ class MockTeam {
         'id': id,
         'name': name,
         'managerId': managerId,
+        'department': department,
         'leaderId': leaderId,
         'memberIds': memberIds,
         'progress': progress,
@@ -152,6 +171,7 @@ class MockTeam {
         id: json['id'] as String,
         name: json['name'] as String,
         managerId: json['managerId'] as String,
+        department: json['department'] as String? ?? 'CS Dept',
         leaderId: json['leaderId'] as String,
         memberIds: List<String>.from(json['memberIds'] as List),
         progress: (json['progress'] as num? ?? 0.0).toDouble(),
@@ -430,13 +450,13 @@ class MockDatabase {
     ];
 
     _projects = [
-      MockProject(id: 'p1', name: 'Faculty Website Project', description: 'Redesign and develop the technological portal for AITU faculty departments.', startDate: '2026-06-01', endDate: '2026-09-30', priority: 'HIGH', status: 'In Progress', assignedLeaderId: '3'),
-      MockProject(id: 'p2', name: 'Smart Village Project', description: 'Implement building automation sensors and energy optimization scripts.', startDate: '2026-07-10', endDate: '2026-12-15', priority: 'MEDIUM', status: 'Pending', assignedLeaderId: '3'),
-      MockProject(id: 'p3', name: 'Graduation Project', description: 'Student attendance tracking with Bluetooth beacons and Flutter frontend.', startDate: '2026-05-15', endDate: '2026-07-20', priority: 'HIGH', status: 'In Progress', assignedLeaderId: '3'),
+      MockProject(id: 'p1', name: 'Faculty Website Project', description: 'Redesign and develop the technological portal for AITU faculty departments.', startDate: '2026-06-01', endDate: '2026-09-30', priority: 'HIGH', status: 'In Progress', assignedLeaderId: '3', assignedTeamIds: ['t1'], managerId: '2'),
+      MockProject(id: 'p2', name: 'Smart Village Project', description: 'Implement building automation sensors and energy optimization scripts.', startDate: '2026-07-10', endDate: '2026-12-15', priority: 'MEDIUM', status: 'Pending', assignedLeaderId: '3', assignedTeamIds: ['t1'], managerId: '2'),
+      MockProject(id: 'p3', name: 'Graduation Project', description: 'Student attendance tracking with Bluetooth beacons and Flutter frontend.', startDate: '2026-05-15', endDate: '2026-07-20', priority: 'HIGH', status: 'In Progress', assignedLeaderId: '3', assignedTeamIds: ['t1'], managerId: '2'),
     ];
 
     _teams = [
-      MockTeam(id: 't1', name: 'Software Engineering Team', managerId: '2', leaderId: '3', memberIds: ['4', '5'], progress: 65.0),
+      MockTeam(id: 't1', name: 'Software Engineering Team', managerId: '2', department: 'Computer Science', leaderId: '3', memberIds: ['4', '5'], progress: 65.0),
     ];
 
     _tickets = [
@@ -578,7 +598,7 @@ class MockDatabase {
       task.submissionReport = report;
 
       final ticket = _tickets.firstWhere((tc) => tc.id == task.ticketId, orElse: () => MockTicket(id: '', title: '', description: '', priority: '', deadline: '', teamId: ''));
-      final team = _teams.firstWhere((tm) => tm.id == ticket.teamId, orElse: () => MockTeam(id: '', name: '', managerId: '', leaderId: '', memberIds: []));
+      final team = _teams.firstWhere((tm) => tm.id == ticket.teamId, orElse: () => MockTeam(id: '', name: '', managerId: '', department: '', leaderId: '', memberIds: []));
       
       if (team.leaderId.isNotEmpty) {
         final memberName = _users.firstWhere((u) => u.id == task.assignedMemberId, orElse: () => MockUser(id: '', email: '', fullName: 'Member', role: '', department: '')).fullName;
