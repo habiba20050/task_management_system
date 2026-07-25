@@ -20,7 +20,7 @@ class Sidebar extends StatelessWidget {
         color: AppColors.sidebarBg,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 10,
             offset: const Offset(2, 0),
           ),
@@ -40,8 +40,8 @@ class Sidebar extends StatelessWidget {
               children: [
                 Image.asset(
                   'assets/images/logo.png',
-                  width: ResponsiveLayout.isTablet(context) ? 58.w : 74.w,
-                  height: ResponsiveLayout.isTablet(context) ? 58.h : 74.h,
+                  width: ResponsiveLayout.isTablet(context) ? 50.w : 64.w,
+                  height: ResponsiveLayout.isTablet(context) ? 50.h : 64.h,
                   fit: BoxFit.contain,
                 ),
                 SizedBox(
@@ -56,9 +56,7 @@ class Sidebar extends StatelessWidget {
                         'جامعة أسيوط التكنولوجية',
                         style: TextStyle(
                           color: AppColors.primary,
-                          fontSize: ResponsiveLayout.isTablet(context)
-                              ? 9.sp
-                              : 11.5.sp,
+                          fontSize: ResponsiveLayout.isTablet(context) ? 9.sp : 11.sp,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -67,22 +65,9 @@ class Sidebar extends StatelessWidget {
                         'Assiut Technological\nUniversity',
                         style: TextStyle(
                           color: AppColors.primary,
-                          fontSize: ResponsiveLayout.isTablet(context)
-                              ? 7.5.sp
-                              : 9.5.sp,
+                          fontSize: ResponsiveLayout.isTablet(context) ? 7.5.sp : 9.sp,
                           fontWeight: FontWeight.bold,
                           height: 1.1,
-                        ),
-                      ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        'Task & Ticket Management'.tr(context),
-                        style: TextStyle(
-                          color: const Color(0xFF041831), // Dark navy
-                          fontSize: ResponsiveLayout.isTablet(context)
-                              ? 7.sp
-                              : 8.5.sp,
-                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
@@ -122,12 +107,6 @@ class Sidebar extends StatelessWidget {
                     route: '/team',
                     isSelected: _isRouteSelected(context, '/team'),
                   ));
-                  navWidgets.add(_SidebarNavItem(
-                    icon: Icons.assignment_outlined,
-                    label: 'Projects',
-                    route: '/projects',
-                    isSelected: _isRouteSelected(context, '/projects'),
-                  ));
                 }
 
                 navWidgets.add(_SidebarNavItem(
@@ -136,8 +115,6 @@ class Sidebar extends StatelessWidget {
                   route: '/tasks',
                   isSelected: _isRouteSelected(context, '/tasks'),
                 ));
-
-
 
                 if (role == 'Manager' || role == 'Team Leader') {
                   navWidgets.add(_SidebarNavItem(
@@ -173,12 +150,19 @@ class Sidebar extends StatelessWidget {
                   isSelected: _isRouteSelected(context, '/complaints'),
                 ));
 
-                if (role == 'Admin' || role == 'Team Leader' || role == 'Team Member') {
+                navWidgets.add(_SidebarNavItem(
+                  icon: Icons.analytics_outlined,
+                  label: role == 'Team Member' ? 'Score & Achievements' : 'Evaluations',
+                  route: '/evaluations',
+                  isSelected: _isRouteSelected(context, '/evaluations'),
+                ));
+
+                if (role == 'Admin' || role == 'Manager') {
                   navWidgets.add(_SidebarNavItem(
-                    icon: Icons.analytics_outlined,
-                    label: role == 'Team Member' ? 'Score & Achievements' : 'Evaluations',
-                    route: '/evaluations',
-                    isSelected: _isRouteSelected(context, '/evaluations'),
+                    icon: Icons.history_outlined,
+                    label: 'Audit Logs',
+                    route: '/audit-logs',
+                    isSelected: _isRouteSelected(context, '/audit-logs'),
                   ));
                 }
 
@@ -198,106 +182,18 @@ class Sidebar extends StatelessWidget {
               }
             ),
           ),
-
-          // User Section
-          Builder(
-            builder: (context) {
-              final authState = context.watch<AuthCubit>().state;
-              final role = authState is AuthSuccess ? authState.user.role : 'Team Member';
-              final fullName = authState is AuthSuccess ? (authState.user.fullName ?? authState.user.email.split('@')[0]) : 'User';
-              final initials = fullName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase();
-
-              return Container(
-                margin: EdgeInsets.all(
-                  ResponsiveLayout.isTablet(context) ? 10.w : 16.w,
-                ),
-                padding: EdgeInsets.all(
-                  ResponsiveLayout.isTablet(context) ? 8.w : 12.w,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.sidebarProfileBg,
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: Colors.grey.shade100, width: 1),
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: ResponsiveLayout.isTablet(context) ? 14.r : 18.r,
-                      backgroundColor: AppColors.aituRed,
-                      child: Text(
-                        initials.isEmpty ? 'U' : initials,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: ResponsiveLayout.isTablet(context)
-                              ? 11.sp
-                              : 13.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: ResponsiveLayout.isTablet(context) ? 6.w : 10.w,
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            fullName,
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: ResponsiveLayout.isTablet(context)
-                                  ? 11.sp
-                                  : 13.sp,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: 2.h),
-                          Text(
-                            role,
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: ResponsiveLayout.isTablet(context)
-                                  ? 9.sp
-                                  : 11.sp,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      constraints: const BoxConstraints(),
-                      padding: EdgeInsets.zero,
-                      icon: Icon(
-                        Icons.logout,
-                        color: AppColors.textSecondary,
-                        size: ResponsiveLayout.isTablet(context) ? 16.sp : 18.sp,
-                      ),
-                      onPressed: () {
-                        context.read<AuthCubit>().logout();
-                        context.pushReplacement('/login');
-                      },
-                    ),
-                  ],
-                ),
-              );
-            }
-          ),
         ],
       ),
     );
   }
 
   bool _isRouteSelected(BuildContext context, String route) {
-    final currentRoute = GoRouterState.of(context).uri.toString();
-    return currentRoute == route || currentRoute.startsWith('$route/');
+    final location = GoRouterState.of(context).uri.toString();
+    return location.startsWith(route);
   }
 }
 
-class _SidebarNavItem extends StatefulWidget {
+class _SidebarNavItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final String route;
@@ -311,86 +207,50 @@ class _SidebarNavItem extends StatefulWidget {
   });
 
   @override
-  State<_SidebarNavItem> createState() => _SidebarNavItemState();
-}
-
-class _SidebarNavItemState extends State<_SidebarNavItem> {
-  bool _isHovered = false;
-
-  @override
   Widget build(BuildContext context) {
-    final bool isActive = widget.isSelected || _isHovered;
-    final Color contentColor = isActive
-        ? AppColors.primary
-        : const Color(0xFF4A5568);
-    final Color bgColor = widget.isSelected
-        ? const Color(0xFFEBF4FF) // Very soft blue for selection
-        : (_isHovered ? const Color(0xFFF7FAFC) : Colors.transparent);
+    final isTablet = ResponsiveLayout.isTablet(context);
 
-    return Container(
-      margin: EdgeInsets.only(bottom: 6.h),
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4.h),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => context.push(widget.route),
-          onHover: (hovered) {
-            setState(() {
-              _isHovered = hovered;
-            });
+          onTap: () {
+            if (Scaffold.of(context).isDrawerOpen) {
+              Navigator.pop(context);
+            }
+            context.go(route);
           },
-          borderRadius: BorderRadius.circular(8.r),
+          borderRadius: BorderRadius.circular(10.r),
+          hoverColor: Colors.grey.shade100,
           child: Container(
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(8.r),
-            ),
             padding: EdgeInsets.symmetric(
-              horizontal: ResponsiveLayout.isTablet(context) ? 10.w : 16.w,
+              horizontal: isTablet ? 8.w : 16.w,
               vertical: 12.h,
+            ),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.primary.withOpacity(0.08) : Colors.transparent,
+              borderRadius: BorderRadius.circular(10.r),
             ),
             child: Row(
               children: [
                 Icon(
-                  widget.icon,
-                  color: contentColor,
-                  size: ResponsiveLayout.isTablet(context) ? 18.sp : 20.sp,
+                  icon,
+                  size: 20.sp,
+                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
                 ),
-                SizedBox(
-                  width: ResponsiveLayout.isTablet(context) ? 8.w : 12.w,
-                ),
+                SizedBox(width: isTablet ? 8.w : 12.w),
                 Expanded(
                   child: Text(
-                    widget.label.tr(context),
+                    label.tr(context),
                     style: TextStyle(
-                      color: contentColor,
-                      fontSize: ResponsiveLayout.isTablet(context)
-                          ? 12.sp
-                          : 14.sp,
-                      fontWeight: widget.isSelected
-                          ? FontWeight.w600
-                          : FontWeight.w400,
+                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                      fontSize: isTablet ? 11.sp : 13.sp,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (widget.label == 'Tasks & Tickets')
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 8.w,
-                      vertical: 2.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.aituRed,
-                      borderRadius: BorderRadius.circular(10.r),
-                    ),
-                    child: Text(
-                      '20',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
               ],
             ),
           ),

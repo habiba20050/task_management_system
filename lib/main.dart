@@ -7,6 +7,7 @@ import 'config/dependency_injection/service_locator.dart';
 import 'config/routes/app_router.dart';
 import 'features/auth/cubit/auth_cubit.dart';
 import 'features/language/cubit/language_cubit.dart';
+import 'l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,12 +55,13 @@ class MyApp extends StatelessWidget {
                       Locale('ar'),
                     ],
                     localizationsDelegates: const [
+                      AppLocalizations.delegate,
                       GlobalMaterialLocalizations.delegate,
                       GlobalWidgetsLocalizations.delegate,
                       GlobalCupertinoLocalizations.delegate,
                     ],
-                    theme: AppTheme.lightTheme,
-                    darkTheme: AppTheme.darkTheme,
+                    theme: AppTheme.getTheme(langCode: lang, isDark: false),
+                    darkTheme: AppTheme.getTheme(langCode: lang, isDark: true),
                     themeMode: ThemeMode.light,
                     routerConfig: AppRouter.router,
                   );

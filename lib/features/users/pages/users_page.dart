@@ -2,33 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/colors/app_colors.dart';
+import '../../../core/network/mock_database.dart';
 import '../../../responsive/responsive_layout.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/notification_drawer.dart';
-
-class UserItem {
-  final String name;
-  final String email;
-  final String username;
-  final String role; // 'Admin' | 'Manager' | 'Member'
-  final String department;
-  final bool isActive;
-  final String lastActive;
-  final String initials;
-  final Color avatarColor;
-
-  UserItem({
-    required this.name,
-    required this.email,
-    required this.username,
-    required this.role,
-    required this.department,
-    required this.isActive,
-    required this.lastActive,
-    required this.initials,
-    required this.avatarColor,
-  });
-}
 
 class UsersPage extends StatefulWidget {
   const UsersPage({super.key});
@@ -43,109 +20,7 @@ class _UsersPageState extends State<UsersPage> {
   
   String _selectedRoleFilter = 'All'; // 'All' | 'Admin' | 'Manager' | 'Member'
 
-
-
-  final List<UserItem> _users = [
-    UserItem(
-      name: 'Dr. Ahmed Hassan',
-      email: 'ahmed.hassan@aitu.edu.eg',
-      username: '@ahmed.hassan',
-      role: 'Admin',
-      department: 'Computer Science',
-      isActive: true,
-      lastActive: 'Just now',
-      initials: 'AH',
-      avatarColor: const Color(0xFF0A448C),
-    ),
-    UserItem(
-      name: 'Prof. Khalid Mansour',
-      email: 'k.mansour@aitu.edu.eg',
-      username: '@k.mansour',
-      role: 'Manager',
-      department: 'Engineering',
-      isActive: true,
-      lastActive: '2 hours ago',
-      initials: 'KM',
-      avatarColor: const Color(0xFF27AE60),
-    ),
-    UserItem(
-      name: 'Sarah Ahmed',
-      email: 'sarah.ahmed@aitu.edu.eg',
-      username: '@sarah.ahmed',
-      role: 'Member',
-      department: 'Computer Science',
-      isActive: true,
-      lastActive: '5 min ago',
-      initials: 'SA',
-      avatarColor: const Color(0xFF2F80ED),
-    ),
-    UserItem(
-      name: 'Prof. Khalid Mansour',
-      email: 'k.mansour@aitu.edu.eg',
-      username: '@k.mansour',
-      role: 'Manager',
-      department: 'Engineering',
-      isActive: false,
-      lastActive: '2 hours ago',
-      initials: 'KM',
-      avatarColor: const Color(0xFF27AE60),
-    ),
-    UserItem(
-      name: 'Sarah Ahmed',
-      email: 'sarah.ahmed@aitu.edu.eg',
-      username: '@sarah.ahmed',
-      role: 'Member',
-      department: 'Computer Science',
-      isActive: true,
-      lastActive: '5 min ago',
-      initials: 'SA',
-      avatarColor: const Color(0xFF2F80ED),
-    ),
-    UserItem(
-      name: 'Nour Hassan',
-      email: 'nour.hassan@aitu.edu.eg',
-      username: '@nour.hassan',
-      role: 'Manager',
-      department: 'IT Services',
-      isActive: true,
-      lastActive: '1 hour ago',
-      initials: 'NH',
-      avatarColor: const Color(0xFFF2C94C),
-    ),
-    UserItem(
-      name: 'Ahmed Sayed',
-      email: 'ahmed.sayed@aitu.edu.eg',
-      username: '@ahmed.sayed',
-      role: 'Member',
-      department: 'Business',
-      isActive: true,
-      lastActive: '2 hours ago',
-      initials: 'AS',
-      avatarColor: const Color(0xFFEB5757),
-    ),
-    UserItem(
-      name: 'Fatma Ali',
-      email: 'fatma.ali@aitu.edu.eg',
-      username: '@fatma.ali',
-      role: 'Member',
-      department: 'Mathematics',
-      isActive: true,
-      lastActive: '3 hours ago',
-      initials: 'FA',
-      avatarColor: Colors.grey,
-    ),
-    UserItem(
-      name: 'Samira Harb',
-      email: 'samira.harb@aitu.edu.eg',
-      username: '@samira.harb',
-      role: 'Member',
-      department: 'Business',
-      isActive: true,
-      lastActive: '4 hours ago',
-      initials: 'SH',
-      avatarColor: const Color(0xFF0A448C),
-    ),
-  ];
+  List<MockUser> get _users => MockDatabase.instance.users;
 
   @override
   void dispose() {
@@ -398,34 +273,40 @@ class _UsersPageState extends State<UsersPage> {
   Widget _buildKPIStatsGrid(BuildContext context) {
     final isDesktop = ResponsiveLayout.isDesktop(context);
     final isTablet = ResponsiveLayout.isTablet(context);
+    final db = MockDatabase.instance;
+
+    final totalUsers = db.users.length;
+    final admins = db.users.where((u) => u.role == 'Admin').length;
+    final managers = db.users.where((u) => u.role == 'Manager').length;
+    final members = db.users.where((u) => u.role == 'Team Member').length;
 
     final cards = [
       _buildKPICard(
         icon: Icons.people_outline,
         iconColor: const Color(0xFF2F80ED),
         iconBgColor: const Color(0xFFEAF2FF),
-        value: '9',
+        value: totalUsers.toString(),
         label: 'Total Users',
       ),
       _buildKPICard(
         icon: Icons.shield_outlined,
         iconColor: const Color(0xFFEB5757),
         iconBgColor: const Color(0xFFFFECEB),
-        value: '1',
+        value: admins.toString(),
         label: 'Admins',
       ),
       _buildKPICard(
         icon: Icons.workspace_premium_outlined,
         iconColor: const Color(0xFFF2C94C),
         iconBgColor: const Color(0xFFFFF9E6),
-        value: '3',
+        value: managers.toString(),
         label: 'Managers',
       ),
       _buildKPICard(
         icon: Icons.person_add_alt_outlined,
         iconColor: const Color(0xFF27AE60),
         iconBgColor: const Color(0xFFE8F8EE),
-        value: '5',
+        value: members.toString(),
         label: 'Members',
       ),
     ];
@@ -621,7 +502,7 @@ class _UsersPageState extends State<UsersPage> {
     final filteredUsers = _users.where((u) {
       if (_selectedRoleFilter != 'All' && u.role != _selectedRoleFilter) return false;
       if (searchQuery.isNotEmpty) {
-        final matchesName = u.name.toLowerCase().contains(searchQuery);
+        final matchesName = u.fullName.toLowerCase().contains(searchQuery);
         final matchesEmail = u.email.toLowerCase().contains(searchQuery);
         return matchesName || matchesEmail;
       }
@@ -656,14 +537,23 @@ class _UsersPageState extends State<UsersPage> {
             DataColumn(label: _headerText('ACTIONS')),
           ],
           rows: filteredUsers.map((user) {
+            final initials = user.fullName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase();
             Color badgeText = const Color(0xFF2F80ED);
             Color badgeBg = const Color(0xFFEAF2FF);
+            Color avatarColor = const Color(0xFF2F80ED);
+            
             if (user.role == 'Admin') {
               badgeText = const Color(0xFFEB5757);
               badgeBg = const Color(0xFFFFECEB);
+              avatarColor = const Color(0xFFEB5757);
             } else if (user.role == 'Manager') {
               badgeText = const Color(0xFFF2C94C);
               badgeBg = const Color(0xFFFFF9E6);
+              avatarColor = const Color(0xFFF2C94C);
+            } else if (user.role == 'Team Leader') {
+              badgeText = const Color(0xFF9C27B0);
+              badgeBg = const Color(0xFFE1BEE7);
+              avatarColor = const Color(0xFF9C27B0);
             }
 
             return DataRow(
@@ -674,9 +564,9 @@ class _UsersPageState extends State<UsersPage> {
                     children: [
                       CircleAvatar(
                         radius: 16.r,
-                        backgroundColor: user.avatarColor,
+                        backgroundColor: avatarColor,
                         child: Text(
-                          user.initials,
+                          initials,
                           style: TextStyle(color: Colors.white, fontSize: 11.sp, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -686,7 +576,7 @@ class _UsersPageState extends State<UsersPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            user.name,
+                            user.fullName,
                             style: TextStyle(color: AppColors.textPrimary, fontSize: 13.sp, fontWeight: FontWeight.bold),
                           ),
                           Text(
@@ -701,7 +591,7 @@ class _UsersPageState extends State<UsersPage> {
                 // Username Column
                 DataCell(
                   Text(
-                    user.username,
+                    '@${user.fullName.toLowerCase().replaceAll(' ', '.')}',
                     style: TextStyle(color: Colors.grey[600], fontSize: 12.sp),
                   ),
                 ),
@@ -923,18 +813,4 @@ class _UsersPageState extends State<UsersPage> {
       ],
     );
   }
-}
-
-class NotificationItem {
-  final String title;
-  final String description;
-  final String time;
-  final bool isRead;
-
-  NotificationItem({
-    required this.title,
-    required this.description,
-    required this.time,
-    required this.isRead,
-  });
 }

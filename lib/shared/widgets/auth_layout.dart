@@ -14,10 +14,10 @@ class AuthLayout extends StatelessWidget {
 
     // Calculate dimensions based on screen sizes
     final double cardWidth = isMobile
-        ? 340.w
+        ? 320.w
         : isTablet
-        ? 450.w
-        : 480.w;
+        ? 400.w
+        : 420.w;
 
     return Scaffold(
       body: Stack(
@@ -91,8 +91,8 @@ class AuthLayout extends StatelessWidget {
                 clipBehavior: Clip.antiAlias,
                 child: Padding(
                   padding: EdgeInsets.symmetric(
-                    horizontal: isMobile ? 24.w : 36.w,
-                    vertical: isMobile ? 32.h : 40.h,
+                    horizontal: isMobile ? 20.w : 28.w,
+                    vertical: isMobile ? 24.h : 28.h,
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,

@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import '../../../core/colors/app_colors.dart';
 import '../../../core/network/mock_database.dart';
 import '../../../responsive/responsive_layout.dart';
-import '../../../shared/widgets/custom_button.dart';
 import '../../auth/cubit/auth_cubit.dart';
-import '../../language/cubit/language_cubit.dart';
 import '../../../core/localization/translate_extension.dart';
+import '../../../core/widgets/buttons/app_buttons.dart';
+import '../../../core/widgets/cards/app_cards.dart';
+import '../../../core/styles/app_radius.dart';
+import '../../../core/styles/app_shadow.dart';
 
 class ComplaintsPage extends StatefulWidget {
   const ComplaintsPage({super.key});
@@ -18,266 +22,197 @@ class ComplaintsPage extends StatefulWidget {
 
 class _ComplaintsPageState extends State<ComplaintsPage> {
   final TextEditingController _searchController = TextEditingController();
+
+  // Resolution controllers
+  final TextEditingController _investigationController = TextEditingController();
   final TextEditingController _resolutionController = TextEditingController();
+  final TextEditingController _correctiveController = TextEditingController();
+  bool _warning = false;
+  bool _trainingRequired = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _investigationController.dispose();
+    _resolutionController.dispose();
+    _correctiveController.dispose();
+    super.dispose();
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Open':
+        return AppColors.danger;
+      case 'Under Investigation':
+        return Colors.orange;
+      case 'Resolved':
+        return AppColors.success;
+      case 'Closed':
+        return Colors.grey;
+      default:
+        return Colors.blue;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDesktop = ResponsiveLayout.isDesktop(context);
-    final authState = context.watch<AuthCubit>().state;
-    final dynamic user = authState is AuthSuccess
-        ? authState.user
-        : MockUser(id: '', email: '', fullName: 'Member'.tr(context), role: 'Team Member', department: '');
-
     final db = MockDatabase.instance;
+    final authState = context.watch<AuthCubit>().state;
+    final currentUserId = authState is AuthSuccess ? authState.user.id : '1';
+    final userRole = authState is AuthSuccess ? authState.user.role : 'Admin';
 
-    final complaints = db.complaints.where((c) {
-      // 1. Role-based visibility
-      if (user.role == 'Team Member' && c.submitterId != user.id) {
+    // Filter list
+    final filtered = db.complaints.where((c) {
+      if (userRole == 'Team Member' && c.submitterId != currentUserId) {
         return false;
       }
-      if (user.role == 'Team Leader' && c.submitterId != user.id) {
-        // Leaders can see their own complaints, or team members' complaints if they target their team
-        // For simplicity of the mockup, show leader's own complaints or open team issues
-        if (c.submitterId != user.id && c.targetType != 'Team') {
-          return false;
-        }
-      }
-
-      // 2. Search filter
       final query = _searchController.text.toLowerCase();
       if (query.isNotEmpty) {
-        return c.title.toLowerCase().contains(query) ||
-            c.description.toLowerCase().contains(query);
+        return c.title.toLowerCase().contains(query) || c.description.toLowerCase().contains(query);
       }
       return true;
     }).toList();
 
-    return Scaffold(
-      backgroundColor: AppColors.dashboardBg,
-      body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(isDesktop ? 32.w : 16.w),
+    // Calculations for Analytics
+    final resolvedCount = db.complaints.where((c) => c.status == 'Resolved' || c.status == 'Closed').length;
+    final pendingCount = db.complaints.where((c) => c.status == 'Open' || c.status == 'Under Investigation').length;
+
+    // Dept distribution
+    final csCount = db.complaints.where((c) => c.targetName.contains('CS') || c.targetName.contains('Computer')).length;
+    final engCount = db.complaints.where((c) => c.targetName.contains('ENG') || c.targetName.contains('Engineering')).length;
+
+    return Container(
+      color: AppColors.background,
+      child: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(16.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Complaints & Investigations'.tr(context),
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 22.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      Text('Complaints & Investigations'.tr(context), style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
                       SizedBox(height: 4.h),
-                      Text(
-                        'Submit and track issues, workload, or deadline complaints'.tr(context),
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 13.sp,
-                        ),
-                      ),
+                      Text('Quality management and employee behavior tracking'.tr(context), style: TextStyle(fontSize: 11.sp, color: Colors.grey)),
                     ],
                   ),
-                  ElevatedButton.icon(
-                    onPressed: () => _showSubmitComplaintDialog(context, user),
-                    icon: const Icon(Icons.add, color: Colors.white),
-                    label: Text(
-                      'File Complaint'.tr(context),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 20.w,
-                        vertical: 16.h,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                    ),
-                  ),
+                  PrimaryButton(
+                    text: 'File Complaint'.tr(context),
+                    onPressed: () => _showSubmitComplaintDialog(context, currentUserId),
+                    prefixIcon: const Icon(Icons.add, color: Colors.white),
+                  )
                 ],
               ),
-              SizedBox(height: 24.h),
+              SizedBox(height: 16.h),
 
-              // Search Bar
+              // Search
               Container(
-                height: 44.h,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12.r),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
+                height: 40.h,
+                padding: EdgeInsets.symmetric(horizontal: 10.w),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.md.r), border: Border.all(color: AppColors.border)),
                 child: TextField(
                   controller: _searchController,
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
-                    hintText: 'Search complaints by title...'.tr(context),
-                    hintStyle: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 13.sp,
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      color: AppColors.primary,
-                    ),
+                    hintText: 'Search complaints...'.tr(context),
                     border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
+                    icon: const Icon(Icons.search),
+                    isDense: true,
                   ),
-                  style: TextStyle(fontSize: 13.sp),
                 ),
               ),
-              SizedBox(height: 24.h),
+              SizedBox(height: 16.h),
 
-              Expanded(
-                child: complaints.isEmpty
-                    ? Center(child: Text('No complaints registered.'.tr(context)))
-                    : ListView.separated(
-                        itemCount: complaints.length,
-                        separatorBuilder: (context, index) =>
-                            SizedBox(height: 16.h),
-                        itemBuilder: (context, index) {
-                          final c = complaints[index];
-                          return Card(
-                            color: Colors.white,
-                            elevation: 2,
-                            child: Padding(
-                              padding: EdgeInsets.all(20.w),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        c.title,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16.sp,
-                                          color: AppColors.textPrimary,
-                                        ),
-                                      ),
-                                      _buildStatusChip(c.status),
-                                    ],
-                                  ),
-                                  SizedBox(height: 8.h),
-                                  Text(
-                                    'Submitted by'.tr(context) + ': ${c.submitterName} (${c.submitterRole}) on ${c.date}',
-                                    style: TextStyle(
-                                      color: Colors.grey[500],
-                                      fontSize: 12.sp,
-                                    ),
-                                  ),
-                                  SizedBox(height: 12.h),
-                                  Text(
-                                    c.description,
-                                    style: TextStyle(
-                                      fontSize: 13.sp,
-                                      color: Colors.grey[700],
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                  SizedBox(height: 12.h),
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.warning_amber_rounded,
-                                        size: 14.sp,
-                                        color: Colors.orange,
-                                      ),
-                                      SizedBox(width: 4.w),
-                                      Text(
-                                        'Target Name'.tr(context) + ': ${c.targetName} (${c.targetType.tr(context)})',
-                                        style: TextStyle(
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.grey[600],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  if (c.resolutionNotes != null &&
-                                      c.resolutionNotes!.isNotEmpty) ...[
-                                    const Divider(),
-                                    SizedBox(height: 8.h),
-                                    Text(
-                                      'Resolution Notes'.tr(context) + ':',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13.sp,
-                                        color: Colors.green[700],
-                                      ),
-                                    ),
-                                    SizedBox(height: 4.h),
-                                    Text(
-                                      c.resolutionNotes!,
-                                      style: TextStyle(
-                                        fontSize: 13.sp,
-                                        color: Colors.grey[800],
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                    ),
-                                  ],
-                                  if (user.role == 'Admin' ||
-                                      user.role == 'Manager') ...[
-                                    const Divider(),
-                                    SizedBox(height: 8.h),
+              // Analytics Summary section
+              AppCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Complaint Analytics'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp)),
+                    const Divider(),
+                    Row(
+                      children: [
+                        Expanded(child: _buildSmallStat('Resolved complaints', resolvedCount.toString(), AppColors.success)),
+                        Expanded(child: _buildSmallStat('Pending complaints', pendingCount.toString(), AppColors.danger)),
+                        Expanded(child: _buildSmallStat('Computer Science Issues', csCount.toString(), AppColors.primary)),
+                        Expanded(child: _buildSmallStat('Engineering Issues', engCount.toString(), Colors.indigo)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16.h),
+
+              // Cards Layout Grid
+              filtered.isEmpty
+                  ? Center(child: Padding(padding: EdgeInsets.all(32.h), child: Text('No complaints registered.'.tr(context))))
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        int crossAxisCount = isDesktop ? 3 : (constraints.maxWidth < 600 ? 1 : 2);
+                        return GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: crossAxisCount,
+                            crossAxisSpacing: 12.w,
+                            mainAxisSpacing: 12.h,
+                            mainAxisExtent: 135.h,
+                          ),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, idx) {
+                            final comp = filtered[idx];
+                            final statusColor = _getStatusColor(comp.status);
+                            return InkWell(
+                              onTap: () => _showComplaintDetailDialog(context, comp, currentUserId, userRole),
+                              borderRadius: BorderRadius.circular(AppRadius.lg.r),
+                              child: Container(
+                                padding: EdgeInsets.all(10.w),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(AppRadius.lg.r),
+                                  border: Border.all(color: statusColor, width: 1.5.w),
+                                  boxShadow: AppShadow.soft,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        ElevatedButton(
-                                          onPressed: () =>
-                                              _handleUpdateComplaint(
-                                            context,
-                                            c.id,
-                                            'Under Investigation',
-                                          ),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.amber[700],
-                                          ),
-                                          child: Text(
-                                            'Mark Investigating'.tr(context),
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(width: 12.w),
-                                        ElevatedButton(
-                                          onPressed: () =>
-                                              _handleUpdateComplaint(
-                                            context,
-                                            c.id,
-                                            'Resolved',
-                                          ),
-                                          child: Text(
-                                            'Mark Resolved'.tr(context),
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                            ),
-                                          ),
+                                        Expanded(child: Text(comp.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5.sp), overflow: TextOverflow.ellipsis)),
+                                        SizedBox(width: 6.w),
+                                        Container(
+                                          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                                          decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4.r)),
+                                          child: Text(comp.status.tr(context), style: TextStyle(color: statusColor, fontSize: 8.sp, fontWeight: FontWeight.bold)),
                                         ),
                                       ],
                                     ),
+                                    SizedBox(height: 4.h),
+                                    Text(comp.description, style: TextStyle(fontSize: 10.sp, color: AppColors.textSecondary), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                    const Divider(height: 1),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(child: Text('Target: '.tr(context) + comp.targetName, style: TextStyle(fontSize: 9.sp, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+                                        Text(comp.date, style: TextStyle(fontSize: 8.5.sp, color: Colors.grey)),
+                                      ],
+                                    ),
                                   ],
-                                ],
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
-              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
             ],
           ),
         ),
@@ -285,131 +220,88 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
     );
   }
 
-  Widget _buildStatusChip(String status) {
-    Color color = Colors.grey;
-    if (status == 'Open') {
-      color = Colors.red;
-    } else if (status == 'Under Investigation') {
-      color = Colors.amber;
-    } else if (status == 'Resolved') {
-      color = Colors.green;
-    }
-    return Chip(
-      label: Text(
-        status.tr(context),
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      backgroundColor: color,
+  Widget _buildSmallStat(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(value, style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, color: color)),
+        Text(label.tr(context), style: TextStyle(fontSize: 9.sp, color: Colors.grey), textAlign: TextAlign.center),
+      ],
     );
   }
 
-  void _showSubmitComplaintDialog(BuildContext context, user) {
-    final titleCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
+  // --- File complaint dialog ---
+  void _showSubmitComplaintDialog(BuildContext context, String currentUserId) {
+    final db = MockDatabase.instance;
+    final titleCon = TextEditingController();
+    final descCon = TextEditingController();
+    String category = 'Delay';
     String targetType = 'Member';
-    final targetNameCtrl = TextEditingController();
+    String? targetUserId = '4';
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: Colors.white,
-          title: Text(
-            'Submit a Complaint'.tr(context),
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
+          title: Text('File Complaint'.tr(context)),
           content: SingleChildScrollView(
-            child: SizedBox(
-              width: 400.w,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: titleCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Complaint Title'.tr(context),
-                    ),
-                  ),
-                  SizedBox(height: 12.h),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: titleCon, decoration: InputDecoration(labelText: 'Complaint Title'.tr(context))),
+                TextField(controller: descCon, decoration: InputDecoration(labelText: 'Description'.tr(context)), maxLines: 2),
+                DropdownButtonFormField<String>(
+                  value: category,
+                  decoration: InputDecoration(labelText: 'Category'.tr(context)),
+                  items: ['Delay', 'Poor Quality', 'Communication', 'Attendance', 'Behavior', 'Other'].map((c) => DropdownMenuItem(value: c, child: Text(c.tr(context)))).toList(),
+                  onChanged: (v) => setDialogState(() => category = v!),
+                ),
+                DropdownButtonFormField<String>(
+                  value: targetType,
+                  decoration: InputDecoration(labelText: 'Target Type'.tr(context)),
+                  items: ['Member', 'Team', 'Workload Issue'].map((t) => DropdownMenuItem(value: t, child: Text(t.tr(context)))).toList(),
+                  onChanged: (v) => setDialogState(() {
+                    targetType = v!;
+                    targetUserId = null;
+                  }),
+                ),
+                if (targetType == 'Member') ...[
                   DropdownButtonFormField<String>(
-                    initialValue: targetType,
-                    decoration: InputDecoration(
-                      labelText: 'Complaint Target'.tr(context),
-                    ),
-                    items: [
-                      'Member',
-                      'Team Leader',
-                      'Manager',
-                      'Team',
-                      'Workload Issue',
-                      'Deadline Issue',
-                    ]
-                        .map(
-                          (t) => DropdownMenuItem(value: t, child: Text(t.tr(context))),
-                        )
-                        .toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setDialogState(() => targetType = val);
-                      }
-                    },
-                  ),
-                  SizedBox(height: 12.h),
-                  TextField(
-                    controller: targetNameCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Target Identifier / Name'.tr(context),
-                      hintText: 'e.g. Sarah Ahmed, Budget Task'.tr(context),
-                    ),
-                  ),
-                  SizedBox(height: 12.h),
-                  TextField(
-                    controller: descCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Complaint Details / Context'.tr(context),
-                    ),
-                    maxLines: 3,
+                    value: targetUserId,
+                    decoration: InputDecoration(labelText: 'Target Employee'.tr(context)),
+                    items: db.users.where((u) => u.id != currentUserId).map((u) => DropdownMenuItem(value: u.id, child: Text(u.fullName))).toList(),
+                    onChanged: (v) => setDialogState(() => targetUserId = v),
                   ),
                 ],
-              ),
+              ],
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel'.tr(context)),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel'.tr(context))),
             ElevatedButton(
               onPressed: () {
-                if (titleCtrl.text.isNotEmpty && descCtrl.text.isNotEmpty) {
+                if (titleCon.text.isNotEmpty) {
+                  final reporter = db.users.firstWhere((u) => u.id == currentUserId);
+                  var targetName = 'General Workload';
+                  if (targetType == 'Member' && targetUserId != null) {
+                    targetName = db.users.firstWhere((u) => u.id == targetUserId).fullName;
+                  }
                   setState(() {
-                    MockDatabase.instance.addComplaint(
-                      MockComplaint(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        submitterId: user.id,
-                        submitterName: user.fullName ?? 'Member'.tr(context),
-                        submitterRole: user.role,
-                        targetType: targetType,
-                        targetId: 't1',
-                        targetName: targetNameCtrl.text,
-                        title: titleCtrl.text,
-                        description: descCtrl.text,
-                        date: '2026-07-03',
-                        status: 'Open',
-                      ),
-                    );
+                    db.addComplaint(MockComplaint(
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      submitterId: currentUserId,
+                      submitterName: reporter.fullName,
+                      submitterRole: reporter.role,
+                      targetType: targetType,
+                      targetId: targetUserId ?? 't1',
+                      targetName: targetName,
+                      title: titleCon.text,
+                      description: descCon.text,
+                      date: DateFormat('yyyy-MM-dd').format(DateTime.now()),
+                      category: category,
+                      timeline: ['Submitted on ' + DateFormat('yyyy-MM-dd').format(DateTime.now())],
+                    ));
                   });
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Complaint submitted and escalated successfully.'.tr(context),
-                      ),
-                    ),
-                  );
                 }
               },
               child: Text('Submit'.tr(context)),
@@ -420,50 +312,102 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
     );
   }
 
-  void _handleUpdateComplaint(
-    BuildContext context,
-    String complaintId,
-    String status,
-  ) {
+  // --- Complaint details & resolution timeline dialog ---
+  void _showComplaintDetailDialog(BuildContext context, MockComplaint comp, String currentUserId, String userRole) {
+    final db = MockDatabase.instance;
+    final isAuthorized = userRole == 'Admin' || userRole == 'Manager';
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: Text(
-          'Update Complaint Status to:'.tr(context) + ' ' + status.tr(context),
-          style: const TextStyle(fontWeight: FontWeight.bold),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(comp.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          content: SizedBox(
+            width: 480.w,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(comp.description),
+                  const Divider(),
+                  Text('Category: '.tr(context) + comp.category.tr(context)),
+                  Text('Reported By: '.tr(context) + comp.submitterName),
+                  Text('Target: '.tr(context) + comp.targetName),
+                  Text('Date: '.tr(context) + comp.date),
+                  const Divider(),
+
+                  // Timeline Display
+                  Text('Processing Timeline'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp, color: AppColors.primary)),
+                  SizedBox(height: 6.h),
+                  ...comp.timeline.map((t) => Padding(
+                        padding: EdgeInsets.symmetric(vertical: 2.h),
+                        child: Row(
+                          children: [
+                            Icon(Icons.check_circle, color: AppColors.success, size: 14.sp),
+                            SizedBox(width: 6.w),
+                            Text(t, style: TextStyle(fontSize: 10.5.sp)),
+                          ],
+                        ),
+                      )),
+                  const Divider(),
+
+                  // Resolved Display or Resolution Form
+                  if (comp.status == 'Resolved') ...[
+                    Text('Resolution Details'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp, color: AppColors.success)),
+                    SizedBox(height: 4.h),
+                    Text('Investigation Notes: '.tr(context) + comp.investigationNotes),
+                    Text('Resolution decision: '.tr(context) + comp.resolution),
+                    Text('Corrective Actions: '.tr(context) + comp.correctiveAction),
+                    Text('Written Warning Issued: '.tr(context) + (comp.warning ? 'Yes'.tr(context) : 'No'.tr(context))),
+                    Text('Mandatory Training Required: '.tr(context) + (comp.trainingRequired ? 'Yes'.tr(context) : 'No'.tr(context))),
+                  ] else if (isAuthorized) ...[
+                    Text('Resolve Investigation'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp, color: Colors.orange)),
+                    SizedBox(height: 6.h),
+                    TextField(controller: _investigationController, decoration: InputDecoration(labelText: 'Investigation Notes'.tr(context))),
+                    TextField(controller: _resolutionController, decoration: InputDecoration(labelText: 'Resolution'.tr(context))),
+                    TextField(controller: _correctiveController, decoration: InputDecoration(labelText: 'Corrective Action'.tr(context))),
+                    CheckboxListTile(
+                      title: Text('Issue Written Warning'.tr(context), style: TextStyle(fontSize: 11.sp)),
+                      value: _warning,
+                      onChanged: (v) => setDialogState(() => _warning = v ?? false),
+                    ),
+                    CheckboxListTile(
+                      title: Text('Mandatory Training Required'.tr(context), style: TextStyle(fontSize: 11.sp)),
+                      value: _trainingRequired,
+                      onChanged: (v) => setDialogState(() => _trainingRequired = v ?? false),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: Text('Close'.tr(context))),
+            if (comp.status != 'Resolved' && isAuthorized)
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    db.resolveComplaint(
+                      complaintId: comp.id,
+                      investigationNotes: _investigationController.text,
+                      resolution: _resolutionController.text,
+                      correctiveAction: _correctiveController.text,
+                      warning: _warning,
+                      trainingRequired: _trainingRequired,
+                      closedByUserId: currentUserId,
+                    );
+                    _investigationController.clear();
+                    _resolutionController.clear();
+                    _correctiveController.clear();
+                    _warning = false;
+                    _trainingRequired = false;
+                  });
+                  Navigator.pop(context);
+                },
+                child: Text('Submit Resolution'.tr(context)),
+              )
+          ],
         ),
-        content: TextField(
-          controller: _resolutionController,
-          decoration: InputDecoration(
-            labelText: 'Notes / Comments'.tr(context),
-            hintText: 'Enter resolution notes or status details...'.tr(context),
-          ),
-          maxLines: 3,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'.tr(context)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                MockDatabase.instance.updateComplaintStatus(
-                  complaintId,
-                  status,
-                  _resolutionController.text,
-                );
-              });
-              _resolutionController.clear();
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Complaint status updated successfully.'.tr(context))),
-              );
-            },
-            child: Text('Update'.tr(context)),
-          ),
-        ],
       ),
     );
   }

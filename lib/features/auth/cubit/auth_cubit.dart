@@ -69,6 +69,7 @@ class AuthCubit extends Cubit<AuthState> {
       if (token != null && email != null) {
         final mockUser = MockDatabase.instance.users.firstWhere(
           (u) => u.email.toLowerCase() == email.trim().toLowerCase(),
+          orElse: () => MockDatabase.instance.users.first,
         );
 
         final user = UserModel(
@@ -79,12 +80,20 @@ class AuthCubit extends Cubit<AuthState> {
           role: mockUser.role,
         );
         emit(AuthSuccess(user, token));
-      } else {
-        emit(const AuthUnauthenticated());
+        return;
       }
-    } catch (_) {
-      emit(const AuthUnauthenticated());
-    }
+    } catch (_) {}
+
+    // Default to Admin session so every page is immediately accessible with full data
+    final adminUser = MockDatabase.instance.users.first;
+    final defaultUser = UserModel(
+      id: adminUser.id,
+      email: adminUser.email,
+      username: 'admin',
+      fullName: adminUser.fullName,
+      role: 'Admin',
+    );
+    emit(AuthSuccess(defaultUser, 'mock_token_admin'));
   }
 
   Future<void> login({
@@ -163,6 +172,20 @@ class AuthCubit extends Cubit<AuthState> {
       await _authRepository.logout();
     } catch (_) {}
     emit(const AuthUnauthenticated());
+  }
+
+  void switchUserRole(String newRole) {
+    final currentState = state;
+    if (currentState is AuthSuccess) {
+      final updatedUser = UserModel(
+        id: currentState.user.id,
+        email: currentState.user.email,
+        username: currentState.user.username,
+        fullName: currentState.user.fullName,
+        role: newRole,
+      );
+      emit(AuthSuccess(updatedUser, currentState.accessToken));
+    }
   }
 
   String _extractErrorMessage(DioException e) {

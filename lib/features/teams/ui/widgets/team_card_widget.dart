@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../model/team_model.dart';
 import '../../cubit/teams_cubit.dart';
 import '../screens/team_details_screen.dart';
 import 'create_team_dialog_widget.dart';
+import '../../../../core/colors/app_colors.dart';
+import '../../../../core/localization/translate_extension.dart';
+import '../../../../core/styles/app_radius.dart';
+import '../../../../core/styles/app_shadow.dart';
 
 class TeamCardWidget extends StatelessWidget {
   final TeamModel team;
-  // تم تعريف اسم المدير بشكل ثابت هنا، ويمكنك تمريره من الـ Model مستقبلاً حسب حاجة قاعدة البيانات
-  final String createdByManager = "Eng. Mohamed Ali";
 
   const TeamCardWidget({super.key, required this.team});
 
@@ -16,342 +19,184 @@ class TeamCardWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () => _navigateToDetails(context),
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(AppRadius.lg.r),
       child: Container(
+        padding: EdgeInsets.all(10.w),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(AppRadius.lg.r),
+          border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+          boxShadow: AppShadow.soft,
         ),
-        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // 1. عنوان الفريق وأزرار التحكم الحالية (تعديل وحذف)
+            // Top Accent Bar matching app cards
+            Container(
+              height: 3.h,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
+            SizedBox(height: 4.h),
+
+            // Header: Team Name & Department Tag
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
                   child: Text(
                     team.name,
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: TextStyle(
+                      fontSize: 11.5.sp,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
-                      overflow: TextOverflow.ellipsis,
+                      color: AppColors.textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                SizedBox(width: 6.w),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(4.r),
+                  ),
+                  child: Text(
+                    team.department.tr(context),
+                    style: TextStyle(color: AppColors.primary, fontSize: 8.5.sp, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 4.h),
+
+            // Supervisor & Members Row
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 12.r,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                  child: Text(
+                    team.leaderInitials,
+                    style: TextStyle(fontSize: 8.5.sp, color: AppColors.primary, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                SizedBox(width: 6.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        team.leaderName,
+                        style: TextStyle(fontSize: 10.5.sp, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Team Leader'.tr(context),
+                        style: TextStyle(fontSize: 8.sp, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(4.r),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Text(
+                    '${team.membersCount} ${'Members'.tr(context)}',
+                    style: TextStyle(fontSize: 8.5.sp, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 4.h),
+
+            // Progress Bar
+            Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4.r),
+                    child: LinearProgressIndicator(
+                      value: team.progress,
+                      backgroundColor: Colors.grey.shade200,
+                      color: AppColors.primary,
+                      minHeight: 4.h,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 6.w),
+                Text(
+                  '${team.completionPercentage.toInt()}%',
+                  style: TextStyle(fontSize: 9.5.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                ),
+              ],
+            ),
+            const Divider(height: 1),
+
+            // Actions Footer
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                InkWell(
+                  onTap: () => _navigateToDetails(context),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 2.h),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 13.sp, color: AppColors.primary),
+                        SizedBox(width: 4.w),
+                        Text('Details'.tr(context), style: TextStyle(fontSize: 9.5.sp, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                      ],
                     ),
                   ),
                 ),
                 Row(
                   children: [
-                    _buildIconButton(
-                      Icons.edit_outlined,
-                      const Color(0xFF3B82F6),
-                      const Color(0xFFEFF6FF),
-                      () {
+                    InkWell(
+                      onTap: () {
                         CreateTeamDialogWidget.show(
                           context,
                           context.read<TeamsCubit>(),
                           teamToEdit: team,
                         );
                       },
+                      child: Padding(
+                        padding: EdgeInsets.all(2.w),
+                        child: Icon(Icons.edit_outlined, color: Colors.orange, size: 14.sp),
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    _buildIconButton(
-                      Icons.delete_outline,
-                      const Color(0xFFEF4444),
-                      const Color(0xFFFEF2F2),
-                      () {
+                    SizedBox(width: 8.w),
+                    InkWell(
+                      onTap: () {
                         context.read<TeamsCubit>().deleteTeam(team.id);
                       },
+                      child: Padding(
+                        padding: EdgeInsets.all(2.w),
+                        child: Icon(Icons.delete_outline, color: AppColors.danger, size: 14.sp),
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-
-            // 2. اسم القسم التابع له الفريق
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                team.department,
-                style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // 3. المشرفين: تحديد الـ Team Leader والـ Manager الذي أضاف الفريق (تعديل طلب 9)
-            Column(
-              children: [
-                // خانة الـ Team Leader
-                _buildSupervisorRow(
-                  initials: team.leaderInitials,
-                  role: 'TEAM LEADER',
-                  name: team.leaderName,
-                  avatarBg: const Color(0xFF059669),
-                  cardBg: const Color(0xFFFFFBEB),
-                  roleColor: Colors.orange,
-                ),
-                const SizedBox(height: 8),
-                // خانة الـ Manager الذي قام بإضافة الفريق
-                _buildSupervisorRow(
-                  initials: 'MA',
-                  role: 'ADDED BY MANAGER',
-                  name: createdByManager,
-                  avatarBg: const Color(0xFF1E3A8A),
-                  cardBg: const Color(0xFFEFF6FF),
-                  roleColor: Colors.blue,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // 4. الإحصائيات المصغرة لعدد الأعضاء ونسبة الإنجاز (تعديل طلب 8)
-            Row(
-              children: [
-                Expanded(
-                  child: _buildMiniStat(
-                    '${team.membersCount}',
-                    'Members',
-                    const Color(0xFF1E293B),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildMiniStat(
-                    '${team.completionPercentage.toInt()}%',
-                    'Completion',
-                    const Color(0xFF10B981),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // 5. شريط تقدم المهام الخاصة بالفريق فقط
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Task Progress',
-                  style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
-                ),
-                Text(
-                  '${team.completedTasks}/${team.totalTasks} tasks',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: LinearProgressIndicator(
-                value: team.progress,
-                backgroundColor: const Color(0xFFE2E8F0),
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  Color(0xFF10B981),
-                ),
-                minHeight: 6,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // 6. الأزرار التفاعلية السفلية للقائمة المنسدلة والتفاصيل
-            _buildDropdownButton(
-              title: 'View Members (${team.membersCount})',
-              leadingIcon: Icons.people_outline,
-              isPrimary: false,
-              onTap: () {},
-            ),
-            const SizedBox(height: 10),
-            _buildDropdownButton(
-              title: 'View Details',
-              leadingIcon: Icons.open_in_new,
-              isPrimary: true,
-              onTap: () => _navigateToDetails(context),
-            ),
           ],
         ),
       ),
     );
   }
 
-  // ميثود الانتقال لصفحة التفاصيل القوية
   void _navigateToDetails(BuildContext context) {
     showDialog(
       context: context,
       barrierDismissible: true,
       builder: (context) => TeamDetailsScreen(team: team),
-    );
-  }
-
-  // بناء أسطر المسؤولين والمشرفين بشكل منظم
-  Widget _buildSupervisorRow({
-    required String initials,
-    required String role,
-    required String name,
-    required Color avatarBg,
-    required Color cardBg,
-    required Color roleColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: avatarBg,
-            radius: 14,
-            child: Text(
-              initials,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  role,
-                  style: TextStyle(
-                    color: roleColor,
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1E293B),
-                    fontSize: 12,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // بناء الأزرار الصغيرة للتعديل والحذف
-  Widget _buildIconButton(
-    IconData icon,
-    Color color,
-    Color bgColor,
-    VoidCallback onTap,
-  ) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, color: color, size: 18),
-      ),
-    );
-  }
-
-  // بناء المربعات الرمادية للإحصاءات السريعة
-  Widget _buildMiniStat(String value, String label, Color valueColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: valueColor,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // بناء الأزرار السفلية العريضة
-  Widget _buildDropdownButton({
-    required String title,
-    required IconData leadingIcon,
-    required bool isPrimary,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: isPrimary ? const Color(0xFF0F4C81) : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  leadingIcon,
-                  color: isPrimary ? Colors.white : const Color(0xFF64748B),
-                  size: 18,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: isPrimary ? Colors.white : const Color(0xFF1E293B),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-            Icon(
-              Icons.keyboard_arrow_down,
-              color: isPrimary ? Colors.white : const Color(0xFF64748B),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

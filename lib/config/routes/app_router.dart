@@ -10,17 +10,18 @@ import '../../features/auth/pages/verify_email_page.dart';
 import '../../features/auth/pages/create_new_password_page.dart';
 import '../../features/dashboard/pages/dashboard_page.dart';
 import '../../features/tasks/pages/tasks_page.dart';
+import '../../features/tasks/pages/task_details_page.dart';
 import '../../features/users/ui/screens/users_roles_screen.dart';
 import '../../features/profile/pages/profile_page.dart';
 import '../../features/profile/cubit/profile_cubit.dart';
 import '../../features/reports/pages/reports_page.dart';
+import '../../features/audit_log/pages/audit_log_page.dart';
 import '../../shared/widgets/main_layout.dart';
 import '../dependency_injection/service_locator.dart';
 import '../../features/auth/cubit/auth_cubit.dart';
 import '../../features/complaints/pages/complaints_page.dart';
 import '../../features/evaluations/pages/evaluations_page.dart';
 import '../../features/tasks/pages/review_center_page.dart';
-import '../../features/projects/pages/project_management_page.dart';
 
 class AppRouter {
   AppRouter._();
@@ -31,16 +32,15 @@ class AppRouter {
   static const String createNewPassword = '/create-new-password';
   static const String dashboard = '/dashboard';
   static const String tasks = '/tasks';
-  static const String tickets = '/tickets';
   static const String taskDetails = '/tasks/:id';
   static const String team = '/team';
-  static const String projects = '/projects';
   static const String reports = '/reports';
   static const String settings = '/settings';
   static const String usersRoles = '/users-roles';
   static const String complaints = '/complaints';
   static const String evaluations = '/evaluations';
   static const String reviewCenter = '/review-center';
+  static const String auditLogs = '/audit-logs';
 
   static GoRouter get router => GoRouter(
     initialLocation: dashboard,
@@ -53,7 +53,7 @@ class AppRouter {
           state.uri.toString() == createNewPassword;
 
       if (authState is AuthInitial || authState is AuthLoading) {
-        return null; // Let the initialization page run
+        return null;
       }
 
       if (authState is! AuthSuccess) {
@@ -96,111 +96,83 @@ class AppRouter {
           return CreateNewPasswordPage(email: email, otp: otp);
         },
       ),
-      // App Routes
-      GoRoute(
-        path: dashboard,
-        name: 'dashboard',
-        builder: (context, state) {
-          final showMyTasks =
-              state.uri.queryParameters['showMyTasks'] == 'true';
+      // App Shell Routes
+      ShellRoute(
+        builder: (context, state, child) {
           return MainLayout(
-            title: 'Dashboard',
-            child: DashboardPage(showMyTasks: showMyTasks),
+            title: '',
+            child: child,
           );
         },
-      ),
-      GoRoute(
-        path: tasks,
-        name: 'tasks',
-        builder: (context, state) {
-          final authState = context.read<AuthCubit>().state;
-          final role = authState is AuthSuccess ? authState.user.role : 'Team Member';
-          return MainLayout(
-            title: role == 'Team Member' ? 'My Tasks' : 'Tasks',
-            child: const TasksPage(),
-          );
-        },
-      ),
-      GoRoute(
-        path: taskDetails,
-        name: 'taskDetails',
-        builder: (context, state) {
-          final taskId = state.pathParameters['id'] ?? '';
-          return MainLayout(
-            title: 'Task Details',
-            child: Scaffold(body: Center(child: Text('Task: $taskId'))),
-          );
-        },
-      ),
-      GoRoute(
-        path: team,
-        name: 'team',
-        builder: (context, state) => MainLayout(
-          title: 'Teams',
-          child: BlocProvider(
-            create: (context) =>
-                getIt<TeamsCubit>()
-                  ..fetchTeams(),
-            child: TeamsDashboardScreen(),
+        routes: [
+          GoRoute(
+            path: dashboard,
+            name: 'dashboard',
+            builder: (context, state) {
+              final showMyTasks = state.uri.queryParameters['showMyTasks'] == 'true';
+              return DashboardPage(showMyTasks: showMyTasks);
+            },
           ),
-        ),
-      ),
-      GoRoute(
-        path: projects,
-        name: 'projects',
-        builder: (context, state) => const MainLayout(
-          title: 'Projects',
-          child: ProjectManagementPage(),
-        ),
-      ),
-      GoRoute(
-        path: reports,
-        name: 'reports',
-        builder: (context, state) => const MainLayout(
-          title: 'Reports',
-          child: ReportsPage(),
-        ),
-      ),
-      GoRoute(
-        path: settings,
-        name: 'settings',
-        builder: (context, state) => MainLayout(
-          title: 'Profile Settings',
-          child: BlocProvider(
-            create: (context) => getIt<ProfileCubit>(),
-            child: const ProfilePage(),
+          GoRoute(
+            path: tasks,
+            name: 'tasks',
+            builder: (context, state) => const TasksPage(),
           ),
-        ),
-      ),
-      GoRoute(
-        path: usersRoles,
-        name: 'usersRoles',
-        builder: (context, state) => const MainLayout(
-            title: 'Users & Roles', child: UsersRolesScreen()),
-      ),
-      GoRoute(
-        path: complaints,
-        name: 'complaints',
-        builder: (context, state) => const MainLayout(
-            title: 'Complaints', child: ComplaintsPage()),
-      ),
-      GoRoute(
-        path: evaluations,
-        name: 'evaluations',
-        builder: (context, state) {
-          final authState = context.read<AuthCubit>().state;
-          final role = authState is AuthSuccess ? authState.user.role : 'Team Member';
-          return MainLayout(
-            title: role == 'Team Member' ? 'Score & Achievements' : 'Evaluations',
-            child: const EvaluationsPage(),
-          );
-        },
-      ),
-      GoRoute(
-        path: reviewCenter,
-        name: 'reviewCenter',
-        builder: (context, state) => const MainLayout(
-            title: 'Review Center', child: ReviewCenterPage()),
+          GoRoute(
+            path: taskDetails,
+            name: 'taskDetails',
+            builder: (context, state) {
+              final taskId = state.pathParameters['id'] ?? '';
+              return TaskDetailsPage(taskId: taskId);
+            },
+          ),
+          GoRoute(
+            path: team,
+            name: 'team',
+            builder: (context, state) => BlocProvider(
+              create: (context) => getIt<TeamsCubit>()..fetchTeams(),
+              child: const TeamsDashboardScreen(),
+            ),
+          ),
+          GoRoute(
+            path: reports,
+            name: 'reports',
+            builder: (context, state) => const ReportsPage(),
+          ),
+          GoRoute(
+            path: settings,
+            name: 'settings',
+            builder: (context, state) => BlocProvider(
+              create: (context) => getIt<ProfileCubit>(),
+              child: const ProfilePage(),
+            ),
+          ),
+          GoRoute(
+            path: usersRoles,
+            name: 'usersRoles',
+            builder: (context, state) => const UsersRolesScreen(),
+          ),
+          GoRoute(
+            path: complaints,
+            name: 'complaints',
+            builder: (context, state) => const ComplaintsPage(),
+          ),
+          GoRoute(
+            path: evaluations,
+            name: 'evaluations',
+            builder: (context, state) => const EvaluationsPage(),
+          ),
+          GoRoute(
+            path: reviewCenter,
+            name: 'reviewCenter',
+            builder: (context, state) => const ReviewCenterPage(),
+          ),
+          GoRoute(
+            path: auditLogs,
+            name: 'auditLogs',
+            builder: (context, state) => const AuditLogPage(),
+          ),
+        ],
       ),
     ],
   );

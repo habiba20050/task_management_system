@@ -2,12 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../core/localization/translate_extension.dart';
+import 'package:intl/intl.dart';
 import '../../../core/colors/app_colors.dart';
 import '../../../core/network/mock_database.dart';
 import '../../../responsive/responsive_layout.dart';
 import '../../auth/cubit/auth_cubit.dart';
+import '../../auth/model/user_model.dart';
+import '../../language/cubit/language_cubit.dart';
+import '../../../core/localization/translate_extension.dart';
 import '../models/unified_item.dart';
+import '../../../core/styles/app_spacing.dart';
+import '../../../core/styles/app_radius.dart';
+import '../../../core/styles/app_shadow.dart';
+import '../../../core/widgets/buttons/app_buttons.dart';
+import '../../../core/widgets/cards/app_cards.dart';
 
 class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
@@ -17,19 +25,27 @@ class TasksPage extends StatefulWidget {
 }
 
 class _TasksPageState extends State<TasksPage> {
-  // Tabs State: 'Tasks' | 'Tickets'
-  String _currentTab = 'Tasks';
-  
-  // Views
   String _selectedView = 'Table'; // 'Table' | 'Kanban' | 'Calendar'
-  
-  // Filters state
-  String _searchQuery = '';
-  String _selectedTeam = 'All';
-  String _selectedStatus = 'All';
-  String _selectedPriority = 'All';
 
-  // Submissions Controller
+  // Filter States
+  String _searchQuery = '';
+  String _selectedDept = 'All';
+  String _selectedTeam = 'All';
+  String _selectedPriority = 'All';
+  String _selectedStatus = 'All';
+  String _selectedOwner = 'All';
+  DateTimeRange? _selectedDateRange;
+
+  // Sorting States
+  String _sortByField = 'Due Date'; // 'Task Title' | 'Priority' | 'Status' | 'Department' | 'Assigned To' | 'Team' | 'Start Date' | 'Due Date' | 'Remaining Time' | 'Progress' | 'Created Date'
+  bool _sortAscending = true;
+
+  // Calendar States
+  String _calendarMode = 'Week'; // 'Day' | 'Week' | 'Month' | 'Custom'
+  DateTime _calendarActiveDate = DateTime(2026, 7, 24);
+  DateTimeRange? _calendarCustomRange;
+
+  // Form controllers
   final TextEditingController _submitTitleController = TextEditingController();
   final TextEditingController _submitDescController = TextEditingController();
   final TextEditingController _githubController = TextEditingController();
@@ -44,91 +60,32 @@ class _TasksPageState extends State<TasksPage> {
     super.dispose();
   }
 
-  // Fetch Tickets matching user role/team filters
-  List<UnifiedItem> _getUnifiedTickets() {
+  // --- Fetch Tasks matching filters ---
+  List<UnifiedItem> _getFilteredAndSortedTasks(String currentUserId, String currentUserRole) {
     final db = MockDatabase.instance;
     final List<UnifiedItem> items = [];
-
-    final authState = context.read<AuthCubit>().state;
-    String userRole = 'Team Member';
-    String userId = '';
-    if (authState is AuthSuccess) {
-      userRole = authState.user.role;
-      userId = authState.user.id;
-    }
-
-    // Find the team for Leader / Member to filter
-    MockTeam? userTeam;
-    if (userRole == 'Team Member' || userRole == 'Team Leader') {
-      userTeam = db.teams.firstWhere(
-        (t) => t.memberIds.contains(userId) || t.leaderId == userId,
-        orElse: () => MockTeam(id: '', name: '', managerId: '', department: '', leaderId: '', memberIds: []),
-      );
-    }
-
-    for (final ticket in db.tickets) {
-      final team = db.teams.firstWhere(
-        (t) => t.id == ticket.teamId,
-        orElse: () => MockTeam(id: '', name: 'General', managerId: '', department: '', leaderId: '', memberIds: []),
-      );
-      
-      // Role based visibility checks: only show tickets for the team the leader/member belongs to
-      if ((userRole == 'Team Member' || userRole == 'Team Leader') && ticket.teamId != userTeam?.id) {
-        continue;
-      }
-
-      items.add(
-        UnifiedItem(
-          id: ticket.id,
-          title: ticket.title,
-          description: ticket.description,
-          type: 'Ticket',
-          priority: ticket.priority,
-          status: ticket.status,
-          deadline: ticket.deadline,
-          teamName: team.name,
-          assignedTo: 'Team Deliverable',
-          originalObject: ticket,
-        ),
-      );
-    }
-
-    // Apply reactive filters
-    return items.where((item) {
-      final matchesSearch = item.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          item.description.toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesTeam = _selectedTeam == 'All' || item.teamName == _selectedTeam;
-      final matchesStatus = _selectedStatus == 'All' || item.status.toLowerCase() == _selectedStatus.toLowerCase();
-      final matchesPriority = _selectedPriority == 'All' || item.priority.toUpperCase() == _selectedPriority.toUpperCase();
-
-      return matchesSearch && matchesTeam && matchesStatus && matchesPriority;
-    }).toList();
-  }
-
-  // Fetch Tasks matching user role/team filters
-  List<UnifiedItem> _getUnifiedTasks() {
-    final db = MockDatabase.instance;
-    final List<UnifiedItem> items = [];
-
-    final authState = context.read<AuthCubit>().state;
-    String userRole = 'Team Member';
-    String userId = '';
-    if (authState is AuthSuccess) {
-      userRole = authState.user.role;
-      userId = authState.user.id;
-    }
 
     for (final task in db.tasks) {
-      final user = db.users.firstWhere((u) => u.id == task.assignedMemberId, orElse: () => MockUser(id: '', email: '', fullName: 'Unassigned', role: '', department: ''));
-      final team = db.teams.firstWhere((t) => t.memberIds.contains(task.assignedMemberId), orElse: () => MockTeam(id: '', name: 'General', managerId: '', department: '', leaderId: '', memberIds: []));
-      
-      // Role based visibility checks
-      if (userRole == 'Team Member' && task.assignedMemberId != userId) {
+      final owner = db.users.firstWhere(
+        (u) => u.id == task.currentOwnerId, 
+        orElse: () => MockUser(id: '', email: '', fullName: 'Unassigned', role: 'Team Member', department: '')
+      );
+      final team = db.teams.firstWhere(
+        (t) => t.id == task.assignedTeamId,
+        orElse: () => MockTeam(id: '', name: 'General', managerId: '', department: '', leaderId: '', memberIds: [])
+      );
+
+      // Role-based visibility
+      if (currentUserRole == 'Team Member' && task.currentOwnerId != currentUserId) {
         continue;
       }
-      if (userRole == 'Team Leader') {
-        final leaderTeam = db.teams.firstWhere((t) => t.leaderId == userId, orElse: () => MockTeam(id: '', name: '', managerId: '', department: '', leaderId: '', memberIds: []));
-        if (!leaderTeam.memberIds.contains(task.assignedMemberId) && task.assignedMemberId != userId) {
+      if (currentUserRole == 'Team Leader') {
+        final leaderTeam = db.teams.firstWhere(
+          (t) => t.leaderId == currentUserId, 
+          orElse: () => MockTeam(id: '', name: '', managerId: '', department: '', leaderId: '', memberIds: [])
+        );
+        final isOwnedByTeamMember = leaderTeam.memberIds.contains(task.currentOwnerId);
+        if (task.currentOwnerId != currentUserId && !isOwnedByTeamMember) {
           continue;
         }
       }
@@ -138,47 +95,169 @@ class _TasksPageState extends State<TasksPage> {
           id: task.id,
           title: task.title,
           description: task.description,
-          type: 'Task',
+          type: task.taskType,
           priority: task.priority,
           status: task.status,
           deadline: task.deadline,
           teamName: team.name,
-          assignedTo: user.fullName,
+          assignedTo: owner.fullName,
           originalObject: task,
         ),
       );
     }
 
-    // Apply reactive filters
-    return items.where((item) {
-      final matchesSearch = item.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          item.description.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          item.assignedTo.toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesTeam = _selectedTeam == 'All' || item.teamName == _selectedTeam;
-      final matchesStatus = _selectedStatus == 'All' || item.status.toLowerCase() == _selectedStatus.toLowerCase();
-      final matchesPriority = _selectedPriority == 'All' || item.priority.toUpperCase() == _selectedPriority.toUpperCase();
+    // Apply filters
+    final filtered = items.where((item) {
+      final task = item.originalObject as MockTask;
+      final owner = db.users.firstWhere((u) => u.id == task.currentOwnerId, orElse: () => MockUser(id: '', email: '', fullName: '', role: '', department: ''));
 
-      return matchesSearch && matchesTeam && matchesStatus && matchesPriority;
+      final matchesSearch = item.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          item.description.toLowerCase().contains(_searchQuery.toLowerCase());
+      
+      final matchesDept = _selectedDept == 'All' || task.taskDepartment == _selectedDept;
+      final matchesTeam = _selectedTeam == 'All' || item.teamName == _selectedTeam;
+      final matchesPriority = _selectedPriority == 'All' || item.priority.toUpperCase() == _selectedPriority.toUpperCase();
+      final matchesStatus = _selectedStatus == 'All' || item.status.toLowerCase() == _selectedStatus.toLowerCase();
+      final matchesOwner = _selectedOwner == 'All' || task.currentOwnerId == _selectedOwner;
+
+      bool matchesDateRange = true;
+      if (_selectedDateRange != null) {
+        final taskDate = DateTime.tryParse(task.deadline);
+        if (taskDate != null) {
+          matchesDateRange = taskDate.isAfter(_selectedDateRange!.start.subtract(const Duration(days: 1))) &&
+              taskDate.isBefore(_selectedDateRange!.end.add(const Duration(days: 1)));
+        }
+      }
+
+      return matchesSearch && matchesDept && matchesTeam && matchesPriority && matchesStatus && matchesOwner && matchesDateRange;
     }).toList();
+
+    // Sorting logic on all columns
+    filtered.sort((a, b) {
+      final taskA = a.originalObject as MockTask;
+      final taskB = b.originalObject as MockTask;
+
+      int comparison = 0;
+      switch (_sortByField) {
+        case 'Task Title':
+          comparison = a.title.compareTo(b.title);
+          break;
+        case 'Priority':
+          final pMap = {'HIGH': 3, 'MEDIUM': 2, 'LOW': 1};
+          final pa = pMap[a.priority.toUpperCase()] ?? 0;
+          final pb = pMap[b.priority.toUpperCase()] ?? 0;
+          comparison = pa.compareTo(pb);
+          break;
+        case 'Status':
+          comparison = a.status.compareTo(b.status);
+          break;
+        case 'Department':
+          comparison = taskA.taskDepartment.compareTo(taskB.taskDepartment);
+          break;
+        case 'Assigned To':
+          comparison = a.assignedTo.compareTo(b.assignedTo);
+          break;
+        case 'Team':
+          comparison = a.teamName.compareTo(b.teamName);
+          break;
+        case 'Start Date':
+          comparison = taskA.startDate.compareTo(taskB.startDate);
+          break;
+        case 'Due Date':
+          final da = DateTime.tryParse(a.deadline) ?? DateTime(9999);
+          final dbDate = DateTime.tryParse(b.deadline) ?? DateTime(9999);
+          comparison = da.compareTo(dbDate);
+          break;
+        case 'Remaining Time':
+          final da = DateTime.tryParse(a.deadline) ?? DateTime(9999);
+          final dbDate = DateTime.tryParse(b.deadline) ?? DateTime(9999);
+          comparison = da.compareTo(dbDate);
+          break;
+        case 'Progress':
+          final pa = _calculateProgress(a.status);
+          final pb = _calculateProgress(b.status);
+          comparison = pa.compareTo(pb);
+          break;
+        case 'Created Date':
+          comparison = a.id.compareTo(b.id);
+          break;
+      }
+      return _sortAscending ? comparison : -comparison;
+    });
+
+    return filtered;
+  }
+
+  double _calculateProgress(String status) {
+    switch (status) {
+      case 'Completed':
+      case 'Approved':
+        return 1.0;
+      case 'Submitted':
+      case 'Under Review':
+        return 0.7;
+      case 'In Progress':
+        return 0.3;
+      case 'Needs Changes':
+        return 0.2;
+      case 'Assigned':
+      case 'Pending':
+        return 0.0;
+      default:
+        return 0.1;
+    }
+  }
+
+  String _calculateRemainingTime(String deadlineStr) {
+    final date = DateTime.tryParse(deadlineStr);
+    if (date == null) return 'N/A';
+    final now = DateTime.now();
+    final diff = date.difference(now);
+    if (diff.isNegative) {
+      return 'Overdue'.tr(context);
+    } else if (diff.inDays > 0) {
+      return context.read<LanguageCubit>().state == 'EN' ? '${diff.inDays}d left' : 'متبقي ${diff.inDays}ي';
+    } else {
+      return context.read<LanguageCubit>().state == 'EN' ? '${diff.inHours}h left' : 'متبقي ${diff.inHours}س';
+    }
+  }
+
+  String _getCreatedDate(MockTask task) {
+    if (task.startDate.isNotEmpty) return task.startDate;
+    return DateFormat('yyyy-MM-dd').format(DateTime.fromMillisecondsSinceEpoch(int.tryParse(task.id) ?? 1774384000000));
+  }
+
+  void _onSort(String field) {
+    setState(() {
+      if (_sortByField == field) {
+        _sortAscending = !_sortAscending;
+      } else {
+        _sortByField = field;
+        _sortAscending = true;
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = ResponsiveLayout.isDesktop(context);
     final authState = context.watch<AuthCubit>().state;
-    final role = authState is AuthSuccess ? authState.user.role : 'Team Member';
-    
-    final filteredItems = _currentTab == 'Tasks' ? _getUnifiedTasks() : _getUnifiedTickets();
+    final user = authState is AuthSuccess
+        ? authState.user
+        : UserModel(id: '1', email: 'admin@aitu.edu', username: 'admin', fullName: 'Dr. Ahmed Hassan', role: 'Admin');
+    final role = user.role.isEmpty ? 'Admin' : user.role;
+    final userId = user.id.isEmpty ? '1' : user.id;
 
-    return Scaffold(
-      backgroundColor: AppColors.dashboardBg,
-      body: SafeArea(
+    final filteredItems = _getFilteredAndSortedTasks(userId, role);
+
+    return Container(
+      color: AppColors.background,
+      child: SafeArea(
         child: Padding(
-          padding: EdgeInsets.all(isDesktop ? 32.w : 16.w),
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Title Header & Creation Row
+              // Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -186,152 +265,64 @@ class _TasksPageState extends State<TasksPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        (_currentTab == 'Tasks' ? 'Tasks Board' : 'Tickets Board').tr(context),
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 22.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        role == 'Team Member' ? 'My Tasks'.tr(context) : 'Tasks'.tr(context),
+                        style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                       ),
                       SizedBox(height: 4.h),
                       Text(
-                        (_currentTab == 'Tasks'
-                            ? 'Monitor, search and filter all assigned task deliverables'
-                            : 'Monitor, search and filter high-level team deliverables (Tickets)').tr(context),
-                        style: TextStyle(color: Colors.grey[600], fontSize: 13.sp),
+                        'Manage and delegate academic workflow tasks'.tr(context),
+                        style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
-                  Row(
-                    children: [
-                      // View Toggle Switcher (Table / Kanban / Calendar)
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12.r),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: Row(
-                          children: ['Table', 'Kanban', 'Calendar'].map((view) {
-                            final isSelected = _selectedView == view;
-                            return GestureDetector(
-                              onTap: () => setState(() => _selectedView = view),
-                              child: Container(
-                                padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
-                                decoration: BoxDecoration(
-                                  color: isSelected ? AppColors.primary : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(10.r),
-                                ),
-                                child: Text(
-                                  view.tr(context),
-                                  style: TextStyle(
-                                    color: isSelected ? Colors.white : Colors.grey[700],
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                      SizedBox(width: 12.w),
-                      if (_currentTab == 'Tasks' && (role == 'Admin' || role == 'Manager' || role == 'Team Leader'))
-                        ElevatedButton.icon(
-                          onPressed: () => _showAddTaskDialog(context),
-                          icon: const Icon(Icons.add, color: Colors.white),
-                          label: Text('Add Task'.tr(context), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                          ),
-                        ),
-                      if (_currentTab == 'Tickets' && (role == 'Admin' || role == 'Manager' || role == 'Team Leader'))
-                        ElevatedButton.icon(
-                          onPressed: () => _showAddTicketDialog(context),
-                          icon: const Icon(Icons.add, color: Colors.white),
-                          label: Text('Add Ticket'.tr(context), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-              SizedBox(height: 16.h),
-
-              // 2. Tasks / Tickets Tab Switcher
-              Row(
-                children: [
-                  _buildTabButton('Tasks', _currentTab == 'Tasks'),
-                  SizedBox(width: 12.w),
-                  _buildTabButton('Tickets', _currentTab == 'Tickets'),
-                ],
-              ),
-              SizedBox(height: 16.h),
-
-              // 3. Filters Row
-              Row(
-                children: [
-                  // Live Search Field
-                  Expanded(
-                    flex: 2,
-                    child: Container(
-                      height: 44.h,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12.r),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: TextField(
-                        onChanged: (val) => setState(() => _searchQuery = val),
-                        decoration: InputDecoration(
-                          hintText: _currentTab == 'Tasks' ? 'Search tasks or assignees...' : 'Search tickets...',
-                          hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13.sp),
-                          prefixIcon: const Icon(Icons.search, color: AppColors.primary),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                        ),
-                        style: TextStyle(fontSize: 13.sp),
-                      ),
+                  if (role == 'Admin' || role == 'Manager' || role == 'Team Leader')
+                    PrimaryButton(
+                      text: 'Add Task'.tr(context),
+                      onPressed: () => _showAddTaskDialog(context, userId),
+                      prefixIcon: const Icon(Icons.add, color: Colors.white),
                     ),
-                  ),
-                  SizedBox(width: 12.w),
-                  
-                  // Team Dropdown (Visible only for Admin & Manager)
-                  if (role == 'Admin' || role == 'Manager') ...[
-                    _buildDropdown('Team', _selectedTeam, ['All', 'Software Engineering Team', 'IT Infrastructure Team', 'Finance Management'], (val) {
-                      setState(() => _selectedTeam = val!);
-                    }),
-                    SizedBox(width: 12.w),
-                  ],
-
-                  // Status Dropdown
-                  _buildDropdown('Status', _selectedStatus, _currentTab == 'Tasks'
-                      ? ['All', 'Pending', 'Assigned', 'In Progress', 'Submitted', 'Approved', 'Needs Changes', 'Rejected']
-                      : ['All', 'Open', 'In Progress', 'Under Review', 'Completed'], (val) {
-                    setState(() => _selectedStatus = val!);
-                  }),
-                  SizedBox(width: 12.w),
-
-                  // Priority Dropdown
-                  _buildDropdown('Priority', _selectedPriority, ['All', 'HIGH', 'MEDIUM', 'LOW'], (val) {
-                    setState(() => _selectedPriority = val!);
-                  }),
                 ],
               ),
-              SizedBox(height: 24.h),
+              SizedBox(height: 16.h),
 
-              // 4. Render Selection View
+              // Filter Bar
+              _buildFilterBar(context),
+              SizedBox(height: 12.h),
+
+              // Sorting & View select
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Click table headers to sort.'.tr(context), style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary)),
+                  ToggleButtons(
+                    borderRadius: BorderRadius.circular(AppRadius.md.r),
+                    selectedColor: Colors.white,
+                    fillColor: AppColors.primary,
+                    color: AppColors.textSecondary,
+                    constraints: BoxConstraints(minWidth: 60.w, minHeight: 32.h),
+                    isSelected: [_selectedView == 'Table', _selectedView == 'Kanban', _selectedView == 'Calendar'],
+                    onPressed: (index) {
+                      setState(() {
+                        if (index == 0) _selectedView = 'Table';
+                        if (index == 1) _selectedView = 'Kanban';
+                        if (index == 2) _selectedView = 'Calendar';
+                      });
+                    },
+                    children: [
+                      Text('Table'.tr(context), style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold)),
+                      Text('Kanban'.tr(context), style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold)),
+                      Text('Calendar'.tr(context), style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ],
+              ),
+              SizedBox(height: 12.h),
+
+              // Layout display
               Expanded(
                 child: _selectedView == 'Table'
-                    ? _buildTableView(filteredItems, role)
-                    : (_selectedView == 'Kanban' ? _buildKanbanView(filteredItems, role) : _buildCalendarView(filteredItems)),
+                    ? _buildTableView(filteredItems, role, userId)
+                    : (_selectedView == 'Kanban' ? _buildKanbanView(filteredItems, role, userId) : _buildCalendarView(filteredItems)),
               ),
             ],
           ),
@@ -340,147 +331,160 @@ class _TasksPageState extends State<TasksPage> {
     );
   }
 
-  Widget _buildTabButton(String label, bool isSelected) {
-    return GestureDetector(
-      onTap: () => setState(() {
-        _currentTab = label;
-        _selectedStatus = 'All';
-      }),
+  // --- Filter Bar ---
+  Widget _buildFilterBar(BuildContext context) {
+    final db = MockDatabase.instance;
+    return AppCard(
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10.w),
+                  decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(AppRadius.md.r), border: Border.all(color: AppColors.border)),
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search'.tr(context) + '...',
+                      border: InputBorder.none,
+                      icon: const Icon(Icons.search, color: Colors.grey),
+                      isDense: true,
+                    ),
+                    onChanged: (val) => setState(() => _searchQuery = val),
+                  ),
+                ),
+              ),
+              SizedBox(width: 10.w),
+              _buildDropdown('Department'.tr(context), _selectedDept, ['All', 'Computer Science', 'Engineering', 'IT Services'], (val) => setState(() => _selectedDept = val!)),
+              SizedBox(width: 10.w),
+              _buildDropdown('Team'.tr(context), _selectedTeam, ['All', ...db.teams.map((t) => t.name)], (val) => setState(() => _selectedTeam = val!)),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          Row(
+            children: [
+              _buildDropdown('Priority'.tr(context), _selectedPriority, ['All', 'HIGH', 'MEDIUM', 'LOW'], (val) => setState(() => _selectedPriority = val!)),
+              SizedBox(width: 10.w),
+              _buildDropdown('Status'.tr(context), _selectedStatus, ['All', 'Pending', 'Assigned', 'In Progress', 'Submitted', 'Under Review', 'Approved', 'Completed', 'Needs Changes', 'Rejected', 'Overdue'], (val) => setState(() => _selectedStatus = val!)),
+              SizedBox(width: 10.w),
+              _buildDropdown('Assigned To'.tr(context), _selectedOwner, ['All', ...db.users.map((u) => u.id)], (val) => setState(() => _selectedOwner = val!), labelMap: {'All': 'All'.tr(context), ...{for (var u in db.users) u.id: u.fullName}}),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: TextButton.icon(
+                  onPressed: () async {
+                    final range = await showDateRangePicker(context: context, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
+                    if (range != null) setState(() => _selectedDateRange = range);
+                  },
+                  icon: const Icon(Icons.date_range, size: 14),
+                  label: Text(_selectedDateRange == null ? 'Date Range'.tr(context) : 'Selected', style: TextStyle(fontSize: 10.sp)),
+                  style: TextButton.styleFrom(side: const BorderSide(color: AppColors.border)),
+                ),
+              ),
+              if (_selectedDateRange != null) ...[
+                IconButton(icon: const Icon(Icons.clear, color: AppColors.danger), onPressed: () => setState(() => _selectedDateRange = null))
+              ]
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDropdown(String label, String value, List<String> options, ValueChanged<String?> onChanged, {Map<String, String>? labelMap}) {
+    return Expanded(
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0)),
-          boxShadow: isSelected ? [BoxShadow(color: AppColors.primary.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4))] : [],
-        ),
-        child: Text(
-          label.tr(context),
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey[700],
-            fontWeight: FontWeight.bold,
-            fontSize: 14.sp,
+        padding: EdgeInsets.symmetric(horizontal: 8.w),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.md.r), border: Border.all(color: AppColors.border)),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: value,
+            isExpanded: true,
+            hint: Text(label, style: TextStyle(fontSize: 11.sp)),
+            items: options.map((o) {
+              final text = labelMap != null ? (labelMap[o] ?? o) : o.tr(context);
+              return DropdownMenuItem(value: o, child: Text(text, style: TextStyle(fontSize: 11.sp)));
+            }).toList(),
+            onChanged: onChanged,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildDropdown(String label, String value, List<String> options, ValueChanged<String?> onChanged) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          hint: Text(label.tr(context)),
-          items: options
-              .map((o) => DropdownMenuItem(value: o, child: Text(o.tr(context), style: TextStyle(fontSize: 12.sp))))
-              .toList(),
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-
-  // --- 1. TABLE VIEW ---
-  Widget _buildTableView(List<UnifiedItem> items, String role) {
+  // --- TABLE VIEW ---
+  Widget _buildTableView(List<UnifiedItem> items, String role, String currentUserId) {
     if (items.isEmpty) {
-      return Center(
-        child: Text(
-          (_currentTab == 'Tasks'
-                  ? 'No tasks matching criteria.'
-                  : 'No tickets matching criteria.')
-              .tr(context),
-        ),
-      );
+      return Center(child: Text('No tasks matching criteria.'.tr(context)));
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
+    final db = MockDatabase.instance;
+
+    return AppCard(
+      padding: EdgeInsets.zero,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16.r),
+        borderRadius: BorderRadius.circular(AppRadius.lg.r),
         child: SingleChildScrollView(
           scrollDirection: Axis.vertical,
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: Theme(
-              data: Theme.of(context).copyWith(dividerColor: const Color(0xFFE2E8F0)),
-              child: DataTable(
-                columns: [
-                  DataColumn(label: Text('Title'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
-                  if (_currentTab == 'Tasks')
-                    DataColumn(label: Text('Assignee'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
-                  DataColumn(label: Text('Team / Dept'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
-                  DataColumn(label: Text('Priority'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
-                  DataColumn(label: Text('Status'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
-                  DataColumn(label: Text('Deadline'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
-                  DataColumn(label: Text('Actions'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp))),
-                ],
-                rows: items.map((item) {
-                  return DataRow(cells: [
-                    DataCell(Text(item.title, style: const TextStyle(fontWeight: FontWeight.w600))),
-                    if (_currentTab == 'Tasks')
-                      DataCell(Text(item.assignedTo)),
-                    DataCell(Text(item.teamName)),
-                    DataCell(Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                      decoration: BoxDecoration(
-                        color: item.priority == 'HIGH' ? const Color(0xFFFFECEB) : const Color(0xFFFFF9E6),
-                        borderRadius: BorderRadius.circular(6.r),
-                      ),
-                      child: Text(
-                        item.priority.tr(context),
-                        style: TextStyle(
-                          color: item.priority == 'HIGH' ? const Color(0xFFEB5757) : const Color(0xFFF2C94C),
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    )),
-                    DataCell(Text(item.status.tr(context), style: const TextStyle(fontWeight: FontWeight.bold))),
-                    DataCell(Text(item.deadline)),
-                    DataCell(Row(
-                      children: [
-                        if (_currentTab == 'Tasks') ...[
-                          if (role == 'Team Member' && item.status != 'Approved' && item.status != 'Completed' && item.status != 'Submitted')
-                            TextButton.icon(
-                              onPressed: () => _showSubmissionDialog(context, item.id),
-                              icon: const Icon(Icons.upload_file, size: 14),
-                              label: Text('Submit Work'.tr(context)),
-                            ),
-                          if ((role == 'Team Leader' || role == 'Manager') && item.status == 'Submitted')
-                            TextButton(
-                              onPressed: () => context.go('/review-center'),
-                              child: Text('Review'.tr(context), style: const TextStyle(color: Colors.orange)),
-                            ),
-                          if (item.status == 'Completed' || item.status == 'Approved' || item.status == 'Approved With Suggestions')
-                            TextButton.icon(
-                              onPressed: () => _showViewTaskSubmissionDialog(context, item.originalObject as MockTask),
-                              icon: const Icon(Icons.visibility_outlined, size: 14, color: Colors.blue),
-                              label: Text('View'.tr(context), style: const TextStyle(color: Colors.blue)),
-                            ),
-                        ] else ...[
-                          if (role == 'Manager')
-                            TextButton.icon(
-                              onPressed: () => _showUpdateTicketStatusDialog(context, item.id),
-                              icon: const Icon(Icons.edit_note, size: 14, color: Colors.orange),
-                              label: Text('Update Status'.tr(context), style: const TextStyle(color: Colors.orange)),
-                            )
-                        ],
-                      ],
-                    )),
-                  ]);
-                }).toList(),
-              ),
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
+              columns: [
+                _buildSortableColumn('Task Title', 'Task Title'),
+                _buildSortableColumn('Priority', 'Priority'),
+                _buildSortableColumn('Status', 'Status'),
+                _buildSortableColumn('Department', 'Department'),
+                _buildSortableColumn('Assigned To', 'Assigned To'),
+                _buildSortableColumn('Team', 'Team'),
+                _buildSortableColumn('Start Date', 'Start Date'),
+                _buildSortableColumn('Due Date', 'Due Date'),
+                _buildSortableColumn('Remaining Time', 'Remaining Time'),
+                _buildSortableColumn('Progress', 'Progress'),
+                _buildSortableColumn('Created Date', 'Created Date'),
+                DataColumn(label: Text('Actions'.tr(context), style: const TextStyle(fontWeight: FontWeight.bold))),
+              ],
+              rows: items.map((item) {
+                final task = item.originalObject as MockTask;
+                final creator = db.users.firstWhere((u) => u.id == task.assignedById, orElse: () => MockUser(id: '', email: '', fullName: 'System', role: '', department: ''));
+                final progress = _calculateProgress(task.status);
+                final remaining = _calculateRemainingTime(task.deadline);
+
+                var pBg = Colors.grey.shade100;
+                var pFg = AppColors.textSecondary;
+                if (task.priority == 'HIGH') {
+                  pBg = const Color(0xFFFFEBEE);
+                  pFg = AppColors.danger;
+                } else if (task.priority == 'LOW') {
+                  pBg = const Color(0xFFE8F5E9);
+                  pFg = AppColors.success;
+                }
+
+                return DataRow(cells: [
+                  DataCell(Text(task.title, style: const TextStyle(fontWeight: FontWeight.bold))),
+                  DataCell(Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                    decoration: BoxDecoration(color: pBg, borderRadius: BorderRadius.circular(6.r)),
+                    child: Text(task.priority.tr(context), style: TextStyle(color: pFg, fontSize: 9.sp, fontWeight: FontWeight.bold)),
+                  )),
+                  DataCell(Text(task.status.tr(context))),
+                  DataCell(Text(task.taskDepartment.tr(context))),
+                  DataCell(Text(item.assignedTo)),
+                  DataCell(Text(item.teamName)),
+                  DataCell(Text(task.startDate)),
+                  DataCell(Text(task.deadline)),
+                  DataCell(Text(remaining, style: TextStyle(color: remaining == 'Overdue'.tr(context) ? AppColors.danger : AppColors.textPrimary))),
+                  DataCell(SizedBox(width: 80.w, child: LinearProgressIndicator(value: progress, color: progress == 1.0 ? AppColors.success : AppColors.primary))),
+                  DataCell(Text(_getCreatedDate(task))),
+                  DataCell(Row(
+                    children: [
+                      IconButton(icon: const Icon(Icons.visibility, color: Colors.blue, size: 16), onPressed: () => _showQuickViewModal(context, task)),
+                      IconButton(icon: const Icon(Icons.edit, color: Colors.orange, size: 16), onPressed: () => _showEditTaskDialog(context, task, currentUserId)),
+                      IconButton(icon: const Icon(Icons.delete, color: AppColors.danger, size: 16), onPressed: () => _confirmDeleteTask(context, task.id)),
+                    ],
+                  )),
+                ]);
+              }).toList(),
             ),
           ),
         ),
@@ -488,497 +492,526 @@ class _TasksPageState extends State<TasksPage> {
     );
   }
 
-  // --- 2. KANBAN VIEW ---
-  Widget _buildKanbanView(List<UnifiedItem> items, String role) {
-    final todo = items.where((i) => i.status == 'Todo' || i.status == 'Assigned' || i.status == 'Pending' || i.status == 'Open').toList();
+  DataColumn _buildSortableColumn(String label, String field) {
+    final isSelected = _sortByField == field;
+    return DataColumn(
+      label: InkWell(
+        onTap: () => _onSort(field),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(label.tr(context), style: const TextStyle(fontWeight: FontWeight.bold)),
+            if (isSelected) ...[
+              SizedBox(width: 4.w),
+              Icon(_sortAscending ? Icons.arrow_drop_up : Icons.arrow_drop_down, size: 16),
+            ]
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- Kanban Column Widget ---
+  Widget _buildKanbanView(List<UnifiedItem> items, String role, String currentUserId) {
+    final todo = items.where((i) => i.status == 'Todo' || i.status == 'Assigned' || i.status == 'Pending').toList();
     final inProgress = items.where((i) => i.status == 'In Progress' || i.status == 'Needs Changes').toList();
-    final underReview = items.where((i) => i.status == 'Submitted' || i.status == 'Under Review').toList();
-    final done = items.where((i) => i.status == 'Approved' || i.status == 'Completed').toList();
+    final review = items.where((i) => i.status == 'Submitted' || i.status == 'Under Review').toList();
+    final done = items.where((i) => i.status == 'Completed' || i.status == 'Approved').toList();
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: _buildKanbanColumn('To Do', todo, Colors.blue, role)),
-        SizedBox(width: 16.w),
-        Expanded(child: _buildKanbanColumn('In Progress', inProgress, Colors.orange, role)),
-        SizedBox(width: 16.w),
-        Expanded(child: _buildKanbanColumn('Under Review', underReview, Colors.purple, role)),
-        SizedBox(width: 16.w),
-        Expanded(child: _buildKanbanColumn('Completed', done, Colors.green, role)),
+        Expanded(child: _buildKanbanCol('Todo'.tr(context), todo)),
+        SizedBox(width: 10.w),
+        Expanded(child: _buildKanbanCol('In Progress'.tr(context), inProgress)),
+        SizedBox(width: 10.w),
+        Expanded(child: _buildKanbanCol('Under Review'.tr(context), review)),
+        SizedBox(width: 10.w),
+        Expanded(child: _buildKanbanCol('Completed'.tr(context), done)),
       ],
     );
   }
 
-  Widget _buildKanbanColumn(String title, List<UnifiedItem> items, Color headerColor, String role) {
+  Widget _buildKanbanCol(String label, List<UnifiedItem> list) {
     return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(16.r),
-      ),
-      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(AppRadius.lg.r), border: Border.all(color: AppColors.border)),
+      padding: EdgeInsets.all(8.w),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(width: 8.w, height: 8.h, decoration: BoxDecoration(color: headerColor, shape: BoxShape.circle)),
-              SizedBox(width: 8.w),
-              Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp)),
-              const Spacer(),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
-                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10.r)),
-                child: Text(items.length.toString(), style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-          SizedBox(height: 16.h),
+          Text('$label (${list.length})', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp)),
+          const Divider(),
           Expanded(
-            child: ListView.separated(
-              itemCount: items.length,
-              separatorBuilder: (context, index) => SizedBox(height: 12.h),
-              itemBuilder: (context, index) {
-                final item = items[index];
-                return GestureDetector(
-                  onTap: () {
-                    if (item.type == 'Task' && (item.status == 'Completed' || item.status == 'Approved')) {
-                      _showViewTaskSubmissionDialog(context, item.originalObject as MockTask);
-                    }
-                  },
-                  child: Card(
-                    color: Colors.white,
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
-                    child: Padding(
-                      padding: EdgeInsets.all(12.w),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          SizedBox(height: 8.h),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFECFDF5),
-                                  borderRadius: BorderRadius.circular(4.r),
-                                ),
-                                child: Text(item.assignedTo, style: TextStyle(fontSize: 9.sp, fontWeight: FontWeight.bold, color: Colors.green)),
-                              ),
-                              Text(item.deadline, style: TextStyle(fontSize: 10.sp, color: Colors.grey[500])),
-                            ],
-                          ),
-                          if (item.type == 'Ticket' && role == 'Manager') ...[
-                            const SizedBox(height: 8),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
-                                onPressed: () => _showUpdateTicketStatusDialog(context, item.id),
-                                style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(50, 24)),
-                                child: const Text('Update Status', style: TextStyle(fontSize: 11, color: Colors.orange)),
-                              ),
-                            )
-                          ]
-                        ],
-                      ),
-                    ),
+            child: ListView.builder(
+              itemCount: list.length,
+              itemBuilder: (context, idx) {
+                final item = list[idx];
+                final task = item.originalObject as MockTask;
+                return Card(
+                  child: ListTile(
+                    title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(item.assignedTo),
+                    onTap: () => _showQuickViewModal(context, task),
                   ),
                 );
               },
             ),
-          ),
+          )
         ],
       ),
     );
   }
 
-  // --- 3. CALENDAR VIEW ---
+  // --- Calendar View ---
   Widget _buildCalendarView(List<UnifiedItem> items) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      padding: EdgeInsets.all(20.w),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.lg.r), border: Border.all(color: AppColors.border)),
+      padding: EdgeInsets.all(16.w),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Weekly Schedule View', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          SizedBox(height: 16.h),
-          Expanded(
-            child: GridView.count(
-              crossAxisCount: 5,
-              crossAxisSpacing: 12.w,
-              mainAxisSpacing: 12.h,
-              children: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map((day) {
-                final dayItems = items.where((i) {
-                  return i.id.hashCode % 5 == ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].indexOf(day);
-                }).toList();
-
-                return Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12.r),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  padding: EdgeInsets.all(8.w),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(day, style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 12.sp)),
-                      const Divider(),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: dayItems.length,
-                          itemBuilder: (context, index) {
-                            final item = dayItems[index];
-                            return Card(
-                              color: Colors.white,
-                              child: Padding(
-                                padding: EdgeInsets.all(6.w),
-                                child: Text(item.title, style: TextStyle(fontSize: 11.sp), maxLines: 2, overflow: TextOverflow.ellipsis),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- VIEW SUBMISSION DIALOG ---
-  void _showViewTaskSubmissionDialog(BuildContext context, MockTask task) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final db = MockDatabase.instance;
-        final assignee = db.users.firstWhere((u) => u.id == task.assignedMemberId, orElse: () => MockUser(id: '', email: '', fullName: 'Unassigned', role: '', department: ''));
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          title: Text('View Task: ${task.title}', style: const TextStyle(fontWeight: FontWeight.bold)),
-          content: SizedBox(
-            width: 500.w,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('${DateFormat('MMMM yyyy').format(_calendarActiveDate)}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15.sp)),
+              Row(
                 children: [
-                  _buildDetailRow('Assignee:', assignee.fullName),
-                  _buildDetailRow('Status:', task.status),
-                  _buildDetailRow('Priority:', task.priority),
-                  _buildDetailRow('Deadline:', task.deadline),
-                  _buildDetailRow('Estimated Hours:', '${task.estimatedHours} hrs'),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  const Text('Description:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                  const SizedBox(height: 4),
-                  Text(task.description),
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  const Text('Submission Deliverables:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-                  const SizedBox(height: 8),
-                  _buildDetailRow('Report Title:', task.submissionReport ?? 'None'),
-                  _buildDetailRow('Notes:', task.notes ?? 'None'),
-                  _buildLinkRow('GitHub Repository:', task.githubLink),
-                  _buildLinkRow('Pull Request:', task.prLink),
-                  if (task.attachments.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    const Text('Uploaded Files:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                    ...task.attachments.map((file) => Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.attach_file, size: 14, color: Colors.blue),
-                          const SizedBox(width: 4),
-                          Text(file, style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline)),
-                        ],
-                      ),
-                    )),
-                  ],
+                  _buildCalBtn('Day', 'Day'),
+                  _buildCalBtn('Week', 'Week'),
+                  _buildCalBtn('Month', 'Month'),
+                  _buildCalBtn('Custom', 'Custom'),
                 ],
-              ),
-            ),
+              )
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        );
+          SizedBox(height: 10.h),
+          Expanded(child: _buildCalendarBody(items)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalBtn(String label, String mode) {
+    final isSelected = _calendarMode == mode;
+    return TextButton(
+      onPressed: () async {
+        if (mode == 'Custom') {
+          final range = await showDateRangePicker(context: context, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
+          if (range != null) {
+            setState(() {
+              _calendarCustomRange = range;
+              _calendarMode = 'Custom';
+            });
+          }
+        } else {
+          setState(() => _calendarMode = mode);
+        }
       },
+      child: Text(label.tr(context), style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, color: isSelected ? AppColors.primary : Colors.grey)),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-          const SizedBox(width: 8),
-          Expanded(child: Text(value, style: const TextStyle(color: Colors.black))),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLinkRow(String label, String? url) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: url != null && url.isNotEmpty
-                ? Text(url, style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline))
-                : const Text('None', style: TextStyle(color: Colors.black)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- TICKET UPDATE STATUS DIALOG ---
-  void _showUpdateTicketStatusDialog(BuildContext context, String ticketId) {
-    final db = MockDatabase.instance;
-    final ticket = db.tickets.firstWhere((t) => t.id == ticketId);
-    String status = ticket.status;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: Colors.white,
-          title: const Text('Update Ticket Status', style: TextStyle(fontWeight: FontWeight.bold)),
-          content: DropdownButtonFormField<String>(
-            value: status,
-            items: ['Open', 'In Progress', 'Under Review', 'Completed'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-            onChanged: (val) => setDialogState(() => status = val!),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  MockDatabase.instance.updateTicketStatus(ticketId, status);
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Ticket status updated to $status')),
-                );
-              },
-              child: const Text('Update'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- TICKET ADD DIALOG ---
-  void _showAddTicketDialog(BuildContext context) {
-    final titleController = TextEditingController();
-    final descController = TextEditingController();
-    String priority = 'MEDIUM';
-    String teamId = 't1';
-    
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: Colors.white,
-          title: const Text('Add New Ticket', style: TextStyle(fontWeight: FontWeight.bold)),
-          content: SizedBox(
-            width: 400.w,
+  Widget _buildCalendarBody(List<UnifiedItem> items) {
+    if (_calendarMode == 'Day') {
+      final dayItems = items.where((i) {
+        final d = DateTime.tryParse(i.deadline);
+        return d != null && d.year == _calendarActiveDate.year && d.month == _calendarActiveDate.month && d.day == _calendarActiveDate.day;
+      }).toList();
+      return ListView.builder(
+        itemCount: dayItems.length,
+        itemBuilder: (context, idx) {
+          final item = dayItems[idx];
+          return ListTile(
+            title: Text(item.title),
+            trailing: Text(item.priority),
+            onTap: () => _showQuickViewModal(context, item.originalObject as MockTask),
+          );
+        },
+      );
+    }
+    if (_calendarMode == 'Week') {
+      final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+      return GridView.count(
+        crossAxisCount: 5,
+        crossAxisSpacing: 8.w,
+        children: days.map((d) {
+          int offset = days.indexOf(d);
+          final dateStr = '2026-07-${20 + offset}';
+          final dayItems = items.where((i) => i.deadline == dateStr).toList();
+          return Container(
+            color: Colors.grey.shade50,
+            padding: EdgeInsets.all(4.w),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Ticket Title')),
-                SizedBox(height: 12.h),
-                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description'), maxLines: 3),
-                SizedBox(height: 12.h),
-                DropdownButtonFormField<String>(
-                  initialValue: priority,
-                  decoration: const InputDecoration(labelText: 'Priority'),
-                  items: ['HIGH', 'MEDIUM', 'LOW'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-                  onChanged: (val) => setDialogState(() => priority = val!),
-                ),
-                SizedBox(height: 12.h),
-                DropdownButtonFormField<String>(
-                  initialValue: teamId,
-                  decoration: const InputDecoration(labelText: 'Assign Team'),
-                  items: MockDatabase.instance.teams
-                      .map((t) => DropdownMenuItem(value: t.id, child: Text(t.name)))
-                      .toList(),
-                  onChanged: (val) => setDialogState(() => teamId = val!),
-                ),
+                Text(d.tr(context), style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(dateStr, style: TextStyle(fontSize: 8.sp, color: Colors.grey)),
+                const Divider(),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: dayItems.length,
+                    itemBuilder: (context, idx) => Card(child: Padding(padding: EdgeInsets.all(4.w), child: Text(dayItems[idx].title, style: TextStyle(fontSize: 9.sp)))),
+                  ),
+                )
               ],
             ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () {
-                if (titleController.text.isNotEmpty) {
-                  setState(() {
-                    MockDatabase.instance.addTicket(
-                      MockTicket(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        title: titleController.text,
-                        description: descController.text,
-                        priority: priority,
-                        deadline: '2026-07-25',
-                        teamId: teamId,
-                        status: 'Open',
-                      ),
-                    );
-                  });
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+          );
+        }).toList(),
+      );
+    }
 
-  // --- TASK ADD DIALOG ---
-  void _showAddTaskDialog(BuildContext context) {
-    final titleController = TextEditingController();
-    final descController = TextEditingController();
-    String priority = 'MEDIUM';
-    String memberId = '4'; // Default member Sarah
-    
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: Colors.white,
-          title: const Text('Add New Task', style: TextStyle(fontWeight: FontWeight.bold)),
-          content: SizedBox(
-            width: 400.w,
+    if (_calendarMode == 'Month') {
+      return GridView.builder(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 7, childAspectRatio: 1.2),
+        itemCount: 30,
+        itemBuilder: (context, idx) {
+          final dateStr = '2026-07-${idx + 1 < 10 ? '0${idx + 1}' : idx + 1}';
+          final dayItems = items.where((i) => i.deadline == dateStr).toList();
+          return Container(
+            decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade100)),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Task Title')),
-                SizedBox(height: 12.h),
-                TextField(controller: descController, decoration: const InputDecoration(labelText: 'Description'), maxLines: 3),
-                SizedBox(height: 12.h),
-                DropdownButtonFormField<String>(
-                  initialValue: priority,
-                  decoration: const InputDecoration(labelText: 'Priority'),
-                  items: ['HIGH', 'MEDIUM', 'LOW'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-                  onChanged: (val) => setDialogState(() => priority = val!),
-                ),
-                SizedBox(height: 12.h),
-                DropdownButtonFormField<String>(
-                  initialValue: memberId,
-                  decoration: const InputDecoration(labelText: 'Assign Member'),
-                  items: MockDatabase.instance.users
-                      .where((u) => u.role == 'Team Member')
-                      .map((u) => DropdownMenuItem(value: u.id, child: Text(u.fullName)))
-                      .toList(),
-                  onChanged: (val) => setDialogState(() => memberId = val!),
-                ),
+                Text('${idx + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                if (dayItems.isNotEmpty)
+                  Container(
+                    margin: EdgeInsets.only(top: 4.h),
+                    color: AppColors.primary,
+                    child: Text('${dayItems.length}', style: const TextStyle(color: Colors.white, fontSize: 8)),
+                  )
               ],
             ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () {
-                if (titleController.text.isNotEmpty) {
-                  setState(() {
-                    MockDatabase.instance.addTask(
-                      MockTask(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        ticketId: 'tic1',
-                        title: titleController.text,
-                        description: descController.text,
-                        assignedMemberId: memberId,
-                        deadline: '2026-07-20',
-                        estimatedHours: 4,
-                        priority: priority,
-                        status: 'Assigned',
-                      ),
-                    );
-                  });
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        ),
-      ),
-    );
+          );
+        },
+      );
+    }
+
+    if (_calendarMode == 'Custom' && _calendarCustomRange != null) {
+      final customItems = items.where((i) {
+        final d = DateTime.tryParse(i.deadline);
+        return d != null && d.isAfter(_calendarCustomRange!.start) && d.isBefore(_calendarCustomRange!.end);
+      }).toList();
+      return ListView.builder(
+        itemCount: customItems.length,
+        itemBuilder: (context, idx) => ListTile(title: Text(customItems[idx].title), onTap: () => _showQuickViewModal(context, customItems[idx].originalObject as MockTask)),
+      );
+    }
+    return const SizedBox();
   }
 
-  void _showSubmissionDialog(BuildContext context, String taskId) {
+  // --- Deletion Confirm ---
+  void _confirmDeleteTask(BuildContext context, String id) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: const Text('Submit Deliverables', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: SizedBox(
-          width: 400.w,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: _submitTitleController, decoration: const InputDecoration(labelText: 'Report Title / Subject')),
-              SizedBox(height: 12.h),
-              TextField(controller: _submitDescController, decoration: const InputDecoration(labelText: 'Completion Notes'), maxLines: 3),
-              SizedBox(height: 12.h),
-              TextField(controller: _githubController, decoration: const InputDecoration(labelText: 'GitHub Repository URL')),
-              SizedBox(height: 12.h),
-              TextField(controller: _prController, decoration: const InputDecoration(labelText: 'Pull Request URL')),
-            ],
+        title: Text('Delete Task'.tr(context)),
+        content: Text('Are you sure you want to delete this task?'.tr(context)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel'.tr(context))),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                MockDatabase.instance.deleteTask(id);
+              });
+              Navigator.pop(context);
+            },
+            child: Text('Delete'.tr(context), style: const TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Quick View Modal ---
+  void _showQuickViewModal(BuildContext context, MockTask task) {
+    final db = MockDatabase.instance;
+    final owner = db.users.firstWhere((u) => u.id == task.currentOwnerId, orElse: () => MockUser(id: '', email: '', fullName: 'Unassigned', role: '', department: ''));
+    final creator = db.users.firstWhere((u) => u.id == task.assignedById, orElse: () => MockUser(id: '', email: '', fullName: 'System', role: '', department: ''));
+    final remaining = _calculateRemainingTime(task.deadline);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(task.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 420.w, maxHeight: 420.h),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(task.description, style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary)),
+                SizedBox(height: 8.h),
+                const Divider(),
+                _buildQuickViewRow('Assigned By'.tr(context), creator.fullName),
+                _buildQuickViewRow('Current Owner'.tr(context), owner.fullName),
+                _buildQuickViewRow('Team'.tr(context), db.teams.firstWhere((t) => t.id == task.assignedTeamId, orElse: () => MockTeam(id: '', name: 'General', managerId: '', department: '', leaderId: '', memberIds: [])).name),
+                _buildQuickViewRow('Department'.tr(context), task.taskDepartment.tr(context)),
+                _buildQuickViewRow('Priority'.tr(context), task.priority.tr(context)),
+                _buildQuickViewRow('Status'.tr(context), task.status.tr(context)),
+                _buildQuickViewRow('Progress'.tr(context), '${(_calculateProgress(task.status) * 100).toInt()}%'),
+                _buildQuickViewRow('Start Date'.tr(context), task.startDate),
+                _buildQuickViewRow('Due Date'.tr(context), task.deadline),
+                _buildQuickViewRow('Remaining Time'.tr(context), remaining),
+                _buildQuickViewRow('Created At'.tr(context), _getCreatedDate(task)),
+              ],
+            ),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Close'.tr(context))),
           ElevatedButton(
             onPressed: () {
-              if (_submitTitleController.text.isNotEmpty) {
-                setState(() {
-                  MockDatabase.instance.submitTask(
-                    taskId: taskId,
-                    githubLink: _githubController.text,
-                    prLink: _prController.text,
-                    notes: _submitDescController.text,
-                    report: _submitTitleController.text,
-                  );
-                });
-                _submitTitleController.clear();
-                _submitDescController.clear();
-                _githubController.clear();
-                _prController.clear();
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Deliverables submitted successfully!')),
-                );
-              }
+              Navigator.pop(context);
+              context.go('/tasks/${task.id}');
             },
-            child: const Text('Submit'),
+            child: Text('View Full Details'.tr(context)),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildQuickViewRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 95.w, child: Text(label, style: TextStyle(fontSize: 10.sp, color: AppColors.textSecondary, fontWeight: FontWeight.w600))),
+          Expanded(child: Text(value, style: TextStyle(fontSize: 10.5.sp, fontWeight: FontWeight.w600))),
+        ],
+      ),
+    );
+  }
+
+  // --- Add Task Dialog ---
+  void _showAddTaskDialog(BuildContext context, String currentUserId) {
+    final db = MockDatabase.instance;
+    final titleCon = TextEditingController();
+    final descCon = TextEditingController();
+    final durationCon = TextEditingController(text: '8');
+
+    String priority = 'MEDIUM';
+    String status = 'Assigned';
+    String taskDept = 'Computer Science';
+    DateTime startDate = DateTime(2026, 7, 24);
+    TimeOfDay startTime = const TimeOfDay(hour: 9, minute: 0);
+    DateTime dueDate = DateTime(2026, 7, 27);
+    TimeOfDay dueTime = const TimeOfDay(hour: 17, minute: 0);
+
+    String assignMode = 'Individual'; // 'Individual' | 'Team'
+    String selectedRole = 'Team Member';
+    String? selectedUserId = '4';
+    String? selectedTeamId = 't1';
+    bool allowReassignment = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final usersForRole = db.users.where((u) => u.role == selectedRole).toList();
+
+          return AlertDialog(
+            title: Text('Add New Task'.tr(context)),
+            content: SizedBox(
+              width: 450.w,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(controller: titleCon, decoration: InputDecoration(labelText: 'Title'.tr(context))),
+                    TextField(controller: descCon, decoration: InputDecoration(labelText: 'Description'.tr(context)), maxLines: 2),
+                    DropdownButtonFormField<String>(
+                      value: priority,
+                      decoration: InputDecoration(labelText: 'Priority'.tr(context)),
+                      items: ['HIGH', 'MEDIUM', 'LOW'].map((p) => DropdownMenuItem(value: p, child: Text(p.tr(context)))).toList(),
+                      onChanged: (v) => setDialogState(() => priority = v!),
+                    ),
+                    DropdownButtonFormField<String>(
+                      value: taskDept,
+                      decoration: InputDecoration(labelText: 'Department'.tr(context)),
+                      items: ['Computer Science', 'Engineering', 'IT Services'].map((d) => DropdownMenuItem(value: d, child: Text(d.tr(context)))).toList(),
+                      onChanged: (v) => setDialogState(() => taskDept = v!),
+                    ),
+                    SizedBox(height: 8.h),
+                    Row(
+                      children: [
+                        Expanded(child: TextButton(onPressed: () async {
+                          final picked = await showDatePicker(context: context, initialDate: startDate, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
+                          if (picked != null) setDialogState(() => startDate = picked);
+                        }, child: Text('Start: ' + DateFormat('yyyy-MM-dd').format(startDate)))),
+                        Expanded(child: TextButton(onPressed: () async {
+                          final picked = await showDatePicker(context: context, initialDate: dueDate, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
+                          if (picked != null) setDialogState(() => dueDate = picked);
+                        }, child: Text('Due: ' + DateFormat('yyyy-MM-dd').format(dueDate)))),
+                      ],
+                    ),
+                    TextField(controller: durationCon, decoration: InputDecoration(labelText: 'Estimated Duration'.tr(context) + ' (Hours)')),
+                    DropdownButtonFormField<String>(
+                      value: assignMode,
+                      decoration: InputDecoration(labelText: 'Assignment Mode'.tr(context)),
+                      items: ['Individual', 'Team'].map((m) => DropdownMenuItem(value: m, child: Text(m.tr(context)))).toList(),
+                      onChanged: (v) => setDialogState(() {
+                        assignMode = v!;
+                        selectedUserId = null;
+                        selectedTeamId = null;
+                      }),
+                    ),
+                    if (assignMode == 'Individual') ...[
+                      DropdownButtonFormField<String>(
+                        value: selectedRole,
+                        decoration: InputDecoration(labelText: 'Role Selection'.tr(context)),
+                        items: ['Team Member', 'Team Leader', 'Manager'].map((r) => DropdownMenuItem(value: r, child: Text(r.tr(context)))).toList(),
+                        onChanged: (v) => setDialogState(() {
+                          selectedRole = v!;
+                          selectedUserId = null;
+                        }),
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: selectedUserId,
+                        decoration: InputDecoration(labelText: 'Select User'.tr(context)),
+                        items: usersForRole.map((u) => DropdownMenuItem(value: u.id, child: Text(u.fullName))).toList(),
+                        onChanged: (v) => setDialogState(() => selectedUserId = v),
+                      ),
+                    ] else ...[
+                      DropdownButtonFormField<String>(
+                        value: selectedTeamId,
+                        decoration: InputDecoration(labelText: 'Select Team'.tr(context)),
+                        items: db.teams.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))).toList(),
+                        onChanged: (v) => setDialogState(() => selectedTeamId = v),
+                      ),
+                    ],
+                    SwitchListTile(
+                      title: Text('Allow Reassignment'.tr(context)),
+                      value: allowReassignment,
+                      onChanged: (v) => setDialogState(() => allowReassignment = v),
+                    )
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel'.tr(context))),
+              ElevatedButton(
+                onPressed: () {
+                  if (titleCon.text.isNotEmpty) {
+                    var ownerId = '4';
+                    if (assignMode == 'Individual' && selectedUserId != null) ownerId = selectedUserId!;
+                    if (assignMode == 'Team' && selectedTeamId != null) {
+                      ownerId = db.teams.firstWhere((t) => t.id == selectedTeamId).leaderId;
+                    }
+                    setState(() {
+                      db.addTask(MockTask(
+                        id: DateTime.now().millisecondsSinceEpoch.toString(),
+                        ticketId: 'tic1',
+                        title: titleCon.text,
+                        description: titleCon.text,
+                        assignedMemberId: ownerId,
+                        deadline: DateFormat('yyyy-MM-dd').format(dueDate),
+                        estimatedHours: int.tryParse(durationCon.text) ?? 8,
+                        priority: priority,
+                        status: status,
+                        assignmentMode: assignMode,
+                        assignedTeamId: selectedTeamId,
+                        assignedRole: selectedRole,
+                        startDate: DateFormat('yyyy-MM-dd').format(startDate),
+                        startTime: '${startTime.hour}:${startTime.minute}',
+                        dueTime: '${dueTime.hour}:${dueTime.minute}',
+                        allowReassignment: allowReassignment,
+                        assignedById: currentUserId,
+                        currentOwnerId: ownerId,
+                        taskDepartment: taskDept,
+                        taskType: assignMode == 'Team' ? 'Team Task' : 'Individual Task',
+                      ));
+                    });
+                    Navigator.pop(context);
+                  }
+                },
+                child: Text('Create'.tr(context)),
+              )
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // --- Edit Task Dialog ---
+  void _showEditTaskDialog(BuildContext context, MockTask task, String currentUserId) {
+    final db = MockDatabase.instance;
+    final titleCon = TextEditingController(text: task.title);
+    final descCon = TextEditingController(text: task.description);
+    String priority = task.priority;
+    String status = task.status;
+    String taskDept = task.taskDepartment;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Edit Task'.tr(context)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: titleCon, decoration: InputDecoration(labelText: 'Title'.tr(context))),
+              TextField(controller: descCon, decoration: InputDecoration(labelText: 'Description'.tr(context)), maxLines: 2),
+              DropdownButtonFormField<String>(
+                value: priority,
+                items: ['HIGH', 'MEDIUM', 'LOW'].map((p) => DropdownMenuItem(value: p, child: Text(p.tr(context)))).toList(),
+                onChanged: (v) => setDialogState(() => priority = v!),
+              ),
+              DropdownButtonFormField<String>(
+                value: status,
+                items: ['Pending', 'Assigned', 'In Progress', 'Submitted', 'Under Review', 'Approved', 'Completed', 'Needs Changes', 'Rejected', 'Overdue'].map((s) => DropdownMenuItem(value: s, child: Text(s.tr(context)))).toList(),
+                onChanged: (v) => setDialogState(() => status = v!),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel'.tr(context))),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  db.updateTaskStatus(task.id, status, db.users.firstWhere((u) => u.id == currentUserId).fullName);
+                  // Update title/desc manually in list
+                  final idx = db.tasks.indexWhere((t) => t.id == task.id);
+                  if (idx != -1) {
+                    final oldTask = db.tasks[idx];
+                    db.tasks[idx] = MockTask(
+                      id: oldTask.id,
+                      ticketId: oldTask.ticketId,
+                      title: titleCon.text,
+                      description: descCon.text,
+                      assignedMemberId: oldTask.assignedMemberId,
+                      deadline: oldTask.deadline,
+                      estimatedHours: oldTask.estimatedHours,
+                      priority: priority,
+                      status: status,
+                      assignmentMode: oldTask.assignmentMode,
+                      assignedTeamId: oldTask.assignedTeamId,
+                      assignedDepartment: oldTask.assignedDepartment,
+                      assignedRole: oldTask.assignedRole,
+                      startDate: oldTask.startDate,
+                      startTime: oldTask.startTime,
+                      dueTime: oldTask.dueTime,
+                      allowReassignment: oldTask.allowReassignment,
+                      assignedById: oldTask.assignedById,
+                      currentOwnerId: oldTask.currentOwnerId,
+                      taskDepartment: taskDept,
+                      taskType: oldTask.taskType,
+                      checklist: oldTask.checklist,
+                      history: oldTask.history,
+                      activities: oldTask.activities,
+                      comments: oldTask.comments,
+                    );
+                    db.save();
+                  }
+                });
+                Navigator.pop(context);
+              },
+              child: Text('Save'.tr(context)),
+            )
+          ],
+        ),
       ),
     );
   }

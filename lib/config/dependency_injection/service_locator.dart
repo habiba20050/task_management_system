@@ -24,62 +24,87 @@ class ServiceLocator {
   ServiceLocator._();
 
   static Future<void> init() async {
+    if (getIt.isRegistered<AuthCubit>()) {
+      return;
+    }
+
     // Core
     await LocalStorage.init();
     await MockDatabase.instance.init();
 
     // Network
-    getIt.registerLazySingleton<Dio>(() => DioFactory.createDio());
+    if (!getIt.isRegistered<Dio>()) {
+      getIt.registerLazySingleton<Dio>(() => DioFactory.createDio());
+    }
 
     // Storage
-    getIt.registerLazySingleton<FlutterSecureStorage>(
-      () => const FlutterSecureStorage(),
-    );
+    if (!getIt.isRegistered<FlutterSecureStorage>()) {
+      getIt.registerLazySingleton<FlutterSecureStorage>(
+        () => const FlutterSecureStorage(),
+      );
+    }
 
     // Auth
-    getIt.registerLazySingleton<AuthApi>(
-      () => AuthApi(getIt<Dio>()),
-    );
-    getIt.registerLazySingleton<AuthRepository>(
-      () => AuthRepositoryImpl(
-        getIt<AuthApi>(),
-        getIt<FlutterSecureStorage>(),
-      ),
-    );
-    getIt.registerSingleton<AuthCubit>(
-      AuthCubit(getIt<AuthRepository>()),
-    );
+    if (!getIt.isRegistered<AuthApi>()) {
+      getIt.registerLazySingleton<AuthApi>(
+        () => AuthApi(getIt<Dio>()),
+      );
+    }
+    if (!getIt.isRegistered<AuthRepository>()) {
+      getIt.registerLazySingleton<AuthRepository>(
+        () => AuthRepositoryImpl(
+          getIt<AuthApi>(),
+          getIt<FlutterSecureStorage>(),
+        ),
+      );
+    }
+    if (!getIt.isRegistered<AuthCubit>()) {
+      getIt.registerSingleton<AuthCubit>(
+        AuthCubit(getIt<AuthRepository>()),
+      );
+    }
 
     // Profile
-    getIt.registerLazySingleton<ProfileApi>(
-      () => ProfileApi(getIt<Dio>()),
-    );
-    getIt.registerLazySingleton<ProfileRepository>(
-      () => ProfileRepositoryImpl(
-        getIt<ProfileApi>(),
-        getIt<FlutterSecureStorage>(),
-      ),
-    );
-    getIt.registerFactory<ProfileCubit>(
-      () => ProfileCubit(getIt<ProfileRepository>()),
-    );
+    if (!getIt.isRegistered<ProfileApi>()) {
+      getIt.registerLazySingleton<ProfileApi>(
+        () => ProfileApi(getIt<Dio>()),
+      );
+    }
+    if (!getIt.isRegistered<ProfileRepository>()) {
+      getIt.registerLazySingleton<ProfileRepository>(
+        () => ProfileRepositoryImpl(),
+      );
+    }
+    if (!getIt.isRegistered<ProfileCubit>()) {
+      getIt.registerFactory<ProfileCubit>(
+        () => ProfileCubit(getIt<ProfileRepository>()),
+      );
+    }
 
     // Teams
-    getIt.registerLazySingleton<TeamsRepository>(
-      () => TeamsRepository(),
-    );
-    getIt.registerFactory<TeamsCubit>(
-      () => TeamsCubit(getIt<TeamsRepository>()),
-    );
+    if (!getIt.isRegistered<TeamsRepository>()) {
+      getIt.registerLazySingleton<TeamsRepository>(
+        () => TeamsRepository(),
+      );
+    }
+    if (!getIt.isRegistered<TeamsCubit>()) {
+      getIt.registerFactory<TeamsCubit>(
+        () => TeamsCubit(getIt<TeamsRepository>()),
+      );
+    }
 
     // Users
-    getIt.registerFactory<UsersCubit>(
-      () => UsersCubit(),
-    );
+    if (!getIt.isRegistered<UsersCubit>()) {
+      getIt.registerFactory<UsersCubit>(
+        () => UsersCubit(),
+      );
+    }
 
     // Language
-    getIt.registerSingleton<LanguageCubit>(
-      LanguageCubit(),
-    );
+    if (!getIt.isRegistered<LanguageCubit>()) {
+      getIt.registerSingleton<LanguageCubit>(
+        LanguageCubit(),
+      );
+    }
   }
 }
