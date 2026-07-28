@@ -229,6 +229,39 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
     );
   }
 
+  Widget _buildFieldLabel(String label) {
+    return Text(
+      label.tr(context),
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF334155),
+      ),
+    );
+  }
+
+  InputDecoration _buildInputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+      fillColor: const Color(0xFFEDF2F7),
+      filled: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: const BorderSide(color: Color(0xFF0F4C81), width: 1),
+      ),
+    );
+  }
+
   // --- File complaint dialog ---
   void _showSubmitComplaintDialog(BuildContext context, String currentUserId) {
     final db = MockDatabase.instance;
@@ -241,72 +274,181 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text('File Complaint'.tr(context)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(controller: titleCon, decoration: InputDecoration(labelText: 'Complaint Title'.tr(context))),
-                TextField(controller: descCon, decoration: InputDecoration(labelText: 'Description'.tr(context)), maxLines: 2),
-                DropdownButtonFormField<String>(
-                  value: category,
-                  decoration: InputDecoration(labelText: 'Category'.tr(context)),
-                  items: ['Delay', 'Poor Quality', 'Communication', 'Attendance', 'Behavior', 'Other'].map((c) => DropdownMenuItem(value: c, child: Text(c.tr(context)))).toList(),
-                  onChanged: (v) => setDialogState(() => category = v!),
-                ),
-                DropdownButtonFormField<String>(
-                  value: targetType,
-                  decoration: InputDecoration(labelText: 'Target Type'.tr(context)),
-                  items: ['Member', 'Team', 'Workload Issue'].map((t) => DropdownMenuItem(value: t, child: Text(t.tr(context)))).toList(),
-                  onChanged: (v) => setDialogState(() {
-                    targetType = v!;
-                    targetUserId = null;
-                  }),
-                ),
-                if (targetType == 'Member') ...[
+        builder: (context, setDialogState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+          backgroundColor: Colors.white,
+          child: Container(
+            width: 500.w,
+            padding: EdgeInsets.all(32.w),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'File Complaint'.tr(context),
+                            style: TextStyle(
+                              fontSize: 20.sp,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            'Report an operational behavior or delay issue.'.tr(context),
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12.h),
+                  const Divider(color: Color(0xFFF1F5F9), thickness: 1),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel('Complaint Title'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: titleCon,
+                    decoration: _buildInputDecoration('Enter a summary...'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel('Description'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: descCon,
+                    maxLines: 2,
+                    decoration: _buildInputDecoration('Enter details...'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel('Category'),
+                  SizedBox(height: 8.h),
                   DropdownButtonFormField<String>(
-                    value: targetUserId,
-                    decoration: InputDecoration(labelText: 'Target Employee'.tr(context)),
-                    items: db.users.where((u) => u.id != currentUserId).map((u) => DropdownMenuItem(value: u.id, child: Text(u.fullName))).toList(),
-                    onChanged: (v) => setDialogState(() => targetUserId = v),
+                    value: category,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                    decoration: _buildInputDecoration(''),
+                    items: ['Delay', 'Poor Quality', 'Communication', 'Attendance', 'Behavior', 'Other'].map((c) => DropdownMenuItem(value: c, child: Text(c.tr(context)))).toList(),
+                    onChanged: (v) => setDialogState(() => category = v!),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel('Target Type'),
+                  SizedBox(height: 8.h),
+                  DropdownButtonFormField<String>(
+                    value: targetType,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                    decoration: _buildInputDecoration(''),
+                    items: ['Member', 'Team', 'Workload Issue'].map((t) => DropdownMenuItem(value: t, child: Text(t.tr(context)))).toList(),
+                    onChanged: (v) => setDialogState(() {
+                      targetType = v!;
+                      targetUserId = null;
+                    }),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  if (targetType == 'Member') ...[
+                    _buildFieldLabel('Target Employee'),
+                    SizedBox(height: 8.h),
+                    DropdownButtonFormField<String>(
+                      value: targetUserId,
+                      icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                      decoration: _buildInputDecoration(''),
+                      items: db.users.where((u) => u.id != currentUserId).map((u) => DropdownMenuItem(value: u.id, child: Text(u.fullName))).toList(),
+                      onChanged: (v) => setDialogState(() => targetUserId = v),
+                    ),
+                    SizedBox(height: 24.h),
+                  ],
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              side: const BorderSide(color: Color(0xFFE2E8F0)),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel'.tr(context),
+                            style: const TextStyle(
+                              color: Color(0xFF64748B),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16.w),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (titleCon.text.isNotEmpty) {
+                              final reporter = db.users.firstWhere((u) => u.id == currentUserId);
+                              var targetName = 'General Workload';
+                              if (targetType == 'Member' && targetUserId != null) {
+                                targetName = db.users.firstWhere((u) => u.id == targetUserId).fullName;
+                              }
+                              setState(() {
+                                db.addComplaint(MockComplaint(
+                                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                                  submitterId: currentUserId,
+                                  submitterName: reporter.fullName,
+                                  submitterRole: reporter.role,
+                                  targetType: targetType,
+                                  targetId: targetUserId ?? 't1',
+                                  targetName: targetName,
+                                  title: titleCon.text,
+                                  description: descCon.text,
+                                  date: DateFormat('yyyy-MM-dd').format(DateTime.now()),
+                                  category: category,
+                                  timeline: ['Submitted on ' + DateFormat('yyyy-MM-dd').format(DateTime.now())],
+                                ));
+                              });
+                              Navigator.pop(context);
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0F4C81),
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            'Submit'.tr(context),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ],
+              ),
             ),
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel'.tr(context))),
-            ElevatedButton(
-              onPressed: () {
-                if (titleCon.text.isNotEmpty) {
-                  final reporter = db.users.firstWhere((u) => u.id == currentUserId);
-                  var targetName = 'General Workload';
-                  if (targetType == 'Member' && targetUserId != null) {
-                    targetName = db.users.firstWhere((u) => u.id == targetUserId).fullName;
-                  }
-                  setState(() {
-                    db.addComplaint(MockComplaint(
-                      id: DateTime.now().millisecondsSinceEpoch.toString(),
-                      submitterId: currentUserId,
-                      submitterName: reporter.fullName,
-                      submitterRole: reporter.role,
-                      targetType: targetType,
-                      targetId: targetUserId ?? 't1',
-                      targetName: targetName,
-                      title: titleCon.text,
-                      description: descCon.text,
-                      date: DateFormat('yyyy-MM-dd').format(DateTime.now()),
-                      category: category,
-                      timeline: ['Submitted on ' + DateFormat('yyyy-MM-dd').format(DateTime.now())],
-                    ));
-                  });
-                  Navigator.pop(context);
-                }
-              },
-              child: Text('Submit'.tr(context)),
-            ),
-          ],
         ),
       ),
     );

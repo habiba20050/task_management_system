@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:intl/intl.dart';
 import '../../cubit/teams_cubit.dart';
 import '../../../../core/localization/translate_extension.dart';
 import '../../cubit/teams_state.dart';
@@ -10,6 +11,11 @@ import 'team_details_screen.dart';
 import '../../../../core/colors/app_colors.dart';
 import '../../../../responsive/responsive_layout.dart';
 import '../../model/team_model.dart';
+import '../../../../core/network/mock_database.dart';
+import '../../../auth/cubit/auth_cubit.dart';
+import '../../../../core/styles/app_shadow.dart';
+import '../../../../core/widgets/buttons/app_buttons.dart';
+import '../../../../core/widgets/cards/app_cards.dart';
 
 class TeamsDashboardScreen extends StatefulWidget {
   const TeamsDashboardScreen({super.key});
@@ -17,17 +23,20 @@ class TeamsDashboardScreen extends StatefulWidget {
   @override
   State<TeamsDashboardScreen> createState() => _TeamsDashboardScreenState();
 }
-
 class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
   String _searchQuery = '';
   String _selectedDept = 'All';
+  bool _showTeamsView = true;
 
   @override
   Widget build(BuildContext context) {
     final isDesktop = ResponsiveLayout.isDesktop(context);
+    final db = MockDatabase.instance;
+    final authState = context.watch<AuthCubit>().state;
+    final currentUserId = authState is AuthSuccess ? authState.user.id : '1';
 
     return Scaffold(
-      backgroundColor: AppColors.dashboardBg,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.all(isDesktop ? 32.w : 16.w),
@@ -42,7 +51,7 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Team Management Portal'.tr(context),
+                        _showTeamsView ? 'Team Management Portal'.tr(context) : 'Department Configuration'.tr(context),
                         style: TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 22.sp,
@@ -51,7 +60,9 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                       ),
                       SizedBox(height: 4.h),
                       Text(
-                        'Track and filter university team operations & department progress'.tr(context),
+                        _showTeamsView
+                            ? 'Track and filter university team operations & department progress'.tr(context)
+                            : 'Manage academic departments and configurations'.tr(context),
                         style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 13.sp,
@@ -61,14 +72,18 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                   ),
                   ElevatedButton.icon(
                     onPressed: () {
-                      CreateTeamDialogWidget.show(
-                        context,
-                        context.read<TeamsCubit>(),
-                      );
+                      if (_showTeamsView) {
+                        CreateTeamDialogWidget.show(
+                          context,
+                          context.read<TeamsCubit>(),
+                        );
+                      } else {
+                        _showAddDeptDialog(context, currentUserId);
+                      }
                     },
                     icon: const Icon(Icons.add, size: 18, color: Colors.white),
                     label: Text(
-                      'Add New Team'.tr(context),
+                      _showTeamsView ? 'Add New Team'.tr(context) : 'Add Department'.tr(context),
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -87,170 +102,251 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
                   ),
                 ],
               ),
-              SizedBox(height: 24.h),
+              SizedBox(height: 16.h),
 
-              // 2. Search & Reactive Filters Row
+              // Segmented Toggle Button
               Row(
                 children: [
-                  Expanded(
-                    child: Container(
-                      height: 44.h,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12.r),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: TextField(
-                        onChanged: (val) {
-                          setState(() {
-                            _searchQuery = val;
-                          });
-                        },
-                        decoration: InputDecoration(
-                          hintText: 'Search teams by name or leader...'.tr(context),
-                          hintStyle: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 13.sp,
-                          ),
-                          prefixIcon: const Icon(
-                            Icons.search,
-                            color: AppColors.primary,
-                          ),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                        ),
-                        style: TextStyle(fontSize: 13.sp),
-                      ),
-                    ),
+                  _buildSegmentButton(
+                    label: 'Teams'.tr(context),
+                    isSelected: _showTeamsView,
+                    onTap: () => setState(() => _showTeamsView = true),
                   ),
-                  SizedBox(width: 16.w),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16.w),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12.r),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _selectedDept,
-                        items:
-                            [
-                                  'All',
-                                  'IT Services',
-                                  'CS Dept',
-                                  'Business',
-                                  'Math Dept',
-                                ]
-                                .map(
-                                  (dept) => DropdownMenuItem(
-                                    value: dept,
-                                    child: Text(
-                                      dept,
-                                      style: TextStyle(fontSize: 13.sp),
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged: (val) {
-                          if (val != null) {
-                            setState(() {
-                              _selectedDept = val;
-                            });
-                          }
-                        },
-                      ),
-                    ),
+                  SizedBox(width: 12.w),
+                  _buildSegmentButton(
+                    label: 'Departments'.tr(context),
+                    isSelected: !_showTeamsView,
+                    onTap: () => setState(() => _showTeamsView = false),
                   ),
                 ],
               ),
               SizedBox(height: 24.h),
 
-              // 3. Stat Cards Section
-              BlocBuilder<TeamsCubit, TeamsState>(
-                builder: (context, state) {
-                  if (state is TeamsLoaded) {
-                    final totalTeams = state.teams.length;
-                    final totalMembers = state.teams.fold<int>(
-                      0,
-                      (sum, team) => sum + team.membersCount,
-                    );
-                    final avgProgress = totalTeams == 0
-                        ? 0.0
-                        : state.teams.fold<double>(
-                                0,
-                                (sum, team) => sum + team.completionPercentage,
-                              ) /
-                              totalTeams;
-
-                    return Wrap(
-                      spacing: 16.w,
-                      runSpacing: 16.h,
-                      children: [
-                        _buildStatWidget(
-                          'Active Teams',
-                          totalTeams.toString(),
-                          Icons.groups_outlined,
-                          Colors.blue,
+              // 2. Search & Reactive Filters Row
+              if (_showTeamsView) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 44.h,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
                         ),
-                        _buildStatWidget(
-                          'Assigned Members',
-                          totalMembers.toString(),
-                          Icons.person_outline,
-                          Colors.green,
-                        ),
-                        _buildStatWidget(
-                          'Avg Completion',
-                          '${avgProgress.toInt()}%',
-                          Icons.trending_up,
-                          Colors.purple,
-                        ),
-                      ],
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-              SizedBox(height: 24.h),
-
-              // 4. Clean Data Table for Teams
-              Expanded(
-                child: BlocBuilder<TeamsCubit, TeamsState>(
-                  builder: (context, state) {
-                    if (state is TeamsLoading) {
-                      return const Center(child: CircularProgressIndicator());
-                    } else if (state is TeamsLoaded) {
-                      final filtered = state.teams.where((t) {
-                        final matchesSearch =
-                            t.name.toLowerCase().contains(
-                              _searchQuery.toLowerCase(),
-                            ) ||
-                            t.leaderName.toLowerCase().contains(
-                              _searchQuery.toLowerCase(),
-                            );
-                        final matchesDept =
-                            _selectedDept == 'All' ||
-                            t.department == _selectedDept;
-                        return matchesSearch && matchesDept;
-                      }).toList();
-
-                      if (filtered.isEmpty) {
-                        return const Center(
-                          child: Text(
-                            'No teams found matching search criteria.',
-                            style: TextStyle(color: Colors.grey),
+                        child: TextField(
+                          onChanged: (val) {
+                            setState(() {
+                              _searchQuery = val;
+                            });
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Search teams by name or leader...'.tr(context),
+                            hintStyle: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 13.sp,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: AppColors.primary,
+                            ),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
                           ),
-                        );
-                      }
+                          style: TextStyle(fontSize: 13.sp),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 16.w),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedDept,
+                          items: [
+                            'All',
+                            'IT Services',
+                            'CS Dept',
+                            'Business',
+                            'Math Dept',
+                          ].map(
+                            (dept) => DropdownMenuItem(
+                              value: dept,
+                              child: Text(
+                                dept,
+                                style: TextStyle(fontSize: 13.sp),
+                              ),
+                            ),
+                          ).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _selectedDept = val;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 24.h),
+              ] else ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 44.h,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: TextField(
+                          onChanged: (val) {
+                            setState(() {
+                              _searchQuery = val;
+                            });
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Search departments by name or code...'.tr(context),
+                            hintStyle: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 13.sp,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: AppColors.primary,
+                            ),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                          ),
+                          style: TextStyle(fontSize: 13.sp),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 24.h),
+              ],
 
-                      return isDesktop
-                          ? _buildDesktopTable(context, filtered, context.read<TeamsCubit>())
-                          : _buildMobileCards(context, filtered, context.read<TeamsCubit>());
+              // 3. Stat Cards Section
+              if (_showTeamsView)
+                BlocBuilder<TeamsCubit, TeamsState>(
+                  builder: (context, state) {
+                    if (state is TeamsLoaded) {
+                      final totalTeams = state.teams.length;
+                      final totalMembers = state.teams.fold<int>(
+                        0,
+                        (sum, team) => sum + team.membersCount,
+                      );
+                      final avgProgress = totalTeams == 0
+                          ? 0.0
+                          : state.teams.fold<double>(
+                                  0,
+                                  (sum, team) => sum + team.completionPercentage,
+                                ) /
+                                totalTeams;
+
+                      return _buildStatsRow(
+                        context,
+                        [
+                          _buildStatWidget(
+                            'Active Teams',
+                            totalTeams.toString(),
+                            Icons.groups_outlined,
+                            Colors.blue,
+                          ),
+                          _buildStatWidget(
+                            'Assigned Members',
+                            totalMembers.toString(),
+                            Icons.person_outline,
+                            Colors.green,
+                          ),
+                          _buildStatWidget(
+                            'Avg Completion',
+                            '${avgProgress.toInt()}%',
+                            Icons.trending_up,
+                            Colors.purple,
+                          ),
+                        ],
+                      );
                     }
                     return const SizedBox.shrink();
                   },
+                )
+              else
+                _buildStatsRow(
+                  context,
+                  [
+                    _buildStatWidget(
+                      'Total Departments',
+                      db.departments.length.toString(),
+                      Icons.business,
+                      Colors.blue,
+                    ),
+                    _buildStatWidget(
+                      'Total Teams',
+                      db.teams.length.toString(),
+                      Icons.groups_outlined,
+                      Colors.green,
+                    ),
+                    _buildStatWidget(
+                      'Total Managers',
+                      db.users.where((u) => u.role == 'Manager').length.toString(),
+                      Icons.person_outline,
+                      Colors.purple,
+                    ),
+                  ],
                 ),
+              SizedBox(height: 24.h),
+
+              // 4. Clean Data Table for Teams or Departments
+              Expanded(
+                child: _showTeamsView
+                    ? BlocBuilder<TeamsCubit, TeamsState>(
+                        builder: (context, state) {
+                          if (state is TeamsLoading) {
+                            return const Center(child: CircularProgressIndicator());
+                          } else if (state is TeamsLoaded) {
+                            final filtered = state.teams.where((t) {
+                              final matchesSearch =
+                                  t.name.toLowerCase().contains(
+                                    _searchQuery.toLowerCase(),
+                                  ) ||
+                                  t.leaderName.toLowerCase().contains(
+                                    _searchQuery.toLowerCase(),
+                                  );
+                              final matchesDept =
+                                  _selectedDept == 'All' ||
+                                  t.department == _selectedDept;
+                              return matchesSearch && matchesDept;
+                            }).toList();
+
+                            if (filtered.isEmpty) {
+                              return const Center(
+                                child: Text(
+                                  'No teams found matching search criteria.',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              );
+                            }
+
+                            return isDesktop
+                                ? _buildDesktopTable(context, filtered, context.read<TeamsCubit>())
+                                : _buildMobileCards(context, filtered, context.read<TeamsCubit>());
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      )
+                    : _buildDepartmentsTable(context),
               ),
             ],
           ),
@@ -265,51 +361,39 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
     IconData icon,
     Color color,
   ) {
-    return Container(
-      width: ResponsiveLayout.isMobile(context) ? 140.w : 220.w,
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(10.w),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 20.sp),
-          ),
-          SizedBox(width: 14.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                SizedBox(height: 2.h),
-                Text(
-                  label.tr(context),
-                  style: TextStyle(fontSize: 11.sp, color: Colors.grey[500]),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
+    return SizedBox(
+      height: 76.h,
+      child: StatCard(
+        title: label.tr(context),
+        value: value,
+        icon: icon,
+        accentColor: color,
       ),
     );
+  }
+
+  Widget _buildStatsRow(BuildContext context, List<Widget> cards) {
+    final isDesktop = ResponsiveLayout.isDesktop(context);
+    final isTablet = ResponsiveLayout.isTablet(context);
+
+    if (isDesktop || isTablet) {
+      return Row(
+        children: [
+          Expanded(child: cards.isNotEmpty ? cards[0] : const SizedBox.shrink()),
+          SizedBox(width: 16.w),
+          Expanded(child: cards.length > 1 ? cards[1] : const SizedBox.shrink()),
+          SizedBox(width: 16.w),
+          Expanded(child: cards.length > 2 ? cards[2] : const SizedBox.shrink()),
+        ],
+      );
+    } else {
+      return Column(
+        children: cards.map((c) => Padding(
+          padding: EdgeInsets.only(bottom: 12.h),
+          child: SizedBox(width: double.infinity, child: c),
+        )).toList(),
+      );
+    }
   }
 
   Widget _buildDesktopTable(BuildContext context, List<TeamModel> filtered, TeamsCubit cubit) {
@@ -510,6 +594,626 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen> {
             child: Text('Delete'.tr(context), style: const TextStyle(color: Colors.white)),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSegmentButton({required String label, required bool isSelected, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20.r),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 10.h),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.white,
+          borderRadius: BorderRadius.circular(20.r),
+          border: Border.all(color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0)),
+          boxShadow: isSelected ? AppShadow.soft : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : AppColors.textSecondary,
+            fontWeight: FontWeight.bold,
+            fontSize: 13.sp,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDepartmentsTable(BuildContext context) {
+    final db = MockDatabase.instance;
+    final isDesktop = ResponsiveLayout.isDesktop(context);
+    
+    final filtered = db.departments.where((d) {
+      final matchesSearch = d.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          d.code.toLowerCase().contains(_searchQuery.toLowerCase());
+      return matchesSearch;
+    }).toList();
+
+    if (filtered.isEmpty) {
+      return Center(
+        child: Text(
+          'No departments found matching search criteria.'.tr(context),
+          style: const TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+
+    if (isDesktop) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildDeptTableHeader(context),
+              ...filtered.map((d) => _buildDeptTableRow(context, d)),
+            ],
+          ),
+        ),
+      );
+    } else {
+      return ListView.builder(
+        itemCount: filtered.length,
+        itemBuilder: (context, idx) {
+          final dept = filtered[idx];
+          final mgr = db.users.firstWhere((u) => u.id == dept.managerId, orElse: () => MockUser(id: '', email: '', fullName: 'Unassigned', role: '', department: ''));
+          return Card(
+            margin: EdgeInsets.symmetric(vertical: 6.h),
+            child: ListTile(
+              title: Text(dept.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text('${dept.code} | Manager: ${mgr.fullName}'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit, color: Colors.orange),
+                    onPressed: () => _showEditDeptDialog(context, dept, '1'),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: AppColors.error),
+                    onPressed: () => _showDeleteDeptConfirm(context, dept.id),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    }
+  }
+
+  Widget _buildDeptTableHeader(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: Row(
+        children: [
+          Expanded(flex: 3, child: Text('Department Name'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp))),
+          Expanded(flex: 2, child: Text('Code'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp))),
+          Expanded(flex: 3, child: Text('Manager'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp))),
+          Expanded(flex: 4, child: Text('Description'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp))),
+          Expanded(flex: 2, child: Text('Actions'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp), textAlign: TextAlign.center)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeptTableRow(BuildContext context, MockDepartment d) {
+    final db = MockDatabase.instance;
+    final mgr = db.users.firstWhere((u) => u.id == d.managerId, orElse: () => MockUser(id: '', email: '', fullName: 'Unassigned', role: '', department: ''));
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: Row(
+              children: [
+                Icon(Icons.business, color: AppColors.primary, size: 18.sp),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(
+                    d.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(d.code),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(mgr.fullName, overflow: TextOverflow.ellipsis),
+          ),
+          Expanded(
+            flex: 4,
+            child: Text(d.description, overflow: TextOverflow.ellipsis),
+          ),
+          Expanded(
+            flex: 2,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.orange, size: 18),
+                  onPressed: () => _showEditDeptDialog(context, d, '1'),
+                  tooltip: 'Edit Department'.tr(context),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: AppColors.error, size: 18),
+                  onPressed: () => _showDeleteDeptConfirm(context, d.id),
+                  tooltip: 'Delete Department'.tr(context),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFieldLabel(BuildContext context, String label) {
+    return Text(
+      label.tr(context),
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF334155),
+      ),
+    );
+  }
+
+  InputDecoration _buildInputDecoration(BuildContext context, String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+      fillColor: const Color(0xFFEDF2F7),
+      filled: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: const BorderSide(color: Color(0xFF0F4C81), width: 1),
+      ),
+    );
+  }
+
+  void _showAddDeptDialog(BuildContext context, String adminId) {
+    final db = MockDatabase.instance;
+    final nameCon = TextEditingController();
+    final codeCon = TextEditingController();
+    final descCon = TextEditingController();
+    String? managerId = db.users.first.id;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+          backgroundColor: Colors.white,
+          child: Container(
+            width: 500.w,
+            padding: EdgeInsets.all(32.w),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Add Department'.tr(context),
+                            style: TextStyle(
+                              fontSize: 20.sp,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            'Create a new academic department configuration.'.tr(context),
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12.h),
+                  const Divider(color: Color(0xFFF1F5F9), thickness: 1),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'Department Name'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: nameCon,
+                    decoration: _buildInputDecoration(context, 'e.g. Computer Science'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'Code'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: codeCon,
+                    decoration: _buildInputDecoration(context, 'e.g. CS'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'Description'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: descCon,
+                    decoration: _buildInputDecoration(context, 'Enter department description...'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'Manager'),
+                  SizedBox(height: 8.h),
+                  DropdownButtonFormField<String>(
+                    value: managerId,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                    decoration: _buildInputDecoration(context, ''),
+                    items: db.users.map((u) => DropdownMenuItem(value: u.id, child: Text(u.fullName))).toList(),
+                    onChanged: (v) => setDialogState(() => managerId = v),
+                  ),
+                  SizedBox(height: 32.h),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              side: const BorderSide(color: Color(0xFFE2E8F0)),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel'.tr(context),
+                            style: const TextStyle(
+                              color: Color(0xFF64748B),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16.w),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (nameCon.text.isNotEmpty && codeCon.text.isNotEmpty) {
+                              setState(() {
+                                db.addDepartment(
+                                  MockDepartment(
+                                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                                    name: nameCon.text,
+                                    code: codeCon.text,
+                                    description: descCon.text,
+                                    managerId: managerId ?? '',
+                                    createdDate: DateFormat('yyyy-MM-dd').format(DateTime.now()),
+                                  ),
+                                  adminId,
+                                );
+                              });
+                              Navigator.pop(context);
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0F4C81),
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            'Create'.tr(context),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showEditDeptDialog(BuildContext context, MockDepartment dept, String adminId) {
+    final db = MockDatabase.instance;
+    final nameCon = TextEditingController(text: dept.name);
+    final codeCon = TextEditingController(text: dept.code);
+    final descCon = TextEditingController(text: dept.description);
+    String managerId = dept.managerId;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+          backgroundColor: Colors.white,
+          child: Container(
+            width: 500.w,
+            padding: EdgeInsets.all(32.w),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Edit Department'.tr(context),
+                            style: TextStyle(
+                              fontSize: 20.sp,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            'Update the configuration attributes of the department.'.tr(context),
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12.h),
+                  const Divider(color: Color(0xFFF1F5F9), thickness: 1),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'Department Name'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: nameCon,
+                    decoration: _buildInputDecoration(context, 'e.g. Computer Science'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'Code'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: codeCon,
+                    decoration: _buildInputDecoration(context, 'e.g. CS'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'Description'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: descCon,
+                    decoration: _buildInputDecoration(context, 'Enter department description...'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'Manager'),
+                  SizedBox(height: 8.h),
+                  DropdownButtonFormField<String>(
+                    value: managerId,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                    decoration: _buildInputDecoration(context, ''),
+                    items: db.users.map((u) => DropdownMenuItem(value: u.id, child: Text(u.fullName))).toList(),
+                    onChanged: (v) => setDialogState(() => managerId = v!),
+                  ),
+                  SizedBox(height: 32.h),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              side: const BorderSide(color: Color(0xFFE2E8F0)),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel'.tr(context),
+                            style: const TextStyle(
+                              color: Color(0xFF64748B),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16.w),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              db.editDepartment(
+                                MockDepartment(
+                                  id: dept.id,
+                                  name: nameCon.text,
+                                  code: codeCon.text,
+                                  description: descCon.text,
+                                  managerId: managerId,
+                                  createdDate: dept.createdDate,
+                                ),
+                                adminId,
+                              );
+                            });
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0F4C81),
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            'Save'.tr(context),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteDeptConfirm(BuildContext context, String deptId) {
+    final db = MockDatabase.instance;
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+        backgroundColor: Colors.white,
+        child: Container(
+          width: 400.w,
+          padding: EdgeInsets.all(32.w),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Delete Department'.tr(context),
+                    style: TextStyle(
+                      fontSize: 20.sp,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF0F172A),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12.h),
+              const Divider(color: Color(0xFFF1F5F9), thickness: 1),
+              SizedBox(height: 20.h),
+              Text(
+                'Are you sure you want to delete this department?'.tr(context),
+                style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+              ),
+              SizedBox(height: 24.h),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancel'.tr(context),
+                        style: const TextStyle(
+                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 16.w),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                        padding: EdgeInsets.symmetric(vertical: 16.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          db.deleteDepartment(deptId, '1');
+                        });
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Department deleted successfully'.tr(context))),
+                        );
+                      },
+                      child: Text('Delete'.tr(context), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

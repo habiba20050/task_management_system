@@ -481,6 +481,18 @@ class _TasksPageState extends State<TasksPage> {
                       IconButton(icon: const Icon(Icons.visibility, color: Colors.blue, size: 16), onPressed: () => _showQuickViewModal(context, task)),
                       IconButton(icon: const Icon(Icons.edit, color: Colors.orange, size: 16), onPressed: () => _showEditTaskDialog(context, task, currentUserId)),
                       IconButton(icon: const Icon(Icons.delete, color: AppColors.danger, size: 16), onPressed: () => _confirmDeleteTask(context, task.id)),
+                      if (task.status == 'Submitted' || task.status == 'Completed' || task.status == 'Approved')
+                        IconButton(
+                          icon: const Icon(Icons.assignment_turned_in, color: Colors.green, size: 16),
+                          onPressed: () => _showViewSubmissionDialog(context, task),
+                          tooltip: 'View Submission'.tr(context),
+                        )
+                      else
+                        IconButton(
+                          icon: const Icon(Icons.send, color: Colors.purple, size: 16),
+                          onPressed: () => _showSubmitTaskDialog(context, task),
+                          tooltip: 'Submit Task'.tr(context),
+                        ),
                     ],
                   )),
                 ]);
@@ -758,6 +770,24 @@ class _TasksPageState extends State<TasksPage> {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: Text('Close'.tr(context))),
+          if (task.status == 'Submitted' || task.status == 'Completed' || task.status == 'Approved')
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showViewSubmissionDialog(context, task);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: Text('View Submission'.tr(context)),
+            )
+          else
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showSubmitTaskDialog(context, task);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
+              child: Text('Submit Task'.tr(context)),
+            ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
@@ -810,45 +840,169 @@ class _TasksPageState extends State<TasksPage> {
         builder: (context, setDialogState) {
           final usersForRole = db.users.where((u) => u.role == selectedRole).toList();
 
-          return AlertDialog(
-            title: Text('Add New Task'.tr(context)),
-            content: SizedBox(
-              width: 450.w,
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+            backgroundColor: Colors.white,
+            child: Container(
+              width: 500.w,
+              padding: EdgeInsets.all(32.w),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TextField(controller: titleCon, decoration: InputDecoration(labelText: 'Title'.tr(context))),
-                    TextField(controller: descCon, decoration: InputDecoration(labelText: 'Description'.tr(context)), maxLines: 2),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Add New Task'.tr(context),
+                              style: TextStyle(
+                                fontSize: 20.sp,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF0F172A),
+                              ),
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              'Create and delegate a new task.'.tr(context),
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: const Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12.h),
+                    const Divider(color: Color(0xFFF1F5F9), thickness: 1),
+                    SizedBox(height: 20.h),
+
+                    _buildFieldLabel(context, 'Title'),
+                    SizedBox(height: 8.h),
+                    TextFormField(
+                      controller: titleCon,
+                      decoration: _buildInputDecoration(context, 'Enter task title...'),
+                    ),
+                    SizedBox(height: 20.h),
+
+                    _buildFieldLabel(context, 'Description'),
+                    SizedBox(height: 8.h),
+                    TextFormField(
+                      controller: descCon,
+                      maxLines: 2,
+                      decoration: _buildInputDecoration(context, 'Enter task description...'),
+                    ),
+                    SizedBox(height: 20.h),
+
+                    _buildFieldLabel(context, 'Priority'),
+                    SizedBox(height: 8.h),
                     DropdownButtonFormField<String>(
                       value: priority,
-                      decoration: InputDecoration(labelText: 'Priority'.tr(context)),
+                      icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                      decoration: _buildInputDecoration(context, ''),
                       items: ['HIGH', 'MEDIUM', 'LOW'].map((p) => DropdownMenuItem(value: p, child: Text(p.tr(context)))).toList(),
                       onChanged: (v) => setDialogState(() => priority = v!),
                     ),
+                    SizedBox(height: 20.h),
+
+                    _buildFieldLabel(context, 'Department'),
+                    SizedBox(height: 8.h),
                     DropdownButtonFormField<String>(
                       value: taskDept,
-                      decoration: InputDecoration(labelText: 'Department'.tr(context)),
+                      icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                      decoration: _buildInputDecoration(context, ''),
                       items: ['Computer Science', 'Engineering', 'IT Services'].map((d) => DropdownMenuItem(value: d, child: Text(d.tr(context)))).toList(),
                       onChanged: (v) => setDialogState(() => taskDept = v!),
                     ),
-                    SizedBox(height: 8.h),
+                    SizedBox(height: 20.h),
+
                     Row(
                       children: [
-                        Expanded(child: TextButton(onPressed: () async {
-                          final picked = await showDatePicker(context: context, initialDate: startDate, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
-                          if (picked != null) setDialogState(() => startDate = picked);
-                        }, child: Text('Start: ' + DateFormat('yyyy-MM-dd').format(startDate)))),
-                        Expanded(child: TextButton(onPressed: () async {
-                          final picked = await showDatePicker(context: context, initialDate: dueDate, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
-                          if (picked != null) setDialogState(() => dueDate = picked);
-                        }, child: Text('Due: ' + DateFormat('yyyy-MM-dd').format(dueDate)))),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFieldLabel(context, 'Start Date'),
+                              SizedBox(height: 8.h),
+                              InkWell(
+                                onTap: () async {
+                                  final picked = await showDatePicker(context: context, initialDate: startDate, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
+                                  if (picked != null) setDialogState(() => startDate = picked);
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEDF2F7),
+                                    borderRadius: BorderRadius.circular(12.r),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(DateFormat('yyyy-MM-dd').format(startDate), style: TextStyle(fontSize: 13.sp)),
+                                      const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: 16.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildFieldLabel(context, 'Due Date'),
+                              SizedBox(height: 8.h),
+                              InkWell(
+                                onTap: () async {
+                                  final picked = await showDatePicker(context: context, initialDate: dueDate, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
+                                  if (picked != null) setDialogState(() => dueDate = picked);
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEDF2F7),
+                                    borderRadius: BorderRadius.circular(12.r),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(DateFormat('yyyy-MM-dd').format(dueDate), style: TextStyle(fontSize: 13.sp)),
+                                      const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
-                    TextField(controller: durationCon, decoration: InputDecoration(labelText: 'Estimated Duration'.tr(context) + ' (Hours)')),
+                    SizedBox(height: 20.h),
+
+                    _buildFieldLabel(context, 'Estimated Duration (Hours)'),
+                    SizedBox(height: 8.h),
+                    TextFormField(
+                      controller: durationCon,
+                      decoration: _buildInputDecoration(context, 'e.g. 8'),
+                    ),
+                    SizedBox(height: 20.h),
+
+                    _buildFieldLabel(context, 'Assignment Mode'),
+                    SizedBox(height: 8.h),
                     DropdownButtonFormField<String>(
                       value: assignMode,
-                      decoration: InputDecoration(labelText: 'Assignment Mode'.tr(context)),
+                      icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                      decoration: _buildInputDecoration(context, ''),
                       items: ['Individual', 'Team'].map((m) => DropdownMenuItem(value: m, child: Text(m.tr(context)))).toList(),
                       onChanged: (v) => setDialogState(() {
                         assignMode = v!;
@@ -856,79 +1010,138 @@ class _TasksPageState extends State<TasksPage> {
                         selectedTeamId = null;
                       }),
                     ),
+                    SizedBox(height: 20.h),
+
                     if (assignMode == 'Individual') ...[
+                      _buildFieldLabel(context, 'Role Selection'),
+                      SizedBox(height: 8.h),
                       DropdownButtonFormField<String>(
                         value: selectedRole,
-                        decoration: InputDecoration(labelText: 'Role Selection'.tr(context)),
+                        icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                        decoration: _buildInputDecoration(context, ''),
                         items: ['Team Member', 'Team Leader', 'Manager'].map((r) => DropdownMenuItem(value: r, child: Text(r.tr(context)))).toList(),
                         onChanged: (v) => setDialogState(() {
                           selectedRole = v!;
                           selectedUserId = null;
                         }),
                       ),
+                      SizedBox(height: 20.h),
+
+                      _buildFieldLabel(context, 'Select User'),
+                      SizedBox(height: 8.h),
                       DropdownButtonFormField<String>(
                         value: selectedUserId,
-                        decoration: InputDecoration(labelText: 'Select User'.tr(context)),
+                        icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                        decoration: _buildInputDecoration(context, ''),
                         items: usersForRole.map((u) => DropdownMenuItem(value: u.id, child: Text(u.fullName))).toList(),
                         onChanged: (v) => setDialogState(() => selectedUserId = v),
                       ),
+                      SizedBox(height: 20.h),
                     ] else ...[
+                      _buildFieldLabel(context, 'Select Team'),
+                      SizedBox(height: 8.h),
                       DropdownButtonFormField<String>(
                         value: selectedTeamId,
-                        decoration: InputDecoration(labelText: 'Select Team'.tr(context)),
+                        icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                        decoration: _buildInputDecoration(context, ''),
                         items: db.teams.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))).toList(),
                         onChanged: (v) => setDialogState(() => selectedTeamId = v),
                       ),
+                      SizedBox(height: 20.h),
                     ],
+
                     SwitchListTile(
-                      title: Text('Allow Reassignment'.tr(context)),
+                      title: Text('Allow Reassignment'.tr(context), style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: const Color(0xFF334155))),
                       value: allowReassignment,
+                      activeColor: const Color(0xFF0F4C81),
+                      contentPadding: EdgeInsets.zero,
                       onChanged: (v) => setDialogState(() => allowReassignment = v),
-                    )
+                    ),
+                    SizedBox(height: 24.h),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 16.h),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                                side: const BorderSide(color: Color(0xFFE2E8F0)),
+                              ),
+                            ),
+                            child: Text(
+                              'Cancel'.tr(context),
+                              style: const TextStyle(
+                                color: Color(0xFF64748B),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 16.w),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (titleCon.text.isNotEmpty) {
+                                var ownerId = '4';
+                                if (assignMode == 'Individual' && selectedUserId != null) ownerId = selectedUserId!;
+                                if (assignMode == 'Team' && selectedTeamId != null) {
+                                  ownerId = db.teams.firstWhere((t) => t.id == selectedTeamId).leaderId;
+                                }
+                                setState(() {
+                                  db.addTask(MockTask(
+                                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                                    ticketId: 'tic1',
+                                    title: titleCon.text,
+                                    description: titleCon.text,
+                                    assignedMemberId: ownerId,
+                                    deadline: DateFormat('yyyy-MM-dd').format(dueDate),
+                                    estimatedHours: int.tryParse(durationCon.text) ?? 8,
+                                    priority: priority,
+                                    status: status,
+                                    assignmentMode: assignMode,
+                                    assignedTeamId: selectedTeamId,
+                                    assignedRole: selectedRole,
+                                    startDate: DateFormat('yyyy-MM-dd').format(startDate),
+                                    startTime: '${startTime.hour}:${startTime.minute}',
+                                    dueTime: '${dueTime.hour}:${dueTime.minute}',
+                                    allowReassignment: allowReassignment,
+                                    assignedById: currentUserId,
+                                    currentOwnerId: ownerId,
+                                    taskDepartment: taskDept,
+                                    taskType: assignMode == 'Team' ? 'Team Task' : 'Individual Task',
+                                  ));
+                                });
+                                Navigator.pop(context);
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0F4C81),
+                              padding: EdgeInsets.symmetric(vertical: 16.h),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              'Create'.tr(context),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel'.tr(context))),
-              ElevatedButton(
-                onPressed: () {
-                  if (titleCon.text.isNotEmpty) {
-                    var ownerId = '4';
-                    if (assignMode == 'Individual' && selectedUserId != null) ownerId = selectedUserId!;
-                    if (assignMode == 'Team' && selectedTeamId != null) {
-                      ownerId = db.teams.firstWhere((t) => t.id == selectedTeamId).leaderId;
-                    }
-                    setState(() {
-                      db.addTask(MockTask(
-                        id: DateTime.now().millisecondsSinceEpoch.toString(),
-                        ticketId: 'tic1',
-                        title: titleCon.text,
-                        description: titleCon.text,
-                        assignedMemberId: ownerId,
-                        deadline: DateFormat('yyyy-MM-dd').format(dueDate),
-                        estimatedHours: int.tryParse(durationCon.text) ?? 8,
-                        priority: priority,
-                        status: status,
-                        assignmentMode: assignMode,
-                        assignedTeamId: selectedTeamId,
-                        assignedRole: selectedRole,
-                        startDate: DateFormat('yyyy-MM-dd').format(startDate),
-                        startTime: '${startTime.hour}:${startTime.minute}',
-                        dueTime: '${dueTime.hour}:${dueTime.minute}',
-                        allowReassignment: allowReassignment,
-                        assignedById: currentUserId,
-                        currentOwnerId: ownerId,
-                        taskDepartment: taskDept,
-                        taskType: assignMode == 'Team' ? 'Team Task' : 'Individual Task',
-                      ));
-                    });
-                    Navigator.pop(context);
-                  }
-                },
-                child: Text('Create'.tr(context)),
-              )
-            ],
           );
         },
       ),
@@ -947,70 +1160,517 @@ class _TasksPageState extends State<TasksPage> {
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text('Edit Task'.tr(context)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: titleCon, decoration: InputDecoration(labelText: 'Title'.tr(context))),
-              TextField(controller: descCon, decoration: InputDecoration(labelText: 'Description'.tr(context)), maxLines: 2),
-              DropdownButtonFormField<String>(
-                value: priority,
-                items: ['HIGH', 'MEDIUM', 'LOW'].map((p) => DropdownMenuItem(value: p, child: Text(p.tr(context)))).toList(),
-                onChanged: (v) => setDialogState(() => priority = v!),
+        builder: (context, setDialogState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+          backgroundColor: Colors.white,
+          child: Container(
+            width: 500.w,
+            padding: EdgeInsets.all(32.w),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Edit Task'.tr(context),
+                            style: TextStyle(
+                              fontSize: 20.sp,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            'Modify the selected task attributes.'.tr(context),
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12.h),
+                  const Divider(color: Color(0xFFF1F5F9), thickness: 1),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'Title'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: titleCon,
+                    decoration: _buildInputDecoration(context, 'Enter task title...'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'Description'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: descCon,
+                    maxLines: 2,
+                    decoration: _buildInputDecoration(context, 'Enter task description...'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'Priority'),
+                  SizedBox(height: 8.h),
+                  DropdownButtonFormField<String>(
+                    value: priority,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                    decoration: _buildInputDecoration(context, ''),
+                    items: ['HIGH', 'MEDIUM', 'LOW'].map((p) => DropdownMenuItem(value: p, child: Text(p.tr(context)))).toList(),
+                    onChanged: (v) => setDialogState(() => priority = v!),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'Status'),
+                  SizedBox(height: 8.h),
+                  DropdownButtonFormField<String>(
+                    value: status,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                    decoration: _buildInputDecoration(context, ''),
+                    items: ['Pending', 'Assigned', 'In Progress', 'Submitted', 'Under Review', 'Approved', 'Completed', 'Needs Changes', 'Rejected', 'Overdue'].map((s) => DropdownMenuItem(value: s, child: Text(s.tr(context)))).toList(),
+                    onChanged: (v) => setDialogState(() => status = v!),
+                  ),
+                  SizedBox(height: 32.h),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              side: const BorderSide(color: Color(0xFFE2E8F0)),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel'.tr(context),
+                            style: const TextStyle(
+                              color: Color(0xFF64748B),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16.w),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              db.updateTaskStatus(task.id, status, db.users.firstWhere((u) => u.id == currentUserId).fullName);
+                              // Update title/desc manually in list
+                              final idx = db.tasks.indexWhere((t) => t.id == task.id);
+                              if (idx != -1) {
+                                final oldTask = db.tasks[idx];
+                                db.tasks[idx] = MockTask(
+                                  id: oldTask.id,
+                                  ticketId: oldTask.ticketId,
+                                  title: titleCon.text,
+                                  description: descCon.text,
+                                  assignedMemberId: oldTask.assignedMemberId,
+                                  deadline: oldTask.deadline,
+                                  estimatedHours: oldTask.estimatedHours,
+                                  priority: priority,
+                                  status: status,
+                                  assignmentMode: oldTask.assignmentMode,
+                                  assignedTeamId: oldTask.assignedTeamId,
+                                  assignedDepartment: oldTask.assignedDepartment,
+                                  assignedRole: oldTask.assignedRole,
+                                  startDate: oldTask.startDate,
+                                  startTime: oldTask.startTime,
+                                  dueTime: oldTask.dueTime,
+                                  allowReassignment: oldTask.allowReassignment,
+                                  assignedById: oldTask.assignedById,
+                                  currentOwnerId: oldTask.currentOwnerId,
+                                  taskDepartment: taskDept,
+                                  taskType: oldTask.taskType,
+                                  checklist: oldTask.checklist,
+                                  history: oldTask.history,
+                                  activities: oldTask.activities,
+                                  comments: oldTask.comments,
+                                );
+                                db.save();
+                              }
+                            });
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0F4C81),
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            'Save'.tr(context),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              DropdownButtonFormField<String>(
-                value: status,
-                items: ['Pending', 'Assigned', 'In Progress', 'Submitted', 'Under Review', 'Approved', 'Completed', 'Needs Changes', 'Rejected', 'Overdue'].map((s) => DropdownMenuItem(value: s, child: Text(s.tr(context)))).toList(),
-                onChanged: (v) => setDialogState(() => status = v!),
-              ),
-            ],
+            ),
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel'.tr(context))),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  db.updateTaskStatus(task.id, status, db.users.firstWhere((u) => u.id == currentUserId).fullName);
-                  // Update title/desc manually in list
-                  final idx = db.tasks.indexWhere((t) => t.id == task.id);
-                  if (idx != -1) {
-                    final oldTask = db.tasks[idx];
-                    db.tasks[idx] = MockTask(
-                      id: oldTask.id,
-                      ticketId: oldTask.ticketId,
-                      title: titleCon.text,
-                      description: descCon.text,
-                      assignedMemberId: oldTask.assignedMemberId,
-                      deadline: oldTask.deadline,
-                      estimatedHours: oldTask.estimatedHours,
-                      priority: priority,
-                      status: status,
-                      assignmentMode: oldTask.assignmentMode,
-                      assignedTeamId: oldTask.assignedTeamId,
-                      assignedDepartment: oldTask.assignedDepartment,
-                      assignedRole: oldTask.assignedRole,
-                      startDate: oldTask.startDate,
-                      startTime: oldTask.startTime,
-                      dueTime: oldTask.dueTime,
-                      allowReassignment: oldTask.allowReassignment,
-                      assignedById: oldTask.assignedById,
-                      currentOwnerId: oldTask.currentOwnerId,
-                      taskDepartment: taskDept,
-                      taskType: oldTask.taskType,
-                      checklist: oldTask.checklist,
-                      history: oldTask.history,
-                      activities: oldTask.activities,
-                      comments: oldTask.comments,
-                    );
-                    db.save();
-                  }
-                });
-                Navigator.pop(context);
-              },
-              child: Text('Save'.tr(context)),
-            )
-          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFieldLabel(BuildContext context, String label) {
+    return Text(
+      label.tr(context),
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF334155),
+      ),
+    );
+  }
+
+  InputDecoration _buildInputDecoration(BuildContext context, String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+      fillColor: const Color(0xFFEDF2F7),
+      filled: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: const BorderSide(color: Color(0xFF0F4C81), width: 1),
+      ),
+    );
+  }
+
+  void _showSubmitTaskDialog(BuildContext context, MockTask task) {
+    final db = MockDatabase.instance;
+    final githubCon = TextEditingController(text: task.githubLink ?? '');
+    final prCon = TextEditingController(text: task.prLink ?? '');
+    final notesCon = TextEditingController(text: task.notes ?? '');
+    final reportCon = TextEditingController(text: task.submissionReport ?? '');
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+        backgroundColor: Colors.white,
+        child: Container(
+          width: 500.w,
+          padding: EdgeInsets.all(32.w),
+          child: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Submit Task Deliverables'.tr(context),
+                            style: TextStyle(
+                              fontSize: 20.sp,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            'Enter submission details for task evaluation.'.tr(context),
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12.h),
+                  const Divider(color: Color(0xFFF1F5F9), thickness: 1),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'GitHub Repository Link'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: githubCon,
+                    decoration: _buildInputDecoration(context, 'https://github.com/username/repo'),
+                    validator: (v) => v == null || v.isEmpty ? 'GitHub link is required'.tr(context) : null,
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'Pull Request Link'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: prCon,
+                    decoration: _buildInputDecoration(context, 'https://github.com/username/repo/pull/1'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'Submission Report Summary'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: reportCon,
+                    maxLines: 3,
+                    decoration: _buildInputDecoration(context, 'Describe what was accomplished...'),
+                    validator: (v) => v == null || v.isEmpty ? 'Report is required'.tr(context) : null,
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'Submission Notes / Comments'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: notesCon,
+                    maxLines: 2,
+                    decoration: _buildInputDecoration(context, 'Additional notes for reviewer...'),
+                  ),
+                  SizedBox(height: 32.h),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              side: const BorderSide(color: Color(0xFFE2E8F0)),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel'.tr(context),
+                            style: const TextStyle(
+                              color: Color(0xFF64748B),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16.w),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (formKey.currentState!.validate()) {
+                              setState(() {
+                                db.submitTask(
+                                  taskId: task.id,
+                                  githubLink: githubCon.text,
+                                  prLink: prCon.text,
+                                  notes: notesCon.text,
+                                  report: reportCon.text,
+                                );
+                              });
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Task submitted successfully'.tr(context))),
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0F4C81),
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            'Submit Task'.tr(context),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showViewSubmissionDialog(BuildContext context, MockTask task) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+        backgroundColor: Colors.white,
+        child: Container(
+          width: 500.w,
+          padding: EdgeInsets.all(32.w),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Task Submission Details'.tr(context),
+                          style: TextStyle(
+                            fontSize: 20.sp,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF0F172A),
+                          ),
+                        ),
+                        SizedBox(height: 4.h),
+                        Text(
+                          'Review deliverables submitted by the owner.'.tr(context),
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            color: const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12.h),
+                const Divider(color: Color(0xFFF1F5F9), thickness: 1),
+                SizedBox(height: 20.h),
+
+                _buildFieldLabel(context, 'GitHub Repository Link'),
+                SizedBox(height: 8.h),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEDF2F7),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Text(
+                    task.githubLink ?? 'No GitHub link provided.',
+                    style: TextStyle(fontSize: 14.sp, color: task.githubLink != null ? Colors.blue : Colors.black87),
+                  ),
+                ),
+                SizedBox(height: 20.h),
+
+                _buildFieldLabel(context, 'Pull Request Link'),
+                SizedBox(height: 8.h),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEDF2F7),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Text(
+                    task.prLink ?? 'No PR link provided.',
+                    style: TextStyle(fontSize: 14.sp, color: task.prLink != null ? Colors.blue : Colors.black87),
+                  ),
+                ),
+                SizedBox(height: 20.h),
+
+                _buildFieldLabel(context, 'Submission Report Summary'),
+                SizedBox(height: 8.h),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEDF2F7),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Text(
+                    task.submissionReport ?? 'No report summary provided.',
+                    style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+                  ),
+                ),
+                SizedBox(height: 20.h),
+
+                _buildFieldLabel(context, 'Submission Notes / Comments'),
+                SizedBox(height: 8.h),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(12.w),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEDF2F7),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Text(
+                    task.notes ?? 'No notes provided.',
+                    style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+                  ),
+                ),
+                SizedBox(height: 32.h),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0F4C81),
+                      padding: EdgeInsets.symmetric(vertical: 16.h),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      'Close'.tr(context),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
