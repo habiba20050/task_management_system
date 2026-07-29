@@ -2,26 +2,46 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:task_management_system/features/teams/cubit/teams_cubit.dart';
-import 'package:task_management_system/features/teams/ui/screens/teams_dashboard_screen.dart';
-import '../../features/auth/pages/login_page.dart';
-import '../../features/auth/pages/forget_password_page.dart';
-import '../../features/auth/pages/verify_email_page.dart';
-import '../../features/auth/pages/create_new_password_page.dart';
-import '../../features/dashboard/pages/dashboard_page.dart';
-import '../../features/tasks/pages/tasks_page.dart';
-import '../../features/tasks/pages/task_details_page.dart';
-import '../../features/users/ui/screens/users_roles_screen.dart';
-import '../../features/profile/pages/profile_page.dart';
-import '../../features/profile/cubit/profile_cubit.dart';
-import '../../features/reports/pages/reports_page.dart';
-import '../../features/audit_log/pages/audit_log_page.dart';
-import '../../shared/widgets/main_layout.dart';
+import 'package:task_management_system/user/shared/features/teams/cubit/teams_cubit.dart';
+import 'package:task_management_system/user/shared/features/teams/ui/screens/teams_dashboard_screen.dart';
+import '../../user/shared/features/auth/pages/login_page.dart';
+import '../../user/shared/features/auth/pages/forget_password_page.dart';
+import '../../user/shared/features/auth/pages/verify_email_page.dart';
+import '../../user/shared/features/auth/pages/create_new_password_page.dart';
+import '../../user/shared/features/dashboard/pages/dashboard_page.dart' as shared_dash;
+import '../../user/admin/features/dashboard/pages/dashboard_page.dart' as admin_dash;
+import '../../user/manager/features/dashboard/pages/dashboard_page.dart' as manager_dash;
+import '../../user/team_leader/features/dashboard/pages/dashboard_page.dart' as leader_dash;
+import '../../user/team_member/features/dashboard/pages/dashboard_page.dart' as member_dash;
+import '../../user/shared/features/tasks/pages/tasks_page.dart';
+import '../../user/admin/features/tasks/pages/tasks_page.dart' as admin_tasks;
+import '../../user/manager/features/tasks/pages/tasks_page.dart' as manager_tasks;
+import '../../user/team_leader/features/tasks/pages/tasks_page.dart' as leader_tasks;
+import '../../user/team_member/features/tasks/pages/tasks_page.dart' as member_tasks;
+import '../../user/shared/features/tasks/pages/task_details_page.dart';
+import '../../user/team_leader/features/tasks/pages/task_details_page.dart' as leader_task_details;
+import '../../user/shared/features/users/ui/screens/users_roles_screen.dart';
+import '../../user/shared/features/profile/pages/profile_page.dart';
+import '../../user/shared/features/profile/cubit/profile_cubit.dart';
+import '../../user/shared/features/reports/pages/reports_page.dart';
+import '../../user/team_leader/features/reports/pages/reports_page.dart' as leader_reports;
+import '../../user/shared/features/audit_log/pages/audit_log_page.dart';
+import '../../user/shared/widgets/main_layout.dart';
 import '../dependency_injection/service_locator.dart';
-import '../../features/auth/cubit/auth_cubit.dart';
-import '../../features/complaints/pages/complaints_page.dart';
-import '../../features/evaluations/pages/evaluations_page.dart';
-import '../../features/tasks/pages/review_center_page.dart';
+import '../../user/shared/features/auth/cubit/auth_cubit.dart';
+import '../../user/shared/features/complaints/pages/complaints_page.dart';
+import '../../user/team_member/features/complaints/pages/complaints_page.dart' as member_complaints;
+import '../../user/team_leader/features/complaints/pages/complaints_page.dart' as leader_complaints;
+import '../../user/shared/features/evaluations/pages/evaluations_page.dart';
+import '../../user/team_member/features/evaluations/pages/evaluations_page.dart' as member_evals;
+import '../../user/team_leader/features/evaluations/pages/evaluations_page.dart' as leader_evals;
+import '../../user/team_member/features/profile/pages/profile_page.dart' as member_profile;
+import '../../user/team_leader/features/profile/pages/profile_page.dart' as leader_profile;
+import '../../user/shared/features/tasks/pages/review_center_page.dart';
+import '../../user/team_leader/features/tasks/pages/review_center_page.dart' as leader_review;
+import '../../user/admin/features/tasks/pages/review_center_page.dart' as admin_review;
+import '../../user/manager/features/tasks/pages/review_center_page.dart' as manager_review;
+import '../../user/team_member/features/tasks/pages/review_center_page.dart' as member_review;
 
 class AppRouter {
   AppRouter._();
@@ -42,7 +62,10 @@ class AppRouter {
   static const String reviewCenter = '/review-center';
   static const String auditLogs = '/audit-logs';
 
-  static GoRouter get router => GoRouter(
+  static final GoRouter router = _buildRouter();
+
+  static GoRouter _buildRouter() {
+    return GoRouter(
     initialLocation: dashboard,
     refreshListenable: GoRouterRefreshStream(getIt<AuthCubit>().stream),
     redirect: (context, state) {
@@ -110,20 +133,20 @@ class AppRouter {
             name: 'dashboard',
             builder: (context, state) {
               final showMyTasks = state.uri.queryParameters['showMyTasks'] == 'true';
-              return DashboardPage(showMyTasks: showMyTasks);
+              return _DashboardResolver(showMyTasks: showMyTasks);
             },
           ),
           GoRoute(
             path: tasks,
             name: 'tasks',
-            builder: (context, state) => const TasksPage(),
+            builder: (context, state) => const _TasksResolver(),
           ),
           GoRoute(
             path: taskDetails,
             name: 'taskDetails',
             builder: (context, state) {
               final taskId = state.pathParameters['id'] ?? '';
-              return TaskDetailsPage(taskId: taskId);
+              return _TaskDetailsResolver(taskId: taskId);
             },
           ),
           GoRoute(
@@ -137,14 +160,14 @@ class AppRouter {
           GoRoute(
             path: reports,
             name: 'reports',
-            builder: (context, state) => const ReportsPage(),
+            builder: (context, state) => const _ReportsResolver(),
           ),
           GoRoute(
             path: settings,
             name: 'settings',
             builder: (context, state) => BlocProvider(
               create: (context) => getIt<ProfileCubit>(),
-              child: const ProfilePage(),
+              child: const _ProfileResolver(),
             ),
           ),
           GoRoute(
@@ -155,17 +178,17 @@ class AppRouter {
           GoRoute(
             path: complaints,
             name: 'complaints',
-            builder: (context, state) => const ComplaintsPage(),
+            builder: (context, state) => const _ComplaintsResolver(),
           ),
           GoRoute(
             path: evaluations,
             name: 'evaluations',
-            builder: (context, state) => const EvaluationsPage(),
+            builder: (context, state) => const _EvaluationsResolver(),
           ),
           GoRoute(
             path: reviewCenter,
             name: 'reviewCenter',
-            builder: (context, state) => const ReviewCenterPage(),
+            builder: (context, state) => const _ReviewCenterResolver(),
           ),
           GoRoute(
             path: auditLogs,
@@ -176,6 +199,167 @@ class AppRouter {
       ),
     ],
   );
+  }
+}
+
+/// Routes to the correct [DashboardPage] based on the current user role.
+class _DashboardResolver extends StatelessWidget {
+  final bool showMyTasks;
+  const _DashboardResolver({this.showMyTasks = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = context.watch<AuthCubit>().state;
+    if (authState is AuthSuccess) {
+      switch (authState.user.role) {
+        case 'Admin':
+          return admin_dash.DashboardPage(showMyTasks: showMyTasks);
+        case 'Manager':
+          return manager_dash.DashboardPage(showMyTasks: showMyTasks);
+        case 'Team Leader':
+          return leader_dash.DashboardPage(showMyTasks: showMyTasks);
+        case 'Team Member':
+          return member_dash.DashboardPage(showMyTasks: showMyTasks);
+      }
+    }
+    return shared_dash.DashboardPage(showMyTasks: showMyTasks);
+  }
+}
+
+/// Routes to the correct [TasksPage] based on the current user role.
+class _TasksResolver extends StatelessWidget {
+  const _TasksResolver();
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = context.watch<AuthCubit>().state;
+    if (authState is AuthSuccess) {
+      switch (authState.user.role) {
+        case 'Admin':
+          return const admin_tasks.TasksPage();
+        case 'Manager':
+          return const manager_tasks.TasksPage();
+        case 'Team Leader':
+          return const leader_tasks.TasksPage();
+        case 'Team Member':
+          return const member_tasks.TasksPage();
+      }
+    }
+    return const TasksPage();
+  }
+}
+
+/// Routes to the correct [ReportsPage] based on the current user role.
+class _ReportsResolver extends StatelessWidget {
+  const _ReportsResolver();
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = context.watch<AuthCubit>().state;
+    if (authState is AuthSuccess) {
+      if (authState.user.role == 'Team Leader') {
+        return const leader_reports.ReportsPage();
+      }
+    }
+    return const ReportsPage();
+  }
+}
+
+/// Routes to the correct [ComplaintsPage] based on the current user role.
+class _ComplaintsResolver extends StatelessWidget {
+  const _ComplaintsResolver();
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = context.watch<AuthCubit>().state;
+    if (authState is AuthSuccess) {
+      switch (authState.user.role) {
+        case 'Team Member':
+          return const member_complaints.ComplaintsPage();
+        case 'Team Leader':
+          return const leader_complaints.ComplaintsPage();
+      }
+    }
+    return const ComplaintsPage();
+  }
+}
+
+/// Routes to the correct [ProfilePage] based on the current user role.
+class _ProfileResolver extends StatelessWidget {
+  const _ProfileResolver();
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = context.watch<AuthCubit>().state;
+    if (authState is AuthSuccess) {
+      switch (authState.user.role) {
+        case 'Team Member':
+          return const member_profile.ProfilePage();
+        case 'Team Leader':
+          return const leader_profile.ProfilePage();
+      }
+    }
+    return const ProfilePage();
+  }
+}
+
+/// Routes to the correct [ReviewCenterPage] based on the current user role.
+class _ReviewCenterResolver extends StatelessWidget {
+  const _ReviewCenterResolver();
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = context.watch<AuthCubit>().state;
+    if (authState is AuthSuccess) {
+      switch (authState.user.role) {
+        case 'Team Leader':
+          return const leader_review.ReviewCenterPage();
+        case 'Admin':
+          return const admin_review.ReviewCenterPage();
+        case 'Manager':
+          return const manager_review.ReviewCenterPage();
+        case 'Team Member':
+          return const member_review.ReviewCenterPage();
+      }
+    }
+    return const ReviewCenterPage();
+  }
+}
+
+/// Routes to the correct [TaskDetailsPage] based on the current user role.
+class _TaskDetailsResolver extends StatelessWidget {
+  final String taskId;
+  const _TaskDetailsResolver({required this.taskId});
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = context.watch<AuthCubit>().state;
+    if (authState is AuthSuccess) {
+      if (authState.user.role == 'Team Leader') {
+        return leader_task_details.TaskDetailsPage(taskId: taskId);
+      }
+    }
+    return TaskDetailsPage(taskId: taskId);
+  }
+}
+
+/// Routes to the correct [EvaluationsPage] based on the current user role.
+class _EvaluationsResolver extends StatelessWidget {
+  const _EvaluationsResolver();
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = context.watch<AuthCubit>().state;
+    if (authState is AuthSuccess) {
+      switch (authState.user.role) {
+        case 'Team Member':
+          return const member_evals.EvaluationsPage();
+        case 'Team Leader':
+          return const leader_evals.EvaluationsPage();
+      }
+    }
+    return const EvaluationsPage();
+  }
 }
 
 class GoRouterRefreshStream extends ChangeNotifier {

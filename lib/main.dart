@@ -5,8 +5,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'config/dependency_injection/service_locator.dart';
 import 'config/routes/app_router.dart';
-import 'features/auth/cubit/auth_cubit.dart';
-import 'features/language/cubit/language_cubit.dart';
+import 'user/shared/features/auth/cubit/auth_cubit.dart';
+import 'user/shared/features/language/cubit/language_cubit.dart';
 import 'l10n/app_localizations.dart';
 
 void main() async {
@@ -15,8 +15,19 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    getIt<AuthCubit>().checkAuthStatus();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +52,7 @@ class MyApp extends StatelessWidget {
           builder: (context, child) {
             return MultiBlocProvider(
               providers: [
-                BlocProvider.value(value: getIt<AuthCubit>()..checkAuthStatus()),
+                BlocProvider.value(value: getIt<AuthCubit>()),
                 BlocProvider.value(value: getIt<LanguageCubit>()),
               ],
               child: BlocBuilder<LanguageCubit, String>(

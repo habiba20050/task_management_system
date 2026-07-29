@@ -711,6 +711,9 @@ class MockDatabase {
 
   static final MockDatabase instance = MockDatabase._();
 
+  static const String _sharedKey = 'mock_db_shared';
+  static const String _oldKey = 'mock_db_v6';
+
   List<MockUser> _users = [];
   List<MockTeam> _teams = [];
   List<MockTask> _tasks = [];
@@ -732,31 +735,85 @@ class MockDatabase {
   List<MockAuditLog> get auditLogs => _auditLogs;
 
   Future<void> init() async {
-    final String? data = LocalStorage.getString('mock_db_v6');
-    if (data != null && data.isNotEmpty) {
-      try {
-        final Map<String, dynamic> map = jsonDecode(data);
-        _users = (map['users'] as List? ?? []).map((x) => MockUser.fromJson(x as Map<String, dynamic>)).toList();
-        _teams = (map['teams'] as List? ?? []).map((x) => MockTeam.fromJson(x as Map<String, dynamic>)).toList();
-        _tasks = (map['tasks'] as List? ?? []).map((x) => MockTask.fromJson(x as Map<String, dynamic>)).toList();
-        _complaints = (map['complaints'] as List? ?? []).map((x) => MockComplaint.fromJson(x as Map<String, dynamic>)).toList();
-        _notifications = (map['notifications'] as List? ?? []).map((x) => MockNotification.fromJson(x as Map<String, dynamic>)).toList();
-        _departments = (map['departments'] as List? ?? []).map((x) => MockDepartment.fromJson(x as Map<String, dynamic>)).toList();
-        _roles = (map['roles'] as List? ?? []).map((x) => MockRole.fromJson(x as Map<String, dynamic>)).toList();
-        _evaluations = (map['evaluations'] as List? ?? []).map((x) => MockEvaluation.fromJson(x as Map<String, dynamic>)).toList();
-        _auditLogs = (map['auditLogs'] as List? ?? []).map((x) => MockAuditLog.fromJson(x as Map<String, dynamic>)).toList();
-      } catch (e) {
-        // Fallback to defaults
+    String? sharedStr = LocalStorage.getString(_sharedKey);
+
+    if (sharedStr == null || sharedStr.isEmpty) {
+      // Try old monolithic format for migration
+      sharedStr = LocalStorage.getString(_oldKey);
+      if (sharedStr != null && sharedStr.isNotEmpty) {
+        try {
+          final map = jsonDecode(sharedStr) as Map<String, dynamic>;
+          _loadFromMap(map);
+          await LocalStorage.remove(_oldKey);
+        } catch (_) {}
       }
+    } else {
+      try {
+        final map = jsonDecode(sharedStr) as Map<String, dynamic>;
+        _loadSharedFromMap(map);
+        _loadPerUserData();
+      } catch (_) {}
     }
-    
+
     // Ensure lists are rich and never empty
     if (_users.isEmpty || _tasks.length < 8 || _departments.isEmpty || _roles.isEmpty || _teams.isEmpty) {
       _buildDefaults();
     }
-    
+
     _checkOverdueRules();
     await save();
+  }
+
+  void _loadFromMap(Map<String, dynamic> map) {
+    _users = (map['users'] as List? ?? []).map((x) => MockUser.fromJson(x as Map<String, dynamic>)).toList();
+    _teams = (map['teams'] as List? ?? []).map((x) => MockTeam.fromJson(x as Map<String, dynamic>)).toList();
+    _tasks = (map['tasks'] as List? ?? []).map((x) => MockTask.fromJson(x as Map<String, dynamic>)).toList();
+    _complaints = (map['complaints'] as List? ?? []).map((x) => MockComplaint.fromJson(x as Map<String, dynamic>)).toList();
+    _notifications = (map['notifications'] as List? ?? []).map((x) => MockNotification.fromJson(x as Map<String, dynamic>)).toList();
+    _departments = (map['departments'] as List? ?? []).map((x) => MockDepartment.fromJson(x as Map<String, dynamic>)).toList();
+    _roles = (map['roles'] as List? ?? []).map((x) => MockRole.fromJson(x as Map<String, dynamic>)).toList();
+    _evaluations = (map['evaluations'] as List? ?? []).map((x) => MockEvaluation.fromJson(x as Map<String, dynamic>)).toList();
+    _auditLogs = (map['auditLogs'] as List? ?? []).map((x) => MockAuditLog.fromJson(x as Map<String, dynamic>)).toList();
+  }
+
+  void _loadSharedFromMap(Map<String, dynamic> map) {
+    _users = (map['users'] as List? ?? []).map((x) => MockUser.fromJson(x as Map<String, dynamic>)).toList();
+    _teams = (map['teams'] as List? ?? []).map((x) => MockTeam.fromJson(x as Map<String, dynamic>)).toList();
+    _departments = (map['departments'] as List? ?? []).map((x) => MockDepartment.fromJson(x as Map<String, dynamic>)).toList();
+    _roles = (map['roles'] as List? ?? []).map((x) => MockRole.fromJson(x as Map<String, dynamic>)).toList();
+    _auditLogs = (map['auditLogs'] as List? ?? []).map((x) => MockAuditLog.fromJson(x as Map<String, dynamic>)).toList();
+  }
+
+  void _loadPerUserData() {
+    final Map<String, MockTask> taskMap = {};
+    final Map<String, MockComplaint> complaintMap = {};
+    final Map<String, MockEvaluation> evaluationMap = {};
+    final Map<String, MockNotification> notificationMap = {};
+
+    for (final user in _users) {
+      final String? userStr = LocalStorage.getString('mock_db_user_${user.id}');
+      if (userStr == null || userStr.isEmpty) continue;
+      try {
+        final userMap = jsonDecode(userStr) as Map<String, dynamic>;
+        for (final t in (userMap['tasks'] as List? ?? []).map((x) => MockTask.fromJson(x as Map<String, dynamic>))) {
+          taskMap[t.id] = t;
+        }
+        for (final c in (userMap['complaints'] as List? ?? []).map((x) => MockComplaint.fromJson(x as Map<String, dynamic>))) {
+          complaintMap[c.id] = c;
+        }
+        for (final e in (userMap['evaluations'] as List? ?? []).map((x) => MockEvaluation.fromJson(x as Map<String, dynamic>))) {
+          evaluationMap[e.id] = e;
+        }
+        for (final n in (userMap['notifications'] as List? ?? []).map((x) => MockNotification.fromJson(x as Map<String, dynamic>))) {
+          notificationMap[n.id] = n;
+        }
+      } catch (_) {}
+    }
+
+    _tasks = taskMap.values.toList();
+    _complaints = complaintMap.values.toList();
+    _evaluations = evaluationMap.values.toList();
+    _notifications = notificationMap.values.toList();
   }
 
   void _checkOverdueRules() {
@@ -1119,18 +1176,38 @@ class MockDatabase {
   }
 
   Future<void> save() async {
-    final map = {
+    // Shared data (users, teams, departments, roles, auditLogs)
+    await LocalStorage.setString(_sharedKey, jsonEncode({
       'users': _users.map((x) => x.toJson()).toList(),
       'teams': _teams.map((x) => x.toJson()).toList(),
-      'tasks': _tasks.map((x) => x.toJson()).toList(),
-      'complaints': _complaints.map((x) => x.toJson()).toList(),
-      'notifications': _notifications.map((x) => x.toJson()).toList(),
       'departments': _departments.map((x) => x.toJson()).toList(),
       'roles': _roles.map((x) => x.toJson()).toList(),
-      'evaluations': _evaluations.map((x) => x.toJson()).toList(),
       'auditLogs': _auditLogs.map((x) => x.toJson()).toList(),
-    };
-    await LocalStorage.setString('mock_db_v6', jsonEncode(map));
+    }));
+
+    // Per-user data
+    for (final user in _users) {
+      final uid = user.id;
+      final userTasks = _tasks.where((t) =>
+        t.assignedMemberId == uid ||
+        t.currentOwnerId == uid ||
+        t.assignedById == uid
+      ).toList();
+      final userComplaints = _complaints.where((c) =>
+        c.submitterId == uid || c.targetId == uid
+      ).toList();
+      final userEvaluations = _evaluations.where((e) =>
+        e.employeeId == uid || e.evaluatorId == uid
+      ).toList();
+      final userNotifications = _notifications.where((n) => n.userId == uid).toList();
+
+      await LocalStorage.setString('mock_db_user_$uid', jsonEncode({
+        'tasks': userTasks.map((x) => x.toJson()).toList(),
+        'complaints': userComplaints.map((x) => x.toJson()).toList(),
+        'evaluations': userEvaluations.map((x) => x.toJson()).toList(),
+        'notifications': userNotifications.map((x) => x.toJson()).toList(),
+      }));
+    }
   }
 
   MockUser? login(String email, String password) {
@@ -1172,6 +1249,7 @@ class MockDatabase {
   void deleteUser(String id, [String adminUserId = '1']) {
     final u = _users.firstWhere((u) => u.id == id, orElse: () => MockUser(id: '', email: '', fullName: '', role: '', department: ''));
     _users.removeWhere((u) => u.id == id);
+    LocalStorage.remove('mock_db_user_$id');
     logAdminAction(adminUserId, 'Deleted User: ${u.fullName} (${u.email})', 'Users');
     save();
   }
@@ -1370,7 +1448,7 @@ class MockDatabase {
         MockTaskActivity(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           user: comment.userName,
-          action: 'Comment Added: "${comment.message.length > 20 ? comment.message.substring(0, 20) + '...' : comment.message}"',
+          action: 'Comment Added: "${comment.message.length > 20 ? '${comment.message.substring(0, 20)}...' : comment.message}"',
           date: comment.date,
         ),
       );
@@ -1381,6 +1459,119 @@ class MockDatabase {
   void deleteTask(String id) {
     _tasks.removeWhere((t) => t.id == id);
     save();
+  }
+
+  void updateTaskDetails(String taskId, {String? title, String? description, String? priority, String? deadline}) {
+    final idx = _tasks.indexWhere((t) => t.id == taskId);
+    if (idx != -1) {
+      final task = _tasks[idx];
+      if (title != null && title != task.title) {
+        final newTask = MockTask(
+          id: task.id,
+          ticketId: task.ticketId,
+          title: title,
+          description: task.description,
+          assignedMemberId: task.assignedMemberId,
+          deadline: task.deadline,
+          estimatedHours: task.estimatedHours,
+          priority: task.priority,
+          status: task.status,
+          attachments: task.attachments,
+          githubLink: task.githubLink,
+          prLink: task.prLink,
+          notes: task.notes,
+          submissionReport: task.submissionReport,
+          leaderFeedback: task.leaderFeedback,
+          managerFeedback: task.managerFeedback,
+          assignmentMode: task.assignmentMode,
+          assignedTeamId: task.assignedTeamId,
+          assignedDepartment: task.assignedDepartment,
+          assignedRole: task.assignedRole,
+          startDate: task.startDate,
+          startTime: task.startTime,
+          dueTime: task.dueTime,
+          allowReassignment: task.allowReassignment,
+          assignedById: task.assignedById,
+          currentOwnerId: task.currentOwnerId,
+          taskDepartment: task.taskDepartment,
+          taskType: task.taskType,
+          estimatedTime: task.estimatedTime,
+          actualTime: task.actualTime,
+          timerRunning: task.timerRunning,
+          timerStartTime: task.timerStartTime,
+          checklist: task.checklist,
+          history: task.history,
+          activities: task.activities,
+          comments: task.comments,
+        );
+        _tasks[idx] = newTask;
+      }
+      // Apply other changes
+      if (description != null) _tasks[idx] = _copyWithDescription(_tasks[idx], description);
+      if (priority != null) _tasks[idx] = _copyWithPriority(_tasks[idx], priority);
+      if (deadline != null) _tasks[idx] = _copyWithDeadline(_tasks[idx], deadline);
+      save();
+    }
+  }
+
+  MockTask _copyWithDescription(MockTask t, String desc) {
+    return MockTask(
+      id: t.id, ticketId: t.ticketId, title: t.title, description: desc,
+      assignedMemberId: t.assignedMemberId, deadline: t.deadline,
+      estimatedHours: t.estimatedHours, priority: t.priority, status: t.status,
+      attachments: t.attachments, githubLink: t.githubLink, prLink: t.prLink,
+      notes: t.notes, submissionReport: t.submissionReport,
+      leaderFeedback: t.leaderFeedback, managerFeedback: t.managerFeedback,
+      assignmentMode: t.assignmentMode, assignedTeamId: t.assignedTeamId,
+      assignedDepartment: t.assignedDepartment, assignedRole: t.assignedRole,
+      startDate: t.startDate, startTime: t.startTime, dueTime: t.dueTime,
+      allowReassignment: t.allowReassignment, assignedById: t.assignedById,
+      currentOwnerId: t.currentOwnerId, taskDepartment: t.taskDepartment,
+      taskType: t.taskType, estimatedTime: t.estimatedTime,
+      actualTime: t.actualTime, timerRunning: t.timerRunning,
+      timerStartTime: t.timerStartTime, checklist: t.checklist,
+      history: t.history, activities: t.activities, comments: t.comments,
+    );
+  }
+
+  MockTask _copyWithPriority(MockTask t, String pri) {
+    return MockTask(
+      id: t.id, ticketId: t.ticketId, title: t.title, description: t.description,
+      assignedMemberId: t.assignedMemberId, deadline: t.deadline,
+      estimatedHours: t.estimatedHours, priority: pri, status: t.status,
+      attachments: t.attachments, githubLink: t.githubLink, prLink: t.prLink,
+      notes: t.notes, submissionReport: t.submissionReport,
+      leaderFeedback: t.leaderFeedback, managerFeedback: t.managerFeedback,
+      assignmentMode: t.assignmentMode, assignedTeamId: t.assignedTeamId,
+      assignedDepartment: t.assignedDepartment, assignedRole: t.assignedRole,
+      startDate: t.startDate, startTime: t.startTime, dueTime: t.dueTime,
+      allowReassignment: t.allowReassignment, assignedById: t.assignedById,
+      currentOwnerId: t.currentOwnerId, taskDepartment: t.taskDepartment,
+      taskType: t.taskType, estimatedTime: t.estimatedTime,
+      actualTime: t.actualTime, timerRunning: t.timerRunning,
+      timerStartTime: t.timerStartTime, checklist: t.checklist,
+      history: t.history, activities: t.activities, comments: t.comments,
+    );
+  }
+
+  MockTask _copyWithDeadline(MockTask t, String dl) {
+    return MockTask(
+      id: t.id, ticketId: t.ticketId, title: t.title, description: t.description,
+      assignedMemberId: t.assignedMemberId, deadline: dl,
+      estimatedHours: t.estimatedHours, priority: t.priority, status: t.status,
+      attachments: t.attachments, githubLink: t.githubLink, prLink: t.prLink,
+      notes: t.notes, submissionReport: t.submissionReport,
+      leaderFeedback: t.leaderFeedback, managerFeedback: t.managerFeedback,
+      assignmentMode: t.assignmentMode, assignedTeamId: t.assignedTeamId,
+      assignedDepartment: t.assignedDepartment, assignedRole: t.assignedRole,
+      startDate: t.startDate, startTime: t.startTime, dueTime: t.dueTime,
+      allowReassignment: t.allowReassignment, assignedById: t.assignedById,
+      currentOwnerId: t.currentOwnerId, taskDepartment: t.taskDepartment,
+      taskType: t.taskType, estimatedTime: t.estimatedTime,
+      actualTime: t.actualTime, timerRunning: t.timerRunning,
+      timerStartTime: t.timerStartTime, checklist: t.checklist,
+      history: t.history, activities: t.activities, comments: t.comments,
+    );
   }
 
   void updateTaskStatus(String taskId, String newStatus, String updatedByUser) {
