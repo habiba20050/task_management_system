@@ -90,6 +90,7 @@ class StatCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           title,
@@ -101,14 +102,16 @@ class StatCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        SizedBox(height: 2.h),
+                        SizedBox(height: 1.h),
                         Text(
                           value,
                           style: TextStyle(
-                            fontSize: 18.sp,
+                            fontSize: 15.sp,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),

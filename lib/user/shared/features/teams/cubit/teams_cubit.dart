@@ -100,4 +100,51 @@ class TeamsCubit extends Cubit<TeamsState> {
     db.save();
     fetchTeams();
   }
+
+  // إضافة موظف إلى فريق
+  void assignMemberToTeam({
+    required String memberId,
+    required String teamId,
+    required String managerId,
+  }) {
+    final db = MockDatabase.instance;
+
+    final teamIdx = db.teams.indexWhere((t) => t.id == teamId);
+    if (teamIdx != -1) {
+      final team = db.teams[teamIdx];
+      if (!team.memberIds.contains(memberId)) {
+        team.memberIds.add(memberId);
+        db.save();
+      }
+    }
+
+    final userIdx = db.users.indexWhere((u) => u.id == memberId);
+    if (userIdx != -1) {
+      final u = db.users[userIdx];
+      db.editUser(
+        MockUser(
+          id: u.id,
+          email: u.email,
+          fullName: u.fullName,
+          role: u.role,
+          department: u.department,
+          phone: u.phone,
+          status: u.status,
+          teamId: teamId,
+          isActive: u.isActive,
+          lastActive: u.lastActive,
+          points: u.points,
+          productivityScore: u.productivityScore,
+          deadlineCommitment: u.deadlineCommitment,
+          approvalRate: u.approvalRate,
+          rejectionRate: u.rejectionRate,
+          leaderEvaluation: u.leaderEvaluation,
+          finalScore: u.finalScore,
+        ),
+        managerId,
+      );
+    }
+
+    fetchTeams();
+  }
 }

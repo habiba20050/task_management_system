@@ -5,6 +5,7 @@ import '../../../../../shared/features/teams/model/team_model.dart';
 import '../../../../../../core/network/mock_database.dart';
 import '../../../../../shared/features/auth/cubit/auth_cubit.dart';
 import '../../../../../../core/localization/translate_extension.dart';
+import '../../../../../../core/colors/app_colors.dart';
 
 class CreateTeamDialogWidget extends StatefulWidget {
   final TeamModel? teamToEdit;
@@ -33,7 +34,7 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
   final _formKey = GlobalKey<FormState>();
 
   final _teamNameController = TextEditingController();
-  String? _selectedDepartment;
+  final _memberSearchController = TextEditingController();
   String? _selectedLeaderId;
   List<String> _selectedMemberIds = [];
 
@@ -42,8 +43,7 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
     super.initState();
     if (widget.teamToEdit != null) {
       _teamNameController.text = widget.teamToEdit!.name;
-      _selectedDepartment = widget.teamToEdit!.department;
-      
+
       final db = MockDatabase.instance;
       final mockTeam = db.teams.firstWhere(
         (t) => t.id == widget.teamToEdit!.id,
@@ -59,265 +59,289 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
   @override
   void dispose() {
     _teamNameController.dispose();
+    _memberSearchController.dispose();
     super.dispose();
+  }
+
+  List<MockUser> get _filteredMembers {
+    final db = MockDatabase.instance;
+    final members = db.users.where((u) => u.role == 'Team Member').toList();
+    final q = _memberSearchController.text.trim().toLowerCase();
+    if (q.isEmpty) return members;
+    return members
+        .where((m) => m.fullName.toLowerCase().contains(q) || m.email.toLowerCase().contains(q))
+        .toList();
+  }
+
+  String _initials(String name) {
+    final parts = name.split(' ').where((e) => e.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    return parts.take(2).map((e) => e[0]).join().toUpperCase();
+  }
+
+  void _handleSubmit() {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedMemberIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please select at least one team member.'.tr(context))),
+      );
+      return;
+    }
+
+    final db = MockDatabase.instance;
+    final name = _teamNameController.text;
+
+    final authState = context.read<AuthCubit>().state;
+    final managerId = authState is AuthSuccess ? authState.user.id : '2';
+    final managerUser = db.users.firstWhere(
+      (u) => u.id == managerId,
+      orElse: () => MockUser(
+        id: managerId,
+        email: 'manager@aitu.edu',
+        fullName: 'Manager',
+        role: 'Manager',
+        department: 'Computer Science',
+      ),
+    );
+    final dept = managerUser.department.isEmpty ? 'Computer Science' : managerUser.department;
+
+    final leaderUser = db.users.firstWhere((u) => u.id == _selectedLeaderId);
+
+    final newTeam = TeamModel(
+      id: widget.teamToEdit?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      name: name,
+      department: dept,
+      leaderName: leaderUser.fullName,
+      leaderInitials: _initials(leaderUser.fullName),
+      membersCount: _selectedMemberIds.length,
+      totalTasks: widget.teamToEdit?.totalTasks ?? 0,
+      completedTasks: widget.teamToEdit?.completedTasks ?? 0,
+    );
+
+    if (widget.teamToEdit != null) {
+      context.read<TeamsCubit>().updateTeam(
+            newTeam,
+            _selectedMemberIds,
+            managerId,
+            _selectedLeaderId!,
+          );
+    } else {
+      context.read<TeamsCubit>().addTeam(
+            newTeam,
+            _selectedMemberIds,
+            managerId,
+            _selectedLeaderId!,
+          );
+    }
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     final db = MockDatabase.instance;
     final leaders = db.users.where((u) => u.role == 'Team Leader').toList();
-    final members = db.users.where((u) => u.role == 'Team Member').toList();
+    final members = _filteredMembers;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      elevation: 10,
       backgroundColor: Colors.white,
-      child: Container(
-        width: 580,
-        padding: const EdgeInsets.all(32),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header (Title and X close)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.teamToEdit != null ? 'Edit Team'.tr(context) : 'Create New Team'.tr(context),
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          widget.teamToEdit != null
-                              ? 'Update team details, leader and members.'.tr(context)
-                              : 'Set up a new team, assign a leader and select members.'.tr(context),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF94A3B8),
-                          ),
-                        ),
-                      ],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 24),
+
+                  // Team Name
+                  _buildFieldLabel(Icons.groups_outlined, 'Team Name'),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _teamNameController,
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+                    decoration: _buildInputDecoration('e.g., Software Engineering Team'),
+                    validator: (val) => val == null || val.isEmpty ? 'Team name is required'.tr(context) : null,
+                  ),
+                  const SizedBox(height: 22),
+
+                  // Team Leader Dropdown
+                  _buildFieldLabel(Icons.person_outline, 'Team Leader'),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    value: _selectedLeaderId,
+                    isExpanded: true,
+                    hint: Text(
+                      'Select a team leader...'.tr(context),
+                      style: const TextStyle(color: AppColors.textHint, fontSize: 15),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.close,
-                        color: Color(0xFF94A3B8),
-                        size: 22,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Divider(color: Color(0xFFF1F5F9), thickness: 1),
-                const SizedBox(height: 20),
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+                    decoration: _buildInputDecoration(''),
+                    items: leaders
+                        .map((l) => DropdownMenuItem(
+                              value: l.id,
+                              child: Row(
+                                children: [
+                                  _buildAvatar(l.fullName, 30, AppColors.primary),
+                                  const SizedBox(width: 10),
+                                  Flexible(
+                                    child: Text(
+                                      l.fullName,
+                                      style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ))
+                        .toList(),
+                    onChanged: (val) => setState(() => _selectedLeaderId = val),
+                    validator: (val) => val == null ? 'Team leader is required'.tr(context) : null,
+                  ),
+                  const SizedBox(height: 22),
 
-                // Team Name
-                _buildFieldLabel('Team Name'),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _teamNameController,
-                  style: const TextStyle(color: Color(0xFF1E293B), fontSize: 15),
-                  decoration: _buildInputDecoration('e.g., Software Engineering Team'),
-                  validator: (val) => val == null || val.isEmpty ? 'Team name is required'.tr(context) : null,
-                ),
-                const SizedBox(height: 20),
-
-                // Department Dropdown
-                _buildFieldLabel('Department'),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: _selectedDepartment,
-                  hint: Text(
-                    'Select Department'.tr(context),
-                    style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 15),
-                  ),
-                  icon: const Icon(
-                    Icons.keyboard_arrow_down,
-                    color: Color(0xFF64748B),
-                  ),
-                  decoration: _buildInputDecoration(''),
-                  items: ['Computer Science', 'IT Services', 'CS Dept', 'Business', 'Math Dept', 'Engineering']
-                      .map((label) => DropdownMenuItem(value: label, child: Text(label.tr(context))))
-                      .toList(),
-                  onChanged: (val) => setState(() => _selectedDepartment = val),
-                  validator: (val) => val == null ? 'Department is required'.tr(context) : null,
-                ),
-                const SizedBox(height: 20),
-
-                // Team Leader Dropdown
-                _buildFieldLabel('Team Leader'),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: _selectedLeaderId,
-                  hint: Text(
-                    'Select a team leader...'.tr(context),
-                    style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 15),
-                  ),
-                  icon: const Icon(
-                    Icons.keyboard_arrow_down,
-                    color: Color(0xFF64748B),
-                  ),
-                  decoration: _buildInputDecoration(''),
-                  items: leaders
-                      .map((l) => DropdownMenuItem(value: l.id, child: Text(l.fullName)))
-                      .toList(),
-                  onChanged: (val) => setState(() => _selectedLeaderId = val),
-                  validator: (val) => val == null ? 'Team leader is required'.tr(context) : null,
-                ),
-                const SizedBox(height: 20),
-
-                // Members Multi-Select Checkboxes
-                _buildFieldLabel('Team Members'),
-                const SizedBox(height: 8),
-                Container(
-                  constraints: const BoxConstraints(maxHeight: 200),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEDF2F7),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: ListView(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      children: members.map((m) {
-                        final isChecked = _selectedMemberIds.contains(m.id);
-                        return CheckboxListTile(
-                          title: Text(m.fullName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                          subtitle: Text(m.email, style: const TextStyle(fontSize: 12)),
-                          value: isChecked,
-                          activeColor: const Color(0xFF0F4C81),
-                          onChanged: (val) {
-                            setState(() {
-                              if (val == true) {
-                                _selectedMemberIds.add(m.id);
-                              } else {
-                                _selectedMemberIds.remove(m.id);
-                              }
-                            });
-                          },
-                          controlAffinity: ListTileControlAffinity.leading,
-                          contentPadding: EdgeInsets.zero,
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // Cancel and Submit buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          side: const BorderSide(
-                            color: Color(0xFFE2E8F0),
-                            width: 1.5,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                  // Members Multi-Select
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildFieldLabel(Icons.group_add_outlined, 'Team Members'),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
-                          'Cancel'.tr(context),
+                          '${_selectedMemberIds.length} selected'.tr(context),
                           style: const TextStyle(
-                            color: Color(0xFF1E293B),
+                            color: AppColors.primary,
+                            fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
                           ),
                         ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _memberSearchController,
+                    onChanged: (_) => setState(() {}),
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                    decoration: _buildInputDecoration('Search members...'.tr(context), icon: Icons.search),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 220),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            if (_selectedMemberIds.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Please select at least one team member.'.tr(context))),
+                    child: members.isEmpty
+                        ? const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(20),
+                              child: Text('No members found', style: TextStyle(color: AppColors.textHint, fontSize: 13)),
+                            ),
+                          )
+                        : ListView(
+                            shrinkWrap: true,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            children: members.map((m) {
+                              final isChecked = _selectedMemberIds.contains(m.id);
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 3),
+                                child: CheckboxListTile(
+                                  value: isChecked,
+                                  activeColor: AppColors.primary,
+                                  checkColor: Colors.white,
+                                  onChanged: (val) {
+                                    setState(() {
+                                      if (val == true) {
+                                        _selectedMemberIds.add(m.id);
+                                      } else {
+                                        _selectedMemberIds.remove(m.id);
+                                      }
+                                    });
+                                  },
+                                  controlAffinity: ListTileControlAffinity.leading,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  title: Row(
+                                    children: [
+                                      _buildAvatar(m.fullName, 34, AppColors.primary),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              m.fullName,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.textPrimary,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 1),
+                                            Text(
+                                              m.email,
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               );
-                              return;
-                            }
-
-                            final name = _teamNameController.text;
-                            final dept = _selectedDepartment ?? 'Computer Science';
-                            final leaderUser = db.users.firstWhere((u) => u.id == _selectedLeaderId);
-
-                            // Get current manager ID
-                            final authState = context.read<AuthCubit>().state;
-                            final managerId = authState is AuthSuccess ? authState.user.id : '2';
-
-                            final newTeam = TeamModel(
-                              id: widget.teamToEdit?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
-                              name: name,
-                              department: dept,
-                              leaderName: leaderUser.fullName,
-                              leaderInitials: leaderUser.fullName
-                                  .split(' ')
-                                  .map((e) => e.isNotEmpty ? e[0] : '')
-                                  .take(2)
-                                  .join()
-                                  .toUpperCase(),
-                              membersCount: _selectedMemberIds.length,
-                              totalTasks: widget.teamToEdit?.totalTasks ?? 0,
-                              completedTasks: widget.teamToEdit?.completedTasks ?? 0,
-                            );
-
-                            if (widget.teamToEdit != null) {
-                              context.read<TeamsCubit>().updateTeam(
-                                    newTeam,
-                                    _selectedMemberIds,
-                                    managerId,
-                                    _selectedLeaderId!,
-                                  );
-                            } else {
-                              context.read<TeamsCubit>().addTeam(
-                                    newTeam,
-                                    _selectedMemberIds,
-                                    managerId,
-                                    _selectedLeaderId!,
-                                  );
-                            }
-                            Navigator.pop(context);
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0F4C81),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            }).toList(),
                           ),
-                          elevation: 0,
-                        ),
-                        child: Text(
-                          (widget.teamToEdit != null ? 'Save Changes' : 'Create Team').tr(context),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                  ),
+                  const SizedBox(height: 28),
+
+                  // Cancel and Submit buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          child: Text(
+                            'Cancel'.tr(context),
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 16),
+                      Expanded(child: _buildSubmitButton()),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -325,35 +349,160 @@ class _CreateTeamDialogWidgetState extends State<CreateTeamDialogWidget> {
     );
   }
 
-  Widget _buildFieldLabel(String label) {
-    return Text(
-      label.tr(context),
-      style: const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w600,
-        color: Color(0xFF334155),
+  Widget _buildHeader() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 54,
+          height: 54,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1E6FC4), Color(0xFF0F4C81)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.25),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.groups_rounded, color: Colors.white, size: 28),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.teamToEdit != null ? 'Edit Team'.tr(context) : 'Create New Team'.tr(context),
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                widget.teamToEdit != null
+                    ? 'Update team details, leader and members.'.tr(context)
+                    : 'Set up a new team, assign a leader and select members.'.tr(context),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary, size: 22),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFieldLabel(IconData icon, String label) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.textSecondary),
+        const SizedBox(width: 6),
+        Text(
+          label.tr(context),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAvatar(String name, double size, Color color) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        shape: BoxShape.circle,
+      ),
+      child: Text(
+        _initials(name),
+        style: TextStyle(
+          color: color,
+          fontSize: size * 0.38,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
 
-  InputDecoration _buildInputDecoration(String hint) {
+  Widget _buildSubmitButton() {
+    return Container(
+      height: 52,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1E6FC4), Color(0xFF0F4C81)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: _handleSubmit,
+          child: Center(
+            child: Text(
+              (widget.teamToEdit != null ? 'Save Changes' : 'Create Team').tr(context),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _buildInputDecoration(String hint, {IconData? icon}) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 15),
-      fillColor: const Color(0xFFEDF2F7),
+      hintStyle: const TextStyle(color: AppColors.textHint, fontSize: 14),
+      prefixIcon: icon != null
+          ? Icon(icon, color: AppColors.textSecondary, size: 20)
+          : null,
+      fillColor: const Color(0xFFF1F5F9),
       filled: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF0F4C81), width: 1),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
       ),
     );
   }

@@ -1072,4 +1072,119 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get print => 'Print';
+
+  @override
+  String get uploadFiles => 'Upload Files';
+
+  @override
+  String get selectedFiles => 'Selected Files';
+
+  @override
+  String get sendNotes => 'Send Notes';
+
+  @override
+  String get sendDeliverables => 'Send Deliverables';
+
+  @override
+  String get tapToChooseFiles => 'Tap to choose files';
+
+  @override
+  String get anyFileTypeSupported =>
+      'Any file type is supported (images, PDFs, zip, code...)';
+
+  @override
+  String get attachAnyFileTypeToHelpSolveThisTask =>
+      'Attach any file type to help solve this task.';
+
+  @override
+  String get addNoteOrMessageToHelpSolveThisTask =>
+      'Add a note or message to help solve this task.';
+
+  @override
+  String get writeNoteExplainSolutionOrDescribeWhatYouNeed =>
+      'Write a note, explain your solution, or describe what you need...';
+
+  @override
+  String get pleaseAttachAFileOrWriteANoteFirst =>
+      'Please attach a file or write a note first';
+
+  @override
+  String get deliverablesSentSuccessfully => 'Deliverables sent successfully';
+
+  @override
+  String uploadedFileCount(Object count) {
+    return 'Uploaded $count file(s)';
+  }
+
+  @override
+  String get teamLeaderActions => 'Team Leader Actions';
+
+  @override
+  String get submitForReview => 'Submit for Review';
+
+  @override
+  String get reviewDeliverable => 'Review Deliverable';
+
+  @override
+  String get enterReviewFeedback => 'Enter review feedback...';
+
+  @override
+  String get approve => 'Approve';
+
+  @override
+  String get approveAndComplete => 'Approve & Complete';
+
+  @override
+  String get reject => 'Reject';
+
+  @override
+  String get editTask => 'Edit Task';
+
+  @override
+  String get reassign => 'Reassign';
+
+  @override
+  String get reassignTask => 'Reassign Task';
+
+  @override
+  String get selectTeamMember => 'Select Team Member';
+
+  @override
+  String get chooseMember => 'Choose member...';
+
+  @override
+  String taskMarkedAs(Object status) {
+    return 'Task marked as $status';
+  }
+
+  @override
+  String get taskReassignedSuccessfully => 'Task reassigned successfully';
+
+  @override
+  String get taskUpdatedSuccessfully => 'Task updated successfully';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get currentStatus => 'Current Status';
+
+  @override
+  String get myComplaints => 'My Complaints';
+
+  @override
+  String get trackAndManageYourSubmittedComplaints =>
+      'Track and manage your submitted complaints';
+
+  @override
+  String get total => 'Total';
+
+  @override
+  String get complaintAnalytics => 'Complaint Analytics';
+
+  @override
+  String get complaintPendingReview => 'Your complaint is pending review.';
+
+  @override
+  String get complaintClosed => 'This complaint has been closed.';
 }

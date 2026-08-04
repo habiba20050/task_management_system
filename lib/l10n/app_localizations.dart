@@ -2197,6 +2197,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Print'**
   String get print;
+
+  /// No description provided for @uploadFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload Files'**
+  String get uploadFiles;
+
+  /// No description provided for @selectedFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected Files'**
+  String get selectedFiles;
+
+  /// No description provided for @sendNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Send Notes'**
+  String get sendNotes;
+
+  /// No description provided for @sendDeliverables.
+  ///
+  /// In en, this message translates to:
+  /// **'Send Deliverables'**
+  String get sendDeliverables;
+
+  /// No description provided for @tapToChooseFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to choose files'**
+  String get tapToChooseFiles;
+
+  /// No description provided for @anyFileTypeSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Any file type is supported (images, PDFs, zip, code...)'**
+  String get anyFileTypeSupported;
+
+  /// No description provided for @attachAnyFileTypeToHelpSolveThisTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach any file type to help solve this task.'**
+  String get attachAnyFileTypeToHelpSolveThisTask;
+
+  /// No description provided for @addNoteOrMessageToHelpSolveThisTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a note or message to help solve this task.'**
+  String get addNoteOrMessageToHelpSolveThisTask;
+
+  /// No description provided for @writeNoteExplainSolutionOrDescribeWhatYouNeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a note, explain your solution, or describe what you need...'**
+  String get writeNoteExplainSolutionOrDescribeWhatYouNeed;
+
+  /// No description provided for @pleaseAttachAFileOrWriteANoteFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Please attach a file or write a note first'**
+  String get pleaseAttachAFileOrWriteANoteFirst;
+
+  /// No description provided for @deliverablesSentSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Deliverables sent successfully'**
+  String get deliverablesSentSuccessfully;
+
+  /// No description provided for @uploadedFileCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploaded {count} file(s)'**
+  String uploadedFileCount(Object count);
+
+  /// No description provided for @teamLeaderActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Team Leader Actions'**
+  String get teamLeaderActions;
+
+  /// No description provided for @submitForReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit for Review'**
+  String get submitForReview;
+
+  /// No description provided for @reviewDeliverable.
+  ///
+  /// In en, this message translates to:
+  /// **'Review Deliverable'**
+  String get reviewDeliverable;
+
+  /// No description provided for @enterReviewFeedback.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter review feedback...'**
+  String get enterReviewFeedback;
+
+  /// No description provided for @approve.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get approve;
+
+  /// No description provided for @approveAndComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve & Complete'**
+  String get approveAndComplete;
+
+  /// No description provided for @reject.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get reject;
+
+  /// No description provided for @editTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Task'**
+  String get editTask;
+
+  /// No description provided for @reassign.
+  ///
+  /// In en, this message translates to:
+  /// **'Reassign'**
+  String get reassign;
+
+  /// No description provided for @reassignTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Reassign Task'**
+  String get reassignTask;
+
+  /// No description provided for @selectTeamMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Team Member'**
+  String get selectTeamMember;
+
+  /// No description provided for @chooseMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose member...'**
+  String get chooseMember;
+
+  /// No description provided for @taskMarkedAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Task marked as {status}'**
+  String taskMarkedAs(Object status);
+
+  /// No description provided for @taskReassignedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Task reassigned successfully'**
+  String get taskReassignedSuccessfully;
+
+  /// No description provided for @taskUpdatedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Task updated successfully'**
+  String get taskUpdatedSuccessfully;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @currentStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Current Status'**
+  String get currentStatus;
+
+  /// No description provided for @myComplaints.
+  ///
+  /// In en, this message translates to:
+  /// **'My Complaints'**
+  String get myComplaints;
+
+  /// No description provided for @trackAndManageYourSubmittedComplaints.
+  ///
+  /// In en, this message translates to:
+  /// **'Track and manage your submitted complaints'**
+  String get trackAndManageYourSubmittedComplaints;
+
+  /// No description provided for @total.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get total;
+
+  /// No description provided for @complaintAnalytics.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaint Analytics'**
+  String get complaintAnalytics;
+
+  /// No description provided for @complaintPendingReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Your complaint is pending review.'**
+  String get complaintPendingReview;
+
+  /// No description provided for @complaintClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'This complaint has been closed.'**
+  String get complaintClosed;
 }
 
 class _AppLocalizationsDelegate

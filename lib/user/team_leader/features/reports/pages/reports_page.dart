@@ -92,36 +92,38 @@ class _ReportsPageState extends State<ReportsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Wrap(
+                spacing: 8.w,
+                runSpacing: 8.h,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Reports & Analytics'.tr(context), style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
-                        SizedBox(height: 4.h),
-                        Text('Exportable compliance documentation and university statistics'.tr(context), style: TextStyle(fontSize: 11.sp, color: Colors.grey)),
-                      ],
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Reports & Analytics'.tr(context), style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 4.h),
+                      Text('Exportable compliance documentation and university statistics'.tr(context),
+                          style: TextStyle(fontSize: 11.sp, color: Colors.grey),
+                          overflow: TextOverflow.ellipsis),
+                    ],
                   ),
-                  Padding(
-                    padding: EdgeInsets.only(left: 12.w),
-                    child: Wrap(
-                      spacing: 4.w,
-                      children: [
-                        TextButton.icon(
-                          onPressed: () => _triggerExport('PDF'),
-                          icon: const Icon(Icons.picture_as_pdf, color: Colors.red, size: 16),
-                          label: Text('Export PDF'.tr(context), style: TextStyle(fontSize: 10.sp)),
-                        ),
-                        TextButton.icon(
-                          onPressed: () => _triggerExport('Excel'),
-                          icon: const Icon(Icons.table_chart, color: Colors.green, size: 16),
-                          label: Text('Export Excel'.tr(context), style: TextStyle(fontSize: 10.sp)),
-                        ),
-                        IconButton(icon: const Icon(Icons.print, size: 20), onPressed: () => _triggerExport('Printer')),
-                      ],
-                    ),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 4.w,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _triggerExport('PDF'),
+                        icon: const Icon(Icons.picture_as_pdf, color: Colors.red, size: 16),
+                        label: Text('Export PDF'.tr(context), style: TextStyle(fontSize: 10.sp)),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _triggerExport('Excel'),
+                        icon: const Icon(Icons.table_chart, color: Colors.green, size: 16),
+                        label: Text('Export Excel'.tr(context), style: TextStyle(fontSize: 10.sp)),
+                      ),
+                      IconButton(icon: const Icon(Icons.print, size: 20), onPressed: () => _triggerExport('Printer')),
+                    ],
                   )
                 ],
               ),
@@ -148,31 +150,57 @@ class _ReportsPageState extends State<ReportsPage> {
   // --- FILTERS PANEL ---
   Widget _buildFiltersPanel(List<MockUser> teamMembers) {
     return AppCard(
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildFilterField(
-              label: 'Priority',
-              icon: Icons.flag_outlined,
-              value: _selectedPriority.tr(context),
-              options: ['All', 'HIGH', 'MEDIUM', 'LOW'],
-              labelMap: {'All': 'All'.tr(context), 'HIGH': 'HIGH'.tr(context), 'MEDIUM': 'MEDIUM'.tr(context), 'LOW': 'LOW'.tr(context)},
-              onSelected: (val) => setState(() => _selectedPriority = val),
-            ),
-          ),
-          SizedBox(width: 8.w),
-          Expanded(
-            child: _buildFilterField(
-              label: 'Status',
-              icon: Icons.circle_outlined,
-              value: _selectedStatus.tr(context),
-              options: ['All', 'Pending', 'Assigned', 'In Progress', 'Submitted', 'Under Review', 'Approved', 'Completed', 'Needs Changes', 'Rejected', 'Overdue'],
-              onSelected: (val) => setState(() => _selectedStatus = val),
-            ),
-          ),
-          SizedBox(width: 8.w),
-          Expanded(child: _buildDateRangeField(context)),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final columns = width >= 900 ? 4 : (width >= 560 ? 2 : 1);
+          final gap = 12.w;
+          final itemWidth = (width - gap * (columns - 1)) / columns;
+          return Wrap(
+            spacing: gap,
+            runSpacing: 12.h,
+            children: [
+              SizedBox(
+                width: itemWidth,
+                child: _buildFilterField(
+                  label: 'Member',
+                  icon: Icons.person_outline,
+                  value: _selectedUser == 'All'
+                      ? 'All'.tr(context)
+                      : (teamMembers.firstWhere((u) => u.id == _selectedUser, orElse: () => teamMembers.first).fullName),
+                  options: ['All', ...teamMembers.map((u) => u.id)],
+                  labelMap: {'All': 'All'.tr(context), ...{for (var u in teamMembers) u.id: u.fullName}},
+                  onSelected: (val) => setState(() => _selectedUser = val),
+                ),
+              ),
+              SizedBox(
+                width: itemWidth,
+                child: _buildFilterField(
+                  label: 'Priority',
+                  icon: Icons.flag_outlined,
+                  value: _selectedPriority.tr(context),
+                  options: ['All', 'HIGH', 'MEDIUM', 'LOW'],
+                  labelMap: {'All': 'All'.tr(context), 'HIGH': 'HIGH'.tr(context), 'MEDIUM': 'MEDIUM'.tr(context), 'LOW': 'LOW'.tr(context)},
+                  onSelected: (val) => setState(() => _selectedPriority = val),
+                ),
+              ),
+              SizedBox(
+                width: itemWidth,
+                child: _buildFilterField(
+                  label: 'Status',
+                  icon: Icons.circle_outlined,
+                  value: _selectedStatus.tr(context),
+                  options: ['All', 'Pending', 'Assigned', 'In Progress', 'Submitted', 'Under Review', 'Approved', 'Completed', 'Needs Changes', 'Rejected', 'Overdue'],
+                  onSelected: (val) => setState(() => _selectedStatus = val),
+                ),
+              ),
+              SizedBox(
+                width: itemWidth,
+                child: _buildDateRangeField(context),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -186,45 +214,57 @@ class _ReportsPageState extends State<ReportsPage> {
     required ValueChanged<String> onSelected,
   }) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label.tr(context), style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-        SizedBox(height: 4.h),
+        Text(label.tr(context), style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+        SizedBox(height: 6.h),
         PopupMenuButton<String>(
           initialValue: options.contains(value) ? value : options.first,
           onSelected: onSelected,
-          offset: Offset(0, 42.h),
+          offset: Offset(0, 48.h),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           itemBuilder: (context) => options.map((o) {
             final text = labelMap != null ? (labelMap[o] ?? o) : o.tr(context);
             final isSelected = o == value;
             return PopupMenuItem(
               value: o,
-              height: 34.h,
+              height: 38.h,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (isSelected) Icon(Icons.check, size: 14, color: AppColors.primary) else SizedBox(width: 14.w),
-                  SizedBox(width: 6.w),
-                  Text(text, style: TextStyle(fontSize: 12.sp, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                  if (isSelected) Icon(Icons.check, size: 16, color: AppColors.primary) else SizedBox(width: 16.w),
+                  SizedBox(width: 8.w),
+                  Flexible(
+                    child: Text(text,
+                        style: TextStyle(fontSize: 13.sp, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
+                        overflow: TextOverflow.ellipsis),
+                  ),
                 ],
               ),
             );
           }).toList(),
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.h),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(8.r),
+              borderRadius: BorderRadius.circular(10.r),
               border: Border.all(color: AppColors.border),
             ),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(icon, size: 14, color: AppColors.primary),
-                SizedBox(width: 8.w),
-                Expanded(child: Text(value, style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: AppColors.textPrimary))),
-                Icon(Icons.arrow_drop_down, size: 18, color: AppColors.textSecondary),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(icon, size: 14.sp, color: AppColors.primary),
+                      SizedBox(width: 4.w),
+                      Expanded(child: Text(value, style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary), overflow: TextOverflow.ellipsis)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_drop_down, size: 16.sp, color: AppColors.textSecondary),
               ],
             ),
           ),
@@ -235,17 +275,98 @@ class _ReportsPageState extends State<ReportsPage> {
 
   Widget _buildDateRangeField(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('Date Range'.tr(context), style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-        SizedBox(height: 4.h),
+        Text('Date Range'.tr(context), style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+        SizedBox(height: 6.h),
         PopupMenuButton<String>(
-          offset: Offset(0, 42.h),
+          offset: Offset(0, 48.h),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
           onSelected: (val) async {
             if (val == 'pick') {
-              final range = await showDateRangePicker(context: context, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
+              final range = await showDialog<DateTimeRange>(
+                context: context,
+                builder: (context) {
+                  DateTime? start = _selectedDateRange?.start;
+                  DateTime? end = _selectedDateRange?.end;
+                  return StatefulBuilder(
+                    builder: (context, setStateDialog) {
+                      return Dialog(
+                        backgroundColor: Colors.transparent,
+                        child: Container(
+                          width: 400.w,
+                          padding: EdgeInsets.all(24.w),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16.r)),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Select Date Range'.tr(context), style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                              SizedBox(height: 8.h),
+                              Text('Choose the start and end dates for your filter.'.tr(context), style: TextStyle(fontSize: 13.sp, color: AppColors.textSecondary)),
+                              SizedBox(height: 24.h),
+                              _buildDateSelectionCard(
+                                title: 'Start Date'.tr(context),
+                                date: start,
+                                icon: Icons.calendar_today,
+                                onTap: () async {
+                                  final d = await showDatePicker(
+                                    context: context,
+                                    initialDate: start ?? DateTime.now(),
+                                    firstDate: DateTime(2026),
+                                    lastDate: DateTime(2030),
+                                    builder: _buildDatePickerTheme,
+                                  );
+                                  if (d != null) setStateDialog(() => start = d);
+                                },
+                              ),
+                              SizedBox(height: 16.h),
+                              _buildDateSelectionCard(
+                                title: 'End Date'.tr(context),
+                                date: end,
+                                icon: Icons.event,
+                                onTap: () async {
+                                  final d = await showDatePicker(
+                                    context: context,
+                                    initialDate: end ?? start ?? DateTime.now(),
+                                    firstDate: DateTime(2026),
+                                    lastDate: DateTime(2030),
+                                    builder: _buildDatePickerTheme,
+                                  );
+                                  if (d != null) setStateDialog(() => end = d);
+                                },
+                              ),
+                              SizedBox(height: 32.h),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: Text('Cancel'.tr(context), style: TextStyle(color: Colors.grey, fontSize: 14.sp, fontWeight: FontWeight.bold)),
+                                  ),
+                                  SizedBox(width: 12.w),
+                                  ElevatedButton(
+                                    onPressed: (start != null && end != null && !end!.isBefore(start!))
+                                        ? () => Navigator.pop(context, DateTimeRange(start: start!, end: end!))
+                                        : null,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primary,
+                                      padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                                    ),
+                                    child: Text('Apply'.tr(context), style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
               if (range != null) setState(() => _selectedDateRange = range);
             } else if (val == 'clear') {
               setState(() => _selectedDateRange = null);
@@ -253,42 +374,90 @@ class _ReportsPageState extends State<ReportsPage> {
           },
           itemBuilder: (context) => [
             PopupMenuItem(
-              height: 34.h,
+              height: 38.h,
               value: 'pick',
-              child: Row(children: [Icon(Icons.date_range, size: 14, color: AppColors.primary), SizedBox(width: 6.w), Text('Pick Date Range'.tr(context), style: TextStyle(fontSize: 12.sp))]),
+              child: Row(children: [Icon(Icons.date_range, size: 16, color: AppColors.primary), SizedBox(width: 8.w), Text('Pick Date Range'.tr(context), style: TextStyle(fontSize: 13.sp))]),
             ),
             if (_selectedDateRange != null)
               PopupMenuItem(
-                height: 34.h,
+                height: 38.h,
                 value: 'clear',
-                child: Row(children: [Icon(Icons.clear, size: 14, color: AppColors.danger), SizedBox(width: 6.w), Text('Clear'.tr(context), style: TextStyle(fontSize: 12.sp, color: AppColors.danger))]),
+                child: Row(children: [Icon(Icons.clear, size: 16, color: AppColors.danger), SizedBox(width: 8.w), Text('Clear'.tr(context), style: TextStyle(fontSize: 13.sp, color: AppColors.danger))]),
               ),
           ],
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.h),
             decoration: BoxDecoration(
               color: _selectedDateRange != null ? AppColors.primary.withValues(alpha: 0.08) : Colors.white,
-              borderRadius: BorderRadius.circular(8.r),
+              borderRadius: BorderRadius.circular(10.r),
               border: Border.all(color: _selectedDateRange != null ? AppColors.primary : AppColors.border),
             ),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(Icons.date_range, size: 14, color: _selectedDateRange != null ? AppColors.primary : AppColors.textSecondary),
-                SizedBox(width: 8.w),
                 Expanded(
-                  child: Text(
-                    _selectedDateRange == null
-                        ? 'Select'.tr(context)
-                        : '${DateFormat('MM/dd').format(_selectedDateRange!.start)} - ${DateFormat('MM/dd').format(_selectedDateRange!.end)}',
-                    style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: _selectedDateRange != null ? AppColors.primary : AppColors.textPrimary),
+                  child: Row(
+                    children: [
+                      Icon(Icons.date_range, size: 14.sp, color: _selectedDateRange != null ? AppColors.primary : AppColors.textSecondary),
+                      SizedBox(width: 4.w),
+                      Expanded(
+                        child: Text(
+                          _selectedDateRange == null
+                              ? 'Select'.tr(context)
+                              : '${DateFormat('MM/dd').format(_selectedDateRange!.start)} - ${DateFormat('MM/dd').format(_selectedDateRange!.end)}',
+                          style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold, color: _selectedDateRange != null ? AppColors.primary : AppColors.textPrimary),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                Icon(Icons.arrow_drop_down, size: 18, color: AppColors.textSecondary),
+                Icon(Icons.arrow_drop_down, size: 16.sp, color: AppColors.textSecondary),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDatePickerTheme(BuildContext context, Widget? child) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        colorScheme: const ColorScheme.light(primary: AppColors.primary, onPrimary: Colors.white, surface: Colors.white, onSurface: AppColors.textPrimary),
+        dialogTheme: DialogThemeData(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r))),
+        textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: AppColors.primary, textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold))),
+      ),
+      child: Transform.scale(scale: 1.15, child: child!),
+    );
+  }
+
+  Widget _buildDateSelectionCard({required String title, required DateTime? date, required IconData icon, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12.r),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+        decoration: BoxDecoration(color: Colors.grey.shade50, border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(12.r)),
+        child: Row(
+          children: [
+            Container(padding: EdgeInsets.all(10.w), decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), shape: BoxShape.circle), child: Icon(icon, color: AppColors.primary, size: 20)),
+            SizedBox(width: 16.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                  SizedBox(height: 4.h),
+                  Text(date != null ? DateFormat('MMMM d, yyyy').format(date) : 'Select date'.tr(context), style: TextStyle(fontSize: 13.sp, color: date != null ? AppColors.textSecondary : Colors.grey)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+          ],
+        ),
+      ),
     );
   }
 

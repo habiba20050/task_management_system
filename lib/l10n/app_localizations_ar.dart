@@ -1074,4 +1074,119 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get print => 'طباعة';
+
+  @override
+  String get uploadFiles => 'رفع الملفات';
+
+  @override
+  String get selectedFiles => 'الملفات المحددة';
+
+  @override
+  String get sendNotes => 'إرسال الملاحظات';
+
+  @override
+  String get sendDeliverables => 'إرسال المخرجات';
+
+  @override
+  String get tapToChooseFiles => 'اضغط لاختيار الملفات';
+
+  @override
+  String get anyFileTypeSupported =>
+      'جميع أنواع الملفات مدعومة (صور، PDF، zip، أكواد...)';
+
+  @override
+  String get attachAnyFileTypeToHelpSolveThisTask =>
+      'أرفق أي نوع ملف للمساعدة في حل هذه المهمة.';
+
+  @override
+  String get addNoteOrMessageToHelpSolveThisTask =>
+      'أضف ملاحظة أو رسالة للمساعدة في حل هذه المهمة.';
+
+  @override
+  String get writeNoteExplainSolutionOrDescribeWhatYouNeed =>
+      'اكتب ملاحظة، اشرح الحل، أو صف ما تحتاجه...';
+
+  @override
+  String get pleaseAttachAFileOrWriteANoteFirst =>
+      'الرجاء إرفاق ملف أو كتابة ملاحظة أولاً';
+
+  @override
+  String get deliverablesSentSuccessfully => 'تم إرسال المخرجات بنجاح';
+
+  @override
+  String uploadedFileCount(Object count) {
+    return 'تم رفع $count ملف';
+  }
+
+  @override
+  String get teamLeaderActions => 'إجراءات قائد الفريق';
+
+  @override
+  String get submitForReview => 'تسليم للمراجعة';
+
+  @override
+  String get reviewDeliverable => 'مراجعة المخرجات';
+
+  @override
+  String get enterReviewFeedback => 'أدخل ملاحظات المراجعة...';
+
+  @override
+  String get approve => 'اعتماد';
+
+  @override
+  String get approveAndComplete => 'اعتماد وإكمال';
+
+  @override
+  String get reject => 'رفض';
+
+  @override
+  String get editTask => 'تعديل المهمة';
+
+  @override
+  String get reassign => 'إعادة تعيين';
+
+  @override
+  String get reassignTask => 'إعادة تعيين المهمة';
+
+  @override
+  String get selectTeamMember => 'اختر عضو الفريق';
+
+  @override
+  String get chooseMember => 'اختر العضو...';
+
+  @override
+  String taskMarkedAs(Object status) {
+    return 'تم تحديد المهمة كـ $status';
+  }
+
+  @override
+  String get taskReassignedSuccessfully => 'تمت إعادة تعيين المهمة بنجاح';
+
+  @override
+  String get taskUpdatedSuccessfully => 'تم تحديث المهمة بنجاح';
+
+  @override
+  String get save => 'حفظ';
+
+  @override
+  String get currentStatus => 'الحالة الحالية';
+
+  @override
+  String get myComplaints => 'شكاويي';
+
+  @override
+  String get trackAndManageYourSubmittedComplaints =>
+      'تتبع وإدارة الشكاوى التي قدمتها';
+
+  @override
+  String get total => 'الإجمالي';
+
+  @override
+  String get complaintAnalytics => 'تحليلات الشكاوى';
+
+  @override
+  String get complaintPendingReview => 'شكوتك قيد المراجعة.';
+
+  @override
+  String get complaintClosed => 'تم إغلاق هذه الشكوى.';
 }

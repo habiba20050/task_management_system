@@ -48,6 +48,7 @@ dependencies:
   flutter_svg: ^2.0.10
   fl_chart: ^0.68.0
   google_fonts: ^6.2.1
+  file_picker: ^11.0.3
 
 dev_dependencies:
   flutter_test:
@@ -75,6 +76,26 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/images/
+
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: assets/static/Cairo-ExtraLight.ttf
+          weight: 200
+        - asset: assets/static/Cairo-Light.ttf
+          weight: 300
+        - asset: assets/static/Cairo-Regular.ttf
+          weight: 400
+        - asset: assets/static/Cairo-Medium.ttf
+          weight: 500
+        - asset: assets/static/Cairo-SemiBold.ttf
+          weight: 600
+        - asset: assets/static/Cairo-Bold.ttf
+          weight: 700
+        - asset: assets/static/Cairo-ExtraBold.ttf
+          weight: 800
+        - asset: assets/static/Cairo-Black.ttf
+          weight: 900
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

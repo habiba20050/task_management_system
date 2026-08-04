@@ -6,6 +6,10 @@ import '../../../../../responsive/responsive_layout.dart';
 import '../../../../../user/shared/widgets/custom_button.dart';
 import '../../../../../user/shared/widgets/notification_drawer.dart';
 import '../../../../shared/features/profile/cubit/profile_cubit.dart';
+import '../../../../../core/network/mock_database.dart';
+import '../../../../shared/features/auth/cubit/auth_cubit.dart';
+import '../../../../shared/features/auth/model/user_model.dart';
+import '../../../../../core/widgets/cards/app_cards.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -196,27 +200,22 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildProfileSummaryCard(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(24.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    final authState = context.read<AuthCubit>().state;
+    final currentUserId = authState is AuthSuccess ? authState.user.id : '1';
+    final db = MockDatabase.instance;
+    final managerMock = db.users.cast<MockUser?>().firstWhere(
+      (u) => u?.id == currentUserId,
+      orElse: () => null,
+    );
+
+    return AppCard(
       child: Row(
         children: [
           Container(
             width: 72.w,
             height: 72.h,
-            decoration: const BoxDecoration(
-              color: Color(0xFF051B33),
+            decoration: BoxDecoration(
+              color: AppColors.primary,
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
@@ -246,9 +245,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 SizedBox(height: 4.h),
                 Text(
-                  'Admin — ${_deptController.text.isNotEmpty ? _deptController.text : 'N/A'}',
+                  'Manager — ${_deptController.text.isNotEmpty ? _deptController.text : (managerMock?.department ?? 'N/A')}',
                   style: TextStyle(
-                    color: Colors.grey[500],
+                    color: AppColors.textSecondary,
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w500,
                   ),
@@ -260,7 +259,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       width: 8.w,
                       height: 8.h,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF27AE60),
+                        color: AppColors.success,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -268,7 +267,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     Text(
                       'Active account',
                       style: TextStyle(
-                        color: const Color(0xFF27AE60),
+                        color: AppColors.success,
                         fontSize: 12.sp,
                         fontWeight: FontWeight.bold,
                       ),
@@ -278,6 +277,42 @@ class _ProfilePageState extends State<ProfilePage> {
               ],
             ),
           ),
+          if (managerMock != null)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${managerMock.finalScore.toStringAsFixed(1)}%',
+                  style: TextStyle(
+                    fontSize: 24.sp,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+                Text(
+                  'Final Score',
+                  style: TextStyle(
+                    fontSize: 10.sp,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Row(
+                  children: [
+                    Icon(Icons.emoji_events, color: Colors.amber, size: 14.sp),
+                    SizedBox(width: 4.w),
+                    Text(
+                      '${managerMock.points} Points',
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.amber.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -290,20 +325,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final isDesktop = ResponsiveLayout.isDesktop(context);
     final isUpdateLoading = state is UpdateProfileLoading;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(24.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -378,7 +400,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     );
                   },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0A448C),
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
               shape: RoundedRectangleBorder(
@@ -411,20 +433,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final isDesktop = ResponsiveLayout.isDesktop(context);
     final isPasswordLoading = state is PasswordChangeLoading;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(24.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -432,7 +441,7 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               Icon(
                 Icons.lock_outline,
-                color: const Color(0xFF0A448C),
+                color: AppColors.primary,
                 size: 20.sp,
               ),
               SizedBox(width: 8.w),
@@ -536,7 +545,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     );
                   },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0A448C),
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
               shape: RoundedRectangleBorder(

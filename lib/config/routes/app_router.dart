@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:task_management_system/user/shared/features/teams/cubit/teams_cubit.dart';
 import 'package:task_management_system/user/shared/features/teams/ui/screens/teams_dashboard_screen.dart';
+import '../../user/manager/features/teams/ui/screens/teams_dashboard_screen.dart' as manager_teams;
 import '../../user/shared/features/auth/pages/login_page.dart';
 import '../../user/shared/features/auth/pages/forget_password_page.dart';
 import '../../user/shared/features/auth/pages/verify_email_page.dart';
@@ -20,28 +21,34 @@ import '../../user/team_leader/features/tasks/pages/tasks_page.dart' as leader_t
 import '../../user/team_member/features/tasks/pages/tasks_page.dart' as member_tasks;
 import '../../user/shared/features/tasks/pages/task_details_page.dart';
 import '../../user/team_leader/features/tasks/pages/task_details_page.dart' as leader_task_details;
+import '../../user/manager/features/tasks/pages/task_details_page.dart' as manager_task_details;
+import '../../user/team_member/features/tasks/pages/task_details_page.dart' as member_task_details;
 import '../../user/shared/features/users/ui/screens/users_roles_screen.dart';
 import '../../user/shared/features/profile/pages/profile_page.dart';
 import '../../user/shared/features/profile/cubit/profile_cubit.dart';
 import '../../user/shared/features/reports/pages/reports_page.dart';
 import '../../user/team_leader/features/reports/pages/reports_page.dart' as leader_reports;
+import '../../user/manager/features/reports/pages/reports_page.dart' as manager_reports;
 import '../../user/shared/features/audit_log/pages/audit_log_page.dart';
+import '../../user/manager/features/audit_log/pages/audit_log_page.dart' as manager_audit;
 import '../../user/shared/widgets/main_layout.dart';
 import '../dependency_injection/service_locator.dart';
 import '../../user/shared/features/auth/cubit/auth_cubit.dart';
 import '../../user/shared/features/complaints/pages/complaints_page.dart';
 import '../../user/team_member/features/complaints/pages/complaints_page.dart' as member_complaints;
 import '../../user/team_leader/features/complaints/pages/complaints_page.dart' as leader_complaints;
+import '../../user/manager/features/complaints/pages/complaints_page.dart' as manager_complaints;
 import '../../user/shared/features/evaluations/pages/evaluations_page.dart';
 import '../../user/team_member/features/evaluations/pages/evaluations_page.dart' as member_evals;
 import '../../user/team_leader/features/evaluations/pages/evaluations_page.dart' as leader_evals;
+import '../../user/manager/features/evaluations/pages/evaluations_page.dart' as manager_evals;
 import '../../user/team_member/features/profile/pages/profile_page.dart' as member_profile;
 import '../../user/team_leader/features/profile/pages/profile_page.dart' as leader_profile;
+import '../../user/manager/features/profile/pages/profile_page.dart' as manager_profile;
 import '../../user/shared/features/tasks/pages/review_center_page.dart';
 import '../../user/team_leader/features/tasks/pages/review_center_page.dart' as leader_review;
 import '../../user/admin/features/tasks/pages/review_center_page.dart' as admin_review;
 import '../../user/manager/features/tasks/pages/review_center_page.dart' as manager_review;
-import '../../user/team_member/features/tasks/pages/review_center_page.dart' as member_review;
 
 class AppRouter {
   AppRouter._();
@@ -154,7 +161,7 @@ class AppRouter {
             name: 'team',
             builder: (context, state) => BlocProvider(
               create: (context) => getIt<TeamsCubit>()..fetchTeams(),
-              child: const TeamsDashboardScreen(),
+              child: const _TeamsResolver(),
             ),
           ),
           GoRoute(
@@ -193,7 +200,7 @@ class AppRouter {
           GoRoute(
             path: auditLogs,
             name: 'auditLogs',
-            builder: (context, state) => const AuditLogPage(),
+            builder: (context, state) => const _AuditLogsResolver(),
           ),
         ],
       ),
@@ -259,6 +266,8 @@ class _ReportsResolver extends StatelessWidget {
     if (authState is AuthSuccess) {
       if (authState.user.role == 'Team Leader') {
         return const leader_reports.ReportsPage();
+      } else if (authState.user.role == 'Manager') {
+        return const manager_reports.ReportsPage();
       }
     }
     return const ReportsPage();
@@ -278,6 +287,8 @@ class _ComplaintsResolver extends StatelessWidget {
           return const member_complaints.ComplaintsPage();
         case 'Team Leader':
           return const leader_complaints.ComplaintsPage();
+        case 'Manager':
+          return const manager_complaints.ComplaintsPage();
       }
     }
     return const ComplaintsPage();
@@ -297,6 +308,8 @@ class _ProfileResolver extends StatelessWidget {
           return const member_profile.ProfilePage();
         case 'Team Leader':
           return const leader_profile.ProfilePage();
+        case 'Manager':
+          return const manager_profile.ProfilePage();
       }
     }
     return const ProfilePage();
@@ -318,8 +331,7 @@ class _ReviewCenterResolver extends StatelessWidget {
           return const admin_review.ReviewCenterPage();
         case 'Manager':
           return const manager_review.ReviewCenterPage();
-        case 'Team Member':
-          return const member_review.ReviewCenterPage();
+
       }
     }
     return const ReviewCenterPage();
@@ -337,6 +349,12 @@ class _TaskDetailsResolver extends StatelessWidget {
     if (authState is AuthSuccess) {
       if (authState.user.role == 'Team Leader') {
         return leader_task_details.TaskDetailsPage(taskId: taskId);
+      }
+      if (authState.user.role == 'Manager') {
+        return manager_task_details.TaskDetailsPage(taskId: taskId);
+      }
+      if (authState.user.role == 'Team Member') {
+        return member_task_details.TaskDetailsPage(taskId: taskId);
       }
     }
     return TaskDetailsPage(taskId: taskId);
@@ -356,6 +374,8 @@ class _EvaluationsResolver extends StatelessWidget {
           return const member_evals.EvaluationsPage();
         case 'Team Leader':
           return const leader_evals.EvaluationsPage();
+        case 'Manager':
+          return const manager_evals.EvaluationsPage();
       }
     }
     return const EvaluationsPage();
@@ -376,5 +396,33 @@ class GoRouterRefreshStream extends ChangeNotifier {
   void dispose() {
     _subscription.cancel();
     super.dispose();
+  }
+}
+
+/// Routes to the correct [TeamsDashboardScreen] based on the current user role.
+class _TeamsResolver extends StatelessWidget {
+  const _TeamsResolver();
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = context.watch<AuthCubit>().state;
+    if (authState is AuthSuccess && authState.user.role == 'Manager') {
+      return const manager_teams.TeamsDashboardScreen();
+    }
+    return const TeamsDashboardScreen();
+  }
+}
+
+/// Routes to the correct [AuditLogPage] based on the current user role.
+class _AuditLogsResolver extends StatelessWidget {
+  const _AuditLogsResolver();
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = context.watch<AuthCubit>().state;
+    if (authState is AuthSuccess && authState.user.role == 'Manager') {
+      return const manager_audit.AuditLogPage();
+    }
+    return const AuditLogPage();
   }
 }

@@ -11,11 +11,8 @@ import '../../../../shared/features/auth/model/user_model.dart';
 import '../../../../shared/features/language/cubit/language_cubit.dart';
 import '../../../../../core/localization/translate_extension.dart';
 import '../../../../shared/features/tasks/models/unified_item.dart';
-import '../../../../../core/styles/app_spacing.dart';
-import '../../../../../core/styles/app_radius.dart';
-import '../../../../../core/styles/app_shadow.dart';
-import '../../../../../core/widgets/buttons/app_buttons.dart';
-import '../../../../../core/widgets/cards/app_cards.dart';
+
+enum _TasksViewMode { table, calendar }
 
 class TasksPage extends StatefulWidget {
   const TasksPage({super.key});
@@ -24,8 +21,9 @@ class TasksPage extends StatefulWidget {
   State<TasksPage> createState() => _TasksPageState();
 }
 
-class _TasksPageState extends State<TasksPage> {
-  String _selectedView = 'Table'; // 'Table' | 'Kanban' | 'Calendar'
+class _TasksPageState extends State<TasksPage> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
 
   // Filter States
   String _searchQuery = '';
@@ -40,19 +38,28 @@ class _TasksPageState extends State<TasksPage> {
   String _sortByField = 'Due Date'; // 'Task Title' | 'Priority' | 'Status' | 'Department' | 'Assigned To' | 'Team' | 'Start Date' | 'Due Date' | 'Remaining Time' | 'Progress' | 'Created Date'
   bool _sortAscending = true;
 
-  // Calendar States
-  String _calendarMode = 'Week'; // 'Day' | 'Week' | 'Month' | 'Custom'
-  DateTime _calendarActiveDate = DateTime(2026, 7, 24);
-  DateTimeRange? _calendarCustomRange;
-
   // Form controllers
   final TextEditingController _submitTitleController = TextEditingController();
   final TextEditingController _submitDescController = TextEditingController();
   final TextEditingController _githubController = TextEditingController();
   final TextEditingController _prController = TextEditingController();
 
+  // View mode
+  _TasksViewMode _viewMode = _TasksViewMode.table;
+  DateTime _focusedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+  DateTime? _selectedCalendarDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() => setState(() {}));
+    _selectedCalendarDate = DateTime.now();
+  }
+
   @override
   void dispose() {
+    _tabController.dispose();
     _submitTitleController.dispose();
     _submitDescController.dispose();
     _githubController.dispose();
@@ -89,6 +96,16 @@ class _TasksPageState extends State<TasksPage> {
           continue;
         }
       }
+      if (currentUserRole == 'Manager') {
+        final manager = db.users.firstWhere(
+          (u) => u.id == currentUserId, 
+          orElse: () => MockUser(id: '', email: '', fullName: '', role: '', department: '')
+        );
+        // Manager sees tasks in their department AND tasks assigned to them directly
+        if (task.taskDepartment != manager.department && task.currentOwnerId != currentUserId) {
+          continue;
+        }
+      }
 
       items.add(
         UnifiedItem(
@@ -109,7 +126,6 @@ class _TasksPageState extends State<TasksPage> {
     // Apply filters
     final filtered = items.where((item) {
       final task = item.originalObject as MockTask;
-      final owner = db.users.firstWhere((u) => u.id == task.currentOwnerId, orElse: () => MockUser(id: '', email: '', fullName: '', role: '', department: ''));
 
       final matchesSearch = item.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           item.description.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -247,86 +263,178 @@ class _TasksPageState extends State<TasksPage> {
     final role = user.role.isEmpty ? 'Admin' : user.role;
     final userId = user.id.isEmpty ? '1' : user.id;
 
+    final db = MockDatabase.instance;
+    final isDesktop = ResponsiveLayout.isDesktop(context);
     final filteredItems = _getFilteredAndSortedTasks(userId, role);
+    
+    final myTasks = filteredItems.where((t) => (t.originalObject as MockTask).currentOwnerId == userId).toList();
+    final teamTasks = filteredItems.where((t) => (t.originalObject as MockTask).assignmentMode == 'Team' || (t.originalObject as MockTask).taskType == 'Team Task').toList();
+    final leaderTasks = filteredItems.where((t) {
+      final task = t.originalObject as MockTask;
+      final owner = db.users.firstWhere((u) => u.id == task.currentOwnerId, orElse: () => db.users.first);
+      return owner.role == 'Team Leader' && task.currentOwnerId != userId;
+    }).toList();
+
+    final tableItemsCount = [myTasks, teamTasks, leaderTasks].map((l) => l.length).reduce((a, b) => a > b ? a : b);
+    final tableHeight = (64.0 + tableItemsCount * 48.0).clamp(280.0, 900.0);
+    final viewHeight = _viewMode == _TasksViewMode.calendar
+        ? (isDesktop ? 780.0 : 700.0)
+        : tableHeight;
 
     return Container(
-      color: AppColors.background,
+      color: AppColors.dashboardBg,
       child: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        role == 'Team Member' ? 'My Tasks'.tr(context) : 'Tasks'.tr(context),
-                        style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.all(isDesktop ? 32.w : 16.w),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _gradientChip(Icons.checklist_outlined, AppColors.primary, size: 44),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            role == 'Team Member' ? 'My Tasks'.tr(context) : 'Tasks'.tr(context),
+                            style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                          ),
+                          SizedBox(height: 3.h),
+                          Text(
+                            'Manage and delegate academic workflow tasks'.tr(context),
+                            style: TextStyle(fontSize: 13.sp, color: AppColors.textSecondary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        'Manage and delegate academic workflow tasks'.tr(context),
-                        style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                  if (role == 'Admin' || role == 'Manager' || role == 'Team Leader')
-                    PrimaryButton(
-                      text: 'Add Task'.tr(context),
-                      onPressed: () => _showAddTaskDialog(context, userId),
-                      prefixIcon: const Icon(Icons.add, color: Colors.white),
                     ),
-                ],
-              ),
-              SizedBox(height: 16.h),
+                    if (role == 'Admin' || role == 'Manager' || role == 'Team Leader') ...[
+                      SizedBox(width: 12.w),
+                      _headerActionButton(
+                        label: 'Add Task'.tr(context),
+                        icon: Icons.add,
+                        onTap: () => _showAddTaskDialog(context, userId),
+                      ),
+                    ],
+                  ],
+                ),
+                SizedBox(height: 16.h),
 
-              // Filter Bar
-              _buildFilterBar(context),
-              SizedBox(height: 12.h),
+                // Filter Bar
+                _buildFilterBar(context),
+                SizedBox(height: 12.h),
 
-              // Sorting & View select
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Click table headers to sort.'.tr(context), style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary)),
-                  ToggleButtons(
-                    borderRadius: BorderRadius.circular(AppRadius.md.r),
-                    selectedColor: Colors.white,
-                    fillColor: AppColors.primary,
-                    color: AppColors.textSecondary,
-                    constraints: BoxConstraints(minWidth: 60.w, minHeight: 32.h),
-                    isSelected: [_selectedView == 'Table', _selectedView == 'Kanban', _selectedView == 'Calendar'],
-                    onPressed: (index) {
-                      setState(() {
-                        if (index == 0) _selectedView = 'Table';
-                        if (index == 1) _selectedView = 'Kanban';
-                        if (index == 2) _selectedView = 'Calendar';
-                      });
-                    },
-                    children: [
-                      Text('Table'.tr(context), style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold)),
-                      Text('Kanban'.tr(context), style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold)),
-                      Text('Calendar'.tr(context), style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold)),
+                // ── Tab Bar ───────────────────────────────────────────
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(14.r),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 6.h),
+                  child: TabBar(
+                    controller: _tabController,
+                    isScrollable: ResponsiveLayout.isMobile(context),
+                    tabAlignment:
+                        ResponsiveLayout.isMobile(context) ? TabAlignment.center : TabAlignment.fill,
+                    indicator: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                    labelColor: Colors.white,
+                    unselectedLabelColor: AppColors.textSecondary,
+                    labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp),
+                    unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 13.sp),
+                    dividerColor: Colors.transparent,
+                    tabs: [
+                      _taskTab(index: 0, icon: Icons.person, label: 'My Tasks', count: myTasks.length),
+                      _taskTab(index: 1, icon: Icons.groups_outlined, label: 'Teams Tasks', count: teamTasks.length),
+                      _taskTab(index: 2, icon: Icons.supervisor_account_outlined, label: 'Team Leaders Tasks', count: leaderTasks.length),
                     ],
                   ),
-                ],
-              ),
-              SizedBox(height: 12.h),
+                ),
+                SizedBox(height: 12.h),
+                Row(
+                  children: [
+                    if (_viewMode == _TasksViewMode.table)
+                      Expanded(
+                        child: Text('Click table headers to sort.'.tr(context), style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary)),
+                      )
+                    else
+                      const Spacer(),
+                    _buildViewToggle(),
+                  ],
+                ),
+                SizedBox(height: 12.h),
 
-              // Layout display
-              Expanded(
-                child: _selectedView == 'Table'
-                    ? _buildTableView(filteredItems, role, userId)
-                    : (_selectedView == 'Kanban' ? _buildKanbanView(filteredItems, role, userId) : _buildCalendarView(filteredItems)),
-              ),
-            ],
+                // Layout display
+                SizedBox(
+                  height: viewHeight,
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildTasksView(myTasks, role, userId),
+                      _buildTasksView(teamTasks, role, userId),
+                      _buildTasksView(leaderTasks, role, userId),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _taskTab({required int index, required IconData icon, required String label, required int count}) {
+    final Widget badge = Container(
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.h),
+      decoration: BoxDecoration(
+        color: _tabController.index == index
+            ? Colors.white.withValues(alpha: 0.3)
+            : AppColors.primary.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20.r),
+      ),
+      child: Text('$count',
+          style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold,
+              color: _tabController.index == index ? Colors.white : AppColors.primary)),
+    );
+    return Tab(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 8.w),
+        child: ResponsiveLayout.isMobile(context)
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 16),
+                  SizedBox(width: 8),
+                  Text(label),
+                  SizedBox(width: 8),
+                  badge,
+                ],
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 16),
+                  SizedBox(width: 8),
+                  Flexible(
+                    child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                  SizedBox(width: 8),
+                  badge,
+                ],
+              ),
       ),
     );
   }
@@ -334,79 +442,430 @@ class _TasksPageState extends State<TasksPage> {
   // --- Filter Bar ---
   Widget _buildFilterBar(BuildContext context) {
     final db = MockDatabase.instance;
-    return AppCard(
+    final authState = context.watch<AuthCubit>().state;
+    final currentUserId = authState is AuthSuccess ? authState.user.id : '1';
+    final currentUser = db.users.firstWhere((u) => u.id == currentUserId, orElse: () => db.users.first);
+    final departmentUsers = db.users.where((u) => u.department == currentUser.department).toList();
+    final departmentTeams = db.teams.where((t) => t.department == currentUser.department).toList();
+
+    return Container(
+      padding: EdgeInsets.all(14.w),
+      decoration: _modernCardDecoration(),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10.w),
-                  decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(AppRadius.md.r), border: Border.all(color: AppColors.border)),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Search'.tr(context) + '...',
-                      border: InputBorder.none,
-                      icon: const Icon(Icons.search, color: Colors.grey),
-                      isDense: true,
-                    ),
-                    onChanged: (val) => setState(() => _searchQuery = val),
-                  ),
-                ),
+          // Search field
+          Container(
+            height: 46.h,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(14.r),
+            ),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: '${'Search'.tr(context)}...',
+                border: InputBorder.none,
+                prefixIcon: const Icon(Icons.search, color: AppColors.primary),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 14.h),
               ),
-              SizedBox(width: 10.w),
-              _buildDropdown('Department'.tr(context), _selectedDept, ['All', 'Computer Science', 'Engineering', 'IT Services'], (val) => setState(() => _selectedDept = val!)),
-              SizedBox(width: 10.w),
-              _buildDropdown('Team'.tr(context), _selectedTeam, ['All', ...db.teams.map((t) => t.name)], (val) => setState(() => _selectedTeam = val!)),
-            ],
+              onChanged: (val) => setState(() => _searchQuery = val),
+            ),
           ),
-          SizedBox(height: 8.h),
-          Row(
-            children: [
-              _buildDropdown('Priority'.tr(context), _selectedPriority, ['All', 'HIGH', 'MEDIUM', 'LOW'], (val) => setState(() => _selectedPriority = val!)),
-              SizedBox(width: 10.w),
-              _buildDropdown('Status'.tr(context), _selectedStatus, ['All', 'Pending', 'Assigned', 'In Progress', 'Submitted', 'Under Review', 'Approved', 'Completed', 'Needs Changes', 'Rejected', 'Overdue'], (val) => setState(() => _selectedStatus = val!)),
-              SizedBox(width: 10.w),
-              _buildDropdown('Assigned To'.tr(context), _selectedOwner, ['All', ...db.users.map((u) => u.id)], (val) => setState(() => _selectedOwner = val!), labelMap: {'All': 'All'.tr(context), ...{for (var u in db.users) u.id: u.fullName}}),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: TextButton.icon(
-                  onPressed: () async {
-                    final range = await showDateRangePicker(context: context, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
-                    if (range != null) setState(() => _selectedDateRange = range);
-                  },
-                  icon: const Icon(Icons.date_range, size: 14),
-                  label: Text(_selectedDateRange == null ? 'Date Range'.tr(context) : 'Selected', style: TextStyle(fontSize: 10.sp)),
-                  style: TextButton.styleFrom(side: const BorderSide(color: AppColors.border)),
-                ),
-              ),
-              if (_selectedDateRange != null) ...[
-                IconButton(icon: const Icon(Icons.clear, color: AppColors.danger), onPressed: () => setState(() => _selectedDateRange = null))
-              ]
-            ],
-          )
+          SizedBox(height: 14.h),
+          // Filter fields
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const gap = 12.0;
+              final cols = constraints.maxWidth < 600
+                  ? 2
+                  : constraints.maxWidth < 1000
+                      ? 3
+                      : 5;
+              final fieldWidth = (constraints.maxWidth - gap * (cols - 1)) / cols;
+              return Wrap(
+                spacing: gap,
+                runSpacing: 14.h,
+                children: [
+                  SizedBox(
+                    width: fieldWidth,
+                    child: _buildFilterField(
+                      label: 'Priority',
+                      icon: Icons.flag_outlined,
+                      value: _selectedPriority.tr(context),
+                      options: ['All', 'HIGH', 'MEDIUM', 'LOW'],
+                      labelMap: {'All': 'All'.tr(context), 'HIGH': 'HIGH'.tr(context), 'MEDIUM': 'MEDIUM'.tr(context), 'LOW': 'LOW'.tr(context)},
+                      onSelected: (val) => setState(() => _selectedPriority = val),
+                    ),
+                  ),
+                  SizedBox(
+                    width: fieldWidth,
+                    child: _buildFilterField(
+                      label: 'Status',
+                      icon: Icons.circle_outlined,
+                      value: _selectedStatus.tr(context),
+                      options: ['All', 'Pending', 'Assigned', 'In Progress', 'Submitted', 'Under Review', 'Approved', 'Completed', 'Needs Changes', 'Rejected', 'Overdue'],
+                      onSelected: (val) => setState(() => _selectedStatus = val),
+                    ),
+                  ),
+                  SizedBox(
+                    width: fieldWidth,
+                    child: _buildFilterField(
+                      label: 'Team',
+                      icon: Icons.group_outlined,
+                      value: _selectedTeam == 'All' ? 'All'.tr(context) : departmentTeams.firstWhere((t) => t.name == _selectedTeam, orElse: () => departmentTeams.first).name,
+                      options: ['All', ...departmentTeams.map((t) => t.name)],
+                      onSelected: (val) => setState(() => _selectedTeam = val),
+                    ),
+                  ),
+                  SizedBox(
+                    width: fieldWidth,
+                    child: _buildFilterField(
+                      label: 'Member',
+                      icon: Icons.person_outline,
+                      value: _selectedOwner == 'All' ? 'All'.tr(context) : departmentUsers.firstWhere((u) => u.id == _selectedOwner, orElse: () => departmentUsers.first).fullName,
+                      options: ['All', ...departmentUsers.map((u) => u.id)],
+                      labelMap: {'All': 'All'.tr(context), ...{for (var u in departmentUsers) u.id: u.fullName}},
+                      onSelected: (val) => setState(() => _selectedOwner = val),
+                    ),
+                  ),
+                  SizedBox(
+                    width: fieldWidth,
+                    child: _buildDateRangeField(context),
+                  ),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildDropdown(String label, String value, List<String> options, ValueChanged<String?> onChanged, {Map<String, String>? labelMap}) {
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 8.w),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.md.r), border: Border.all(color: AppColors.border)),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: value,
-            isExpanded: true,
-            hint: Text(label, style: TextStyle(fontSize: 11.sp)),
-            items: options.map((o) {
-              final text = labelMap != null ? (labelMap[o] ?? o) : o.tr(context);
-              return DropdownMenuItem(value: o, child: Text(text, style: TextStyle(fontSize: 11.sp)));
-            }).toList(),
-            onChanged: onChanged,
+  Widget _buildFilterField({
+    required String label,
+    required IconData icon,
+    required String value,
+    required List<String> options,
+    Map<String, String>? labelMap,
+    required ValueChanged<String> onSelected,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label.tr(context), style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+        SizedBox(height: 6.h),
+        PopupMenuButton<String>(
+          initialValue: options.contains(value) ? value : options.first,
+          onSelected: onSelected,
+          offset: Offset(0, 48.h),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+          itemBuilder: (context) => options.map((o) {
+            final text = labelMap != null ? (labelMap[o] ?? o) : o.tr(context);
+            final isSelected = o == value;
+            return PopupMenuItem(
+              value: o,
+              height: 38.h,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isSelected) Icon(Icons.check, size: 16, color: AppColors.primary) else SizedBox(width: 16.w),
+                  SizedBox(width: 8.w),
+                  Text(text, style: TextStyle(fontSize: 13.sp, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                ],
+              ),
+            );
+          }).toList(),
+          child: Container(
+            width: double.infinity,
+            height: 46.h,
+            padding: EdgeInsets.symmetric(horizontal: 12.w),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(14.r),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(icon, size: 16.sp, color: AppColors.primary),
+                      SizedBox(width: 6.w),
+                      Expanded(child: Text(value, style: TextStyle(fontSize: 12.5.sp, fontWeight: FontWeight.w600, color: AppColors.textPrimary), overflow: TextOverflow.ellipsis)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_drop_down, size: 18.sp, color: AppColors.textSecondary),
+              ],
+            ),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateRangeField(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Date Range'.tr(context), style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+        SizedBox(height: 6.h),
+        PopupMenuButton<String>(
+          offset: Offset(0, 48.h),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+          onSelected: (val) async {
+            if (val == 'pick') {
+              final range = await showDialog<DateTimeRange>(
+                context: context,
+                builder: (context) {
+                  DateTime? start = _selectedDateRange?.start;
+                  DateTime? end = _selectedDateRange?.end;
+                  return StatefulBuilder(
+                    builder: (context, setStateDialog) {
+                      return Dialog(
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28.r)),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 440),
+                          child: Container(
+                            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(28.r)),
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.all(28),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 52,
+                                        height: 52,
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(colors: [Color(0xFF1E6FC4), Color(0xFF0F4C81)]),
+                                          borderRadius: BorderRadius.circular(16.r),
+                                          boxShadow: [
+                                            BoxShadow(color: AppColors.primary.withValues(alpha: 0.25), blurRadius: 12, offset: const Offset(0, 4)),
+                                          ],
+                                        ),
+                                        child: const Icon(Icons.date_range, color: Colors.white, size: 26),
+                                      ),
+                                      SizedBox(width: 14.w),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('Select Date Range'.tr(context), style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                                            SizedBox(height: 2.h),
+                                            Text('Choose the start and end dates for your filter.'.tr(context), style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary)),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 24.h),
+                                  _buildDateSelectionCard(
+                                    title: 'Start Date'.tr(context),
+                                    date: start,
+                                    icon: Icons.calendar_today,
+                                    onTap: () async {
+                                      final d = await showDatePicker(
+                                        context: context, 
+                                        initialDate: start ?? DateTime.now(), 
+                                        firstDate: DateTime(2026), 
+                                        lastDate: DateTime(2030),
+                                        builder: _buildDatePickerTheme,
+                                      );
+                                      if (d != null) setStateDialog(() => start = d);
+                                    },
+                                  ),
+                                  SizedBox(height: 14.h),
+                                  _buildDateSelectionCard(
+                                    title: 'End Date'.tr(context),
+                                    date: end,
+                                    icon: Icons.event,
+                                    onTap: () async {
+                                      final d = await showDatePicker(
+                                        context: context, 
+                                        initialDate: end ?? start ?? DateTime.now(), 
+                                        firstDate: DateTime(2026), 
+                                        lastDate: DateTime(2030),
+                                        builder: _buildDatePickerTheme,
+                                      );
+                                      if (d != null) setStateDialog(() => end = d);
+                                    },
+                                  ),
+                                  SizedBox(height: 28.h),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      OutlinedButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: AppColors.textSecondary,
+                                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                                          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                                        ),
+                                        child: Text('Cancel'.tr(context), style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold)),
+                                      ),
+                                      SizedBox(width: 12.w),
+                                      SizedBox(
+                                        height: 48.h,
+                                        child: ElevatedButton(
+                                          onPressed: (start != null && end != null && !end!.isBefore(start!)) 
+                                              ? () => Navigator.pop(context, DateTimeRange(start: start!, end: end!)) 
+                                              : null,
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.transparent,
+                                            disabledBackgroundColor: const Color(0xFFCBD5E1),
+                                            elevation: 0,
+                                            padding: EdgeInsets.symmetric(horizontal: 24.w),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                                          ),
+                                          child: Ink(
+                                            decoration: BoxDecoration(
+                                              gradient: const LinearGradient(colors: [Color(0xFF1E6FC4), Color(0xFF0F4C81)]),
+                                              borderRadius: BorderRadius.circular(12.r),
+                                            ),
+                                            child: Container(
+                                              padding: EdgeInsets.symmetric(horizontal: 24.w),
+                                              alignment: Alignment.center,
+                                              child: Text('Apply'.tr(context), style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.bold)),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+              if (range != null) setState(() => _selectedDateRange = range);
+            } else if (val == 'clear') {
+              setState(() => _selectedDateRange = null);
+            }
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              height: 38.h,
+              value: 'pick',
+              child: Row(children: [Icon(Icons.date_range, size: 16, color: AppColors.primary), SizedBox(width: 8.w), Text('Pick Date Range'.tr(context), style: TextStyle(fontSize: 13.sp))]),
+            ),
+            if (_selectedDateRange != null)
+              PopupMenuItem(
+                height: 38.h,
+                value: 'clear',
+                child: Row(children: [Icon(Icons.clear, size: 16, color: AppColors.danger), SizedBox(width: 8.w), Text('Clear'.tr(context), style: TextStyle(fontSize: 13.sp, color: AppColors.danger))]),
+              ),
+          ],
+          child: Container(
+            width: double.infinity,
+            height: 46.h,
+            padding: EdgeInsets.symmetric(horizontal: 12.w),
+            decoration: BoxDecoration(
+              color: _selectedDateRange != null
+                  ? AppColors.primary.withValues(alpha: 0.08)
+                  : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(14.r),
+              border: Border.all(
+                color: _selectedDateRange != null ? AppColors.primary.withValues(alpha: 0.5) : Colors.transparent,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(Icons.date_range, size: 16.sp, color: _selectedDateRange != null ? AppColors.primary : AppColors.textSecondary),
+                      SizedBox(width: 6.w),
+                      Expanded(
+                        child: Text(
+                          _selectedDateRange == null
+                              ? 'Select'.tr(context)
+                              : '${DateFormat('MM/dd').format(_selectedDateRange!.start)} - ${DateFormat('MM/dd').format(_selectedDateRange!.end)}',
+                          style: TextStyle(fontSize: 12.5.sp, fontWeight: FontWeight.w600, color: _selectedDateRange != null ? AppColors.primary : AppColors.textPrimary),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_drop_down, size: 18.sp, color: AppColors.textSecondary),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDatePickerTheme(BuildContext context, Widget? child) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        colorScheme: const ColorScheme.light(
+          primary: AppColors.primary, 
+          onPrimary: Colors.white,
+          surface: Colors.white,
+          onSurface: AppColors.textPrimary,
+        ),
+        dialogTheme: DialogThemeData(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            textStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ),
+      child: Transform.scale(
+        scale: 1.15,
+        child: child!,
+      ),
+    );
+  }
+
+  Widget _buildDateSelectionCard({required String title, required DateTime? date, required IconData icon, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14.r),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10.w),
+              decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
+              child: Icon(icon, color: AppColors.primary, size: 20),
+            ),
+            SizedBox(width: 14.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                  SizedBox(height: 3.h),
+                  Text(date != null ? DateFormat('MMMM d, yyyy').format(date) : 'Select date'.tr(context), style: TextStyle(fontSize: 12.sp, color: date != null ? AppColors.textSecondary : Colors.grey)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+          ],
         ),
       ),
     );
@@ -415,21 +874,34 @@ class _TasksPageState extends State<TasksPage> {
   // --- TABLE VIEW ---
   Widget _buildTableView(List<UnifiedItem> items, String role, String currentUserId) {
     if (items.isEmpty) {
-      return Center(child: Text('No tasks matching criteria.'.tr(context)));
+      return Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(vertical: 40.h),
+        decoration: _modernCardDecoration(),
+        child: Column(
+          children: [
+            _gradientChip(Icons.checklist_outlined, AppColors.textSecondary, size: 52),
+            SizedBox(height: 12.h),
+            Text(
+              'No tasks matching criteria.'.tr(context),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13.sp),
+            ),
+          ],
+        ),
+      );
     }
 
-    final db = MockDatabase.instance;
-
-    return AppCard(
-      padding: EdgeInsets.zero,
+    return Container(
+      width: double.infinity,
+      decoration: _modernCardDecoration(),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.lg.r),
+        borderRadius: BorderRadius.circular(18.r),
         child: SingleChildScrollView(
           scrollDirection: Axis.vertical,
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
-              headingRowColor: WidgetStateProperty.all(Colors.grey.shade100),
+              headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
               columns: [
                 _buildSortableColumn('Task Title', 'Task Title'),
                 _buildSortableColumn('Priority', 'Priority'),
@@ -442,15 +914,14 @@ class _TasksPageState extends State<TasksPage> {
                 _buildSortableColumn('Remaining Time', 'Remaining Time'),
                 _buildSortableColumn('Progress', 'Progress'),
                 _buildSortableColumn('Created Date', 'Created Date'),
-                DataColumn(label: Text('Actions'.tr(context), style: const TextStyle(fontWeight: FontWeight.bold))),
+                DataColumn(label: Text('Actions'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textSecondary, fontSize: 12.sp))),
               ],
               rows: items.map((item) {
                 final task = item.originalObject as MockTask;
-                final creator = db.users.firstWhere((u) => u.id == task.assignedById, orElse: () => MockUser(id: '', email: '', fullName: 'System', role: '', department: ''));
                 final progress = _calculateProgress(task.status);
                 final remaining = _calculateRemainingTime(task.deadline);
 
-                var pBg = Colors.grey.shade100;
+                var pBg = const Color(0xFFF1F5F9);
                 var pFg = AppColors.textSecondary;
                 if (task.priority == 'HIGH') {
                   pBg = const Color(0xFFFFEBEE);
@@ -463,8 +934,8 @@ class _TasksPageState extends State<TasksPage> {
                 return DataRow(cells: [
                   DataCell(Text(task.title, style: const TextStyle(fontWeight: FontWeight.bold))),
                   DataCell(Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                    decoration: BoxDecoration(color: pBg, borderRadius: BorderRadius.circular(6.r)),
+                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                    decoration: BoxDecoration(color: pBg, borderRadius: BorderRadius.circular(20.r)),
                     child: Text(task.priority.tr(context), style: TextStyle(color: pFg, fontSize: 9.sp, fontWeight: FontWeight.bold)),
                   )),
                   DataCell(Text(task.status.tr(context))),
@@ -474,7 +945,18 @@ class _TasksPageState extends State<TasksPage> {
                   DataCell(Text(task.startDate)),
                   DataCell(Text(task.deadline)),
                   DataCell(Text(remaining, style: TextStyle(color: remaining == 'Overdue'.tr(context) ? AppColors.danger : AppColors.textPrimary))),
-                  DataCell(SizedBox(width: 80.w, child: LinearProgressIndicator(value: progress, color: progress == 1.0 ? AppColors.success : AppColors.primary))),
+                  DataCell(SizedBox(
+                    width: 80.w,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10.r),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        color: progress == 1.0 ? AppColors.success : AppColors.primary,
+                        backgroundColor: const Color(0xFFE2E8F0),
+                        minHeight: 6,
+                      ),
+                    ),
+                  )),
                   DataCell(Text(_getCreatedDate(task))),
                   DataCell(Row(
                     children: [
@@ -504,6 +986,594 @@ class _TasksPageState extends State<TasksPage> {
     );
   }
 
+  // --- VIEW TOGGLE ---
+  Widget _buildTasksView(List<UnifiedItem> items, String role, String currentUserId) {
+    if (_viewMode == _TasksViewMode.calendar) {
+      return _buildCalendarView(context, items);
+    }
+    return _buildTableView(items, role, currentUserId);
+  }
+
+  Widget _buildViewToggle() {
+    return Container(
+      padding: EdgeInsets.all(4.w),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _toggleItem(
+            icon: Icons.table_chart_outlined,
+            label: 'Table'.tr(context),
+            active: _viewMode == _TasksViewMode.table,
+            onTap: () => setState(() => _viewMode = _TasksViewMode.table),
+          ),
+          SizedBox(width: 4.w),
+          _toggleItem(
+            icon: Icons.calendar_month_outlined,
+            label: 'Calendar'.tr(context),
+            active: _viewMode == _TasksViewMode.calendar,
+            onTap: () => setState(() => _viewMode = _TasksViewMode.calendar),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _toggleItem({
+    required IconData icon,
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10.r),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+        decoration: BoxDecoration(
+          gradient: active
+              ? LinearGradient(
+                  colors: [AppColors.primary, _darker(AppColors.primary)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          borderRadius: BorderRadius.circular(10.r),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: active ? Colors.white : AppColors.textSecondary),
+            SizedBox(width: 6.w),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.bold,
+                color: active ? Colors.white : AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- CALENDAR VIEW ---
+  Widget _buildCalendarView(BuildContext context, List<UnifiedItem> items) {
+    final isAr = context.read<LanguageCubit>().state != 'EN';
+    final db = MockDatabase.instance;
+
+    if (items.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(vertical: 40.h),
+        decoration: _modernCardDecoration(),
+        child: Column(
+          children: [
+            _gradientChip(Icons.calendar_month_outlined, AppColors.textSecondary, size: 52),
+            SizedBox(height: 12.h),
+            Text(
+              'No tasks matching criteria.'.tr(context),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13.sp),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Group tasks by deadline date
+    final Map<String, List<MockTask>> byDate = {};
+    for (final item in items) {
+      final task = item.originalObject as MockTask;
+      final d = DateTime.tryParse(task.deadline);
+      if (d != null) {
+        byDate.putIfAbsent(DateFormat('yyyy-MM-dd').format(d), () => []).add(task);
+      }
+    }
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final focused = _focusedMonth;
+    final firstDay = DateTime(focused.year, focused.month, 1);
+    final daysInMonth = DateTime(focused.year, focused.month + 1, 0).day;
+    final leadingBlanks = firstDay.weekday % 7; // Sunday-first
+
+    // Build the cells for the month grid
+    final cells = <DateTime>[];
+    for (int i = leadingBlanks; i > 0; i--) {
+      cells.add(firstDay.subtract(Duration(days: i)));
+    }
+    for (int i = 0; i < daysInMonth; i++) {
+      cells.add(DateTime(focused.year, focused.month, i + 1));
+    }
+
+    final selected = _selectedCalendarDate ?? today;
+    final selectedKey = DateFormat('yyyy-MM-dd').format(selected);
+    final selectedTasks = byDate[selectedKey] ?? [];
+
+    final daysWithTasksInMonth = byDate.keys.where((k) {
+      final d = DateTime.tryParse(k);
+      return d != null && d.month == focused.month && d.year == focused.year;
+    }).length;
+
+    final prevIcon = isAr ? Icons.chevron_right : Icons.chevron_left;
+    final nextIcon = isAr ? Icons.chevron_left : Icons.chevron_right;
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Month navigation
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+            decoration: _modernCardDecoration(),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: () => setState(() {
+                    _focusedMonth = DateTime(focused.year, focused.month - 1, 1);
+                  }),
+                  icon: Icon(prevIcon, color: AppColors.primary),
+                  tooltip: 'Previous'.tr(context),
+                ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text(
+                        '${_monthName(focused.month, isAr)} ${focused.year}',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      ),
+                      Text(
+                        '$daysWithTasksInMonth ${'days with tasks'.tr(context)}',
+                        style: TextStyle(fontSize: 10.sp, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => setState(() {
+                    _focusedMonth = DateTime(focused.year, focused.month + 1, 1);
+                  }),
+                  icon: Icon(nextIcon, color: AppColors.primary),
+                  tooltip: 'Next'.tr(context),
+                ),
+                SizedBox(width: 4.w),
+                OutlinedButton(
+                  onPressed: () => setState(() {
+                    _focusedMonth = DateTime(now.year, now.month, 1);
+                    _selectedCalendarDate = today;
+                  }),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                  ),
+                  child: Text('Today'.tr(context), style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 12.h),
+
+          // Weekday headers
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4.w),
+            child: Row(
+              children: List.generate(7, (i) {
+                return Expanded(
+                  child: Center(
+                    child: Text(
+                      _weekdayName(i, isAr),
+                      style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+          SizedBox(height: 6.h),
+
+          // Day grid
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final cellWidth = (constraints.maxWidth - 8.w) / 7;
+              final compact = cellWidth < 55;
+              final maxDayTasks = cells.fold<int>(0, (m, c) {
+                final n = byDate[DateFormat('yyyy-MM-dd').format(c)]?.length ?? 0;
+                return n > m ? n : m;
+              });
+              final visibleTasks = maxDayTasks > 3 ? 3 : maxDayTasks;
+              final cellExtent = (compact ? 26.0 : 34.0) + visibleTasks * (compact ? 14.0 : 19.0);
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7,
+                  crossAxisSpacing: 4.w,
+                  mainAxisSpacing: 4.h,
+                  mainAxisExtent: cellExtent,
+                ),
+                itemCount: cells.length,
+                itemBuilder: (context, i) {
+                  final day = cells[i];
+                  final inMonth = day.month == focused.month;
+                  final key = DateFormat('yyyy-MM-dd').format(day);
+                  final tasks = byDate[key] ?? [];
+                  return _calendarDayCell(
+                    context,
+                    day,
+                    tasks,
+                    inMonth: inMonth,
+                    isToday: day == today,
+                    isSelected: day == selected,
+                    onTap: () => setState(() {
+                      _selectedCalendarDate = day;
+                      if (day.month != focused.month) {
+                        _focusedMonth = DateTime(day.year, day.month, 1);
+                      }
+                    }),
+                  );
+                },
+              );
+            },
+          ),
+          SizedBox(height: 10.h),
+
+          // Legend
+          _buildLegend(context),
+          SizedBox(height: 18.h),
+
+          // Selected day tasks
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${'Tasks on'.tr(context)} ${_formatFullDate(selected, isAr)}',
+                  style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (selectedTasks.isNotEmpty)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                  child: Text(
+                    '${selectedTasks.length}',
+                    style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold, color: AppColors.primary),
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          if (selectedTasks.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(22.w),
+              decoration: _modernCardDecoration(),
+              child: Column(
+                children: [
+                  _gradientChip(Icons.event_available_outlined, AppColors.textSecondary, size: 40),
+                  SizedBox(height: 8.h),
+                  Text(
+                    'No tasks scheduled on this day.'.tr(context),
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12.sp),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...selectedTasks.map((task) => _calendarTaskTile(context, task, db)),
+          SizedBox(height: 20.h),
+        ],
+      ),
+    );
+  }
+
+  Widget _calendarDayCell(
+    BuildContext context,
+    DateTime day,
+    List<MockTask> tasks, {
+    required bool inMonth,
+    required bool isToday,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final dayColor = isSelected
+        ? Colors.white
+        : (inMonth ? AppColors.textPrimary : AppColors.textSecondary.withValues(alpha: 0.35));
+    final showTasks = inMonth && tasks.isNotEmpty;
+    final visibleTasks = showTasks ? (tasks.length > 3 ? tasks.take(3).toList() : tasks) : <MockTask>[];
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10.r),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.all(3.w),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary
+              : isToday
+                  ? AppColors.primary.withValues(alpha: 0.1)
+                  : inMonth
+                      ? const Color(0xFFF8FAFC)
+                      : Colors.transparent,
+          borderRadius: BorderRadius.circular(10.r),
+          border: isToday && !isSelected
+              ? Border.all(color: AppColors.primary.withValues(alpha: 0.4))
+              : Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${day.day}',
+                  style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold, color: dayColor),
+                ),
+                if (showTasks)
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.white.withValues(alpha: 0.25)
+                          : AppColors.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6.r),
+                    ),
+                    child: Text(
+                      '${tasks.length}',
+                      style: TextStyle(
+                        fontSize: 8.sp,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? Colors.white : AppColors.primary,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            if (showTasks) ...[
+              SizedBox(height: 2.h),
+              ...visibleTasks.map((t) => _dayTaskChip(context, t, isSelected)),
+              if (tasks.length > 3)
+                Padding(
+                  padding: EdgeInsets.only(top: 1.h),
+                  child: Text(
+                    '+${tasks.length - 3} ${'more'.tr(context)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 8.sp,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? Colors.white70 : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _dayTaskChip(BuildContext context, MockTask t, bool isSelected) {
+    final color = _taskStatusColor(t.status);
+    return InkWell(
+      onTap: () => _showQuickViewModal(context, t),
+      borderRadius: BorderRadius.circular(6.r),
+      child: Container(
+        width: double.infinity,
+        margin: EdgeInsets.only(bottom: 2.h),
+        padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: isSelected ? 0.35 : 0.15),
+          borderRadius: BorderRadius.circular(6.r),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.circle, size: 5.sp, color: isSelected ? Colors.white : color),
+            SizedBox(width: 3.w),
+            Expanded(
+              child: Text(
+                t.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 8.5.sp,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white : color,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegend(BuildContext context) {
+    final items = [
+      ('Completed'.tr(context), AppColors.success),
+      ('Overdue'.tr(context), AppColors.danger),
+      ('In Progress'.tr(context), Colors.orange),
+      ('Pending'.tr(context), AppColors.primary),
+    ];
+    return Wrap(
+      spacing: 14.w,
+      runSpacing: 6.h,
+      children: items.map((e) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 8.w, height: 8.w, decoration: BoxDecoration(color: e.$2, shape: BoxShape.circle)),
+            SizedBox(width: 4.w),
+            Text(e.$1, style: TextStyle(fontSize: 10.sp, color: AppColors.textSecondary)),
+          ],
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _calendarTaskTile(BuildContext context, MockTask task, MockDatabase db) {
+    final owner = db.users.firstWhere(
+      (u) => u.id == task.currentOwnerId,
+      orElse: () => MockUser(id: '', email: '', fullName: 'Unassigned', role: '', department: ''),
+    );
+    Color accent = AppColors.primary;
+    if (task.priority == 'HIGH') {
+      accent = AppColors.danger;
+    } else if (task.priority == 'LOW') {
+      accent = AppColors.success;
+    }
+    final isOverdue = task.status == 'Overdue';
+
+    return InkWell(
+      onTap: () => _showQuickViewModal(context, task),
+      borderRadius: BorderRadius.circular(14.r),
+      child: Container(
+        margin: EdgeInsets.only(bottom: 10.h),
+        padding: EdgeInsets.all(12.w),
+        decoration: _modernCardDecoration(),
+        child: Row(
+          children: [
+            Container(
+              width: 4.w,
+              height: 46.h,
+              decoration: BoxDecoration(
+                color: accent,
+                borderRadius: BorderRadius.circular(4.r),
+              ),
+            ),
+            SizedBox(width: 12.w),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    task.title,
+                    style: TextStyle(fontSize: 12.5.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    '${owner.fullName} · ${task.taskDepartment.tr(context)}',
+                    style: TextStyle(fontSize: 10.sp, color: AppColors.textSecondary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 8.h),
+                  Wrap(
+                    spacing: 8.w,
+                    runSpacing: 6.h,
+                    children: [
+                      _calendarChip(task.priority.tr(context), accent),
+                      _calendarChip(task.status.tr(context), _taskStatusColor(task.status)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 10.w),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  task.deadline,
+                  style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: isOverdue ? AppColors.danger : AppColors.textSecondary),
+                ),
+                SizedBox(height: 4.h),
+                _calendarChip(
+                  _calculateRemainingTime(task.deadline),
+                  isOverdue ? AppColors.danger : Colors.indigo,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _taskStatusColor(String status) {
+    if (status == 'Completed' || status == 'Approved') return AppColors.success;
+    if (status == 'Overdue') return AppColors.danger;
+    if (status == 'In Progress' || status == 'Submitted' || status == 'Under Review') {
+      return Colors.orange;
+    }
+    return AppColors.primary;
+  }
+
+  Widget _calendarChip(String text, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10.r),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(fontSize: 9.sp, fontWeight: FontWeight.bold, color: color),
+      ),
+    );
+  }
+
+  String _monthName(int month, bool isAr) {
+    const en = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const ar = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+    return isAr ? ar[month - 1] : en[month - 1];
+  }
+
+  String _weekdayName(int index, bool isAr) {
+    const en = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const ar = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    return isAr ? ar[index] : en[index];
+  }
+
+  String _formatFullDate(DateTime d, bool isAr) {
+    final weekday = _weekdayName(d.weekday % 7, isAr);
+    final month = _monthName(d.month, isAr);
+    return '$weekday, ${d.day} $month ${d.year}';
+  }
+
   DataColumn _buildSortableColumn(String label, String field) {
     final isSelected = _sortByField == field;
     return DataColumn(
@@ -512,10 +1582,10 @@ class _TasksPageState extends State<TasksPage> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(label.tr(context), style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(label.tr(context), style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textSecondary, fontSize: 12.sp)),
             if (isSelected) ...[
               SizedBox(width: 4.w),
-              Icon(_sortAscending ? Icons.arrow_drop_up : Icons.arrow_drop_down, size: 16),
+              Icon(_sortAscending ? Icons.arrow_drop_up : Icons.arrow_drop_down, size: 16, color: AppColors.primary),
             ]
           ],
         ),
@@ -523,211 +1593,64 @@ class _TasksPageState extends State<TasksPage> {
     );
   }
 
-  // --- Kanban Column Widget ---
-  Widget _buildKanbanView(List<UnifiedItem> items, String role, String currentUserId) {
-    final todo = items.where((i) => i.status == 'Todo' || i.status == 'Assigned' || i.status == 'Pending').toList();
-    final inProgress = items.where((i) => i.status == 'In Progress' || i.status == 'Needs Changes').toList();
-    final review = items.where((i) => i.status == 'Submitted' || i.status == 'Under Review').toList();
-    final done = items.where((i) => i.status == 'Completed' || i.status == 'Approved').toList();
-
-    return Row(
-      children: [
-        Expanded(child: _buildKanbanCol('Todo'.tr(context), todo)),
-        SizedBox(width: 10.w),
-        Expanded(child: _buildKanbanCol('In Progress'.tr(context), inProgress)),
-        SizedBox(width: 10.w),
-        Expanded(child: _buildKanbanCol('Under Review'.tr(context), review)),
-        SizedBox(width: 10.w),
-        Expanded(child: _buildKanbanCol('Completed'.tr(context), done)),
-      ],
-    );
-  }
-
-  Widget _buildKanbanCol(String label, List<UnifiedItem> list) {
-    return Container(
-      decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(AppRadius.lg.r), border: Border.all(color: AppColors.border)),
-      padding: EdgeInsets.all(8.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('$label (${list.length})', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp)),
-          const Divider(),
-          Expanded(
-            child: ListView.builder(
-              itemCount: list.length,
-              itemBuilder: (context, idx) {
-                final item = list[idx];
-                final task = item.originalObject as MockTask;
-                return Card(
-                  child: ListTile(
-                    title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(item.assignedTo),
-                    onTap: () => _showQuickViewModal(context, task),
-                  ),
-                );
-              },
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  // --- Calendar View ---
-  Widget _buildCalendarView(List<UnifiedItem> items) {
-    return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.lg.r), border: Border.all(color: AppColors.border)),
-      padding: EdgeInsets.all(16.w),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('${DateFormat('MMMM yyyy').format(_calendarActiveDate)}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15.sp)),
-              Row(
-                children: [
-                  _buildCalBtn('Day', 'Day'),
-                  _buildCalBtn('Week', 'Week'),
-                  _buildCalBtn('Month', 'Month'),
-                  _buildCalBtn('Custom', 'Custom'),
-                ],
-              )
-            ],
-          ),
-          SizedBox(height: 10.h),
-          Expanded(child: _buildCalendarBody(items)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCalBtn(String label, String mode) {
-    final isSelected = _calendarMode == mode;
-    return TextButton(
-      onPressed: () async {
-        if (mode == 'Custom') {
-          final range = await showDateRangePicker(context: context, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
-          if (range != null) {
-            setState(() {
-              _calendarCustomRange = range;
-              _calendarMode = 'Custom';
-            });
-          }
-        } else {
-          setState(() => _calendarMode = mode);
-        }
-      },
-      child: Text(label.tr(context), style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, color: isSelected ? AppColors.primary : Colors.grey)),
-    );
-  }
-
-  Widget _buildCalendarBody(List<UnifiedItem> items) {
-    if (_calendarMode == 'Day') {
-      final dayItems = items.where((i) {
-        final d = DateTime.tryParse(i.deadline);
-        return d != null && d.year == _calendarActiveDate.year && d.month == _calendarActiveDate.month && d.day == _calendarActiveDate.day;
-      }).toList();
-      return ListView.builder(
-        itemCount: dayItems.length,
-        itemBuilder: (context, idx) {
-          final item = dayItems[idx];
-          return ListTile(
-            title: Text(item.title),
-            trailing: Text(item.priority),
-            onTap: () => _showQuickViewModal(context, item.originalObject as MockTask),
-          );
-        },
-      );
-    }
-    if (_calendarMode == 'Week') {
-      final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-      return GridView.count(
-        crossAxisCount: 5,
-        crossAxisSpacing: 8.w,
-        children: days.map((d) {
-          int offset = days.indexOf(d);
-          final dateStr = '2026-07-${20 + offset}';
-          final dayItems = items.where((i) => i.deadline == dateStr).toList();
-          return Container(
-            color: Colors.grey.shade50,
-            padding: EdgeInsets.all(4.w),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(d.tr(context), style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(dateStr, style: TextStyle(fontSize: 8.sp, color: Colors.grey)),
-                const Divider(),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: dayItems.length,
-                    itemBuilder: (context, idx) => Card(child: Padding(padding: EdgeInsets.all(4.w), child: Text(dayItems[idx].title, style: TextStyle(fontSize: 9.sp)))),
-                  ),
-                )
-              ],
-            ),
-          );
-        }).toList(),
-      );
-    }
-
-    if (_calendarMode == 'Month') {
-      return GridView.builder(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 7, childAspectRatio: 1.2),
-        itemCount: 30,
-        itemBuilder: (context, idx) {
-          final dateStr = '2026-07-${idx + 1 < 10 ? '0${idx + 1}' : idx + 1}';
-          final dayItems = items.where((i) => i.deadline == dateStr).toList();
-          return Container(
-            decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade100)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${idx + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                if (dayItems.isNotEmpty)
-                  Container(
-                    margin: EdgeInsets.only(top: 4.h),
-                    color: AppColors.primary,
-                    child: Text('${dayItems.length}', style: const TextStyle(color: Colors.white, fontSize: 8)),
-                  )
-              ],
-            ),
-          );
-        },
-      );
-    }
-
-    if (_calendarMode == 'Custom' && _calendarCustomRange != null) {
-      final customItems = items.where((i) {
-        final d = DateTime.tryParse(i.deadline);
-        return d != null && d.isAfter(_calendarCustomRange!.start) && d.isBefore(_calendarCustomRange!.end);
-      }).toList();
-      return ListView.builder(
-        itemCount: customItems.length,
-        itemBuilder: (context, idx) => ListTile(title: Text(customItems[idx].title), onTap: () => _showQuickViewModal(context, customItems[idx].originalObject as MockTask)),
-      );
-    }
-    return const SizedBox();
-  }
 
   // --- Deletion Confirm ---
   void _confirmDeleteTask(BuildContext context, String id) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Delete Task'.tr(context)),
-        content: Text('Are you sure you want to delete this task?'.tr(context)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel'.tr(context))),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                MockDatabase.instance.deleteTask(id);
-              });
-              Navigator.pop(context);
-            },
-            child: Text('Delete'.tr(context), style: const TextStyle(color: AppColors.danger)),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28.r)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    _gradientChip(Icons.delete_outline, AppColors.danger, size: 52),
+                    SizedBox(width: 14.w),
+                    Expanded(
+                      child: Text('Delete Task'.tr(context), style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16.h),
+                Text('Are you sure you want to delete this task? This action cannot be undone.'.tr(context),
+                    style: TextStyle(fontSize: 13.sp, color: AppColors.textSecondary, height: 1.5)),
+                SizedBox(height: 24.h),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textSecondary,
+                        side: const BorderSide(color: Color(0xFFE2E8F0)),
+                        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                      ),
+                      child: Text('Cancel'.tr(context), style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold)),
+                    ),
+                    SizedBox(width: 12.w),
+                    SizedBox(
+                      width: 140.w,
+                      child: _gradientButton(context, 'Delete', () {
+                        setState(() {
+                          MockDatabase.instance.deleteTask(id);
+                        });
+                        Navigator.pop(context);
+                      }, color: AppColors.danger),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -741,74 +1664,300 @@ class _TasksPageState extends State<TasksPage> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(task.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: 420.w, maxHeight: 420.h),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(task.description, style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary)),
-                SizedBox(height: 8.h),
-                const Divider(),
-                _buildQuickViewRow('Assigned By'.tr(context), creator.fullName),
-                _buildQuickViewRow('Current Owner'.tr(context), owner.fullName),
-                _buildQuickViewRow('Team'.tr(context), db.teams.firstWhere((t) => t.id == task.assignedTeamId, orElse: () => MockTeam(id: '', name: 'General', managerId: '', department: '', leaderId: '', memberIds: [])).name),
-                _buildQuickViewRow('Department'.tr(context), task.taskDepartment.tr(context)),
-                _buildQuickViewRow('Priority'.tr(context), task.priority.tr(context)),
-                _buildQuickViewRow('Status'.tr(context), task.status.tr(context)),
-                _buildQuickViewRow('Progress'.tr(context), '${(_calculateProgress(task.status) * 100).toInt()}%'),
-                _buildQuickViewRow('Start Date'.tr(context), task.startDate),
-                _buildQuickViewRow('Due Date'.tr(context), task.deadline),
-                _buildQuickViewRow('Remaining Time'.tr(context), remaining),
-                _buildQuickViewRow('Created At'.tr(context), _getCreatedDate(task)),
-              ],
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28.r)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Container(
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(28.r)),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [Color(0xFF1E6FC4), Color(0xFF0F4C81)]),
+                          borderRadius: BorderRadius.circular(16.r),
+                          boxShadow: [
+                            BoxShadow(color: AppColors.primary.withValues(alpha: 0.25), blurRadius: 12, offset: const Offset(0, 4)),
+                          ],
+                        ),
+                        child: const Icon(Icons.visibility_outlined, color: Colors.white, size: 26),
+                      ),
+                      SizedBox(width: 14.w),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(task.title, style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                            SizedBox(height: 2.h),
+                            Text('Quick overview of the task'.tr(context), style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20.h),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(14.w),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(14.r),
+                    ),
+                    child: Text(task.description, style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary, height: 1.6)),
+                  ),
+                  SizedBox(height: 16.h),
+                  _buildQuickViewRow('Assigned By'.tr(context), creator.fullName),
+                  _buildQuickViewRow('Current Owner'.tr(context), owner.fullName),
+                  _buildQuickViewRow('Team'.tr(context), db.teams.firstWhere((t) => t.id == task.assignedTeamId, orElse: () => MockTeam(id: '', name: 'General', managerId: '', department: '', leaderId: '', memberIds: [])).name),
+                  _buildQuickViewRow('Department'.tr(context), task.taskDepartment.tr(context)),
+                  _buildQuickViewRow('Priority'.tr(context), task.priority.tr(context)),
+                  _buildQuickViewRow('Status'.tr(context), task.status.tr(context)),
+                  _buildQuickViewRow('Progress'.tr(context), '${(_calculateProgress(task.status) * 100).toInt()}%'),
+                  _buildQuickViewRow('Start Date'.tr(context), task.startDate),
+                  _buildQuickViewRow('Due Date'.tr(context), task.deadline),
+                  _buildQuickViewRow('Remaining Time'.tr(context), remaining),
+                  _buildQuickViewRow('Created At'.tr(context), _getCreatedDate(task)),
+                  SizedBox(height: 24.h),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                          padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 12.h),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                        ),
+                        child: Text('Close'.tr(context), style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold)),
+                      ),
+                      SizedBox(width: 10.w),
+                      _buildGradientButton(
+                        text: task.status == 'Submitted' || task.status == 'Completed' || task.status == 'Approved'
+                            ? 'View Submission'.tr(context)
+                            : 'Submit Task'.tr(context),
+                        icon: task.status == 'Submitted' || task.status == 'Completed' || task.status == 'Approved'
+                            ? Icons.assignment_turned_in
+                            : Icons.send,
+                        onTap: () {
+                          Navigator.pop(context);
+                          if (task.status == 'Submitted' || task.status == 'Completed' || task.status == 'Approved') {
+                            _showViewSubmissionDialog(context, task);
+                          } else {
+                            _showSubmitTaskDialog(context, task);
+                          }
+                        },
+                      ),
+                      SizedBox(width: 10.w),
+                      OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          context.go('/tasks/${task.id}');
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+                          padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 12.h),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                        ),
+                        child: Text('Full Details'.tr(context), style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Close'.tr(context))),
-          if (task.status == 'Submitted' || task.status == 'Completed' || task.status == 'Approved')
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _showViewSubmissionDialog(context, task);
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              child: Text('View Submission'.tr(context)),
-            )
-          else
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _showSubmitTaskDialog(context, task);
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
-              child: Text('Submit Task'.tr(context)),
-            ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              context.go('/tasks/${task.id}');
-            },
-            child: Text('View Full Details'.tr(context)),
-          ),
-        ],
       ),
     );
   }
 
   Widget _buildQuickViewRow(String label, String value) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4.h),
+      padding: EdgeInsets.symmetric(vertical: 6.h),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 95.w, child: Text(label, style: TextStyle(fontSize: 10.sp, color: AppColors.textSecondary, fontWeight: FontWeight.w600))),
-          Expanded(child: Text(value, style: TextStyle(fontSize: 10.5.sp, fontWeight: FontWeight.w600))),
+          SizedBox(width: 95.w, child: Text(label, style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary, fontWeight: FontWeight.w600))),
+          Expanded(child: Text(value, style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: AppColors.textPrimary))),
         ],
+      ),
+    );
+  }
+
+  // ─── Modern UI helpers ────────────────────────────────────────────────────
+  Color _darker(Color c, [double f = 0.18]) {
+    final hsl = HSLColor.fromColor(c);
+    return hsl.withLightness((hsl.lightness - f).clamp(0.0, 1.0)).toColor();
+  }
+
+  BoxDecoration _modernCardDecoration() => BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18.r),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      );
+
+  Widget _gradientChip(IconData icon, Color color, {double size = 40}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color, _darker(color)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(size * 0.32),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.28),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Icon(icon, color: Colors.white, size: size * 0.48),
+    );
+  }
+
+  Widget _gradientButton(BuildContext context, String text, VoidCallback onTap,
+      {Color color = AppColors.primary}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14.r),
+      child: Container(
+        width: double.infinity,
+        height: 50.h,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [color, _darker(color)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(14.r),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Text(
+          text.tr(context),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+        ),
+      ),
+    );
+  }
+
+  Widget _headerActionButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1E6FC4), Color(0xFF0F4C81)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12.r),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12.r),
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 13.h),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 18, color: Colors.white),
+                SizedBox(width: 6.w),
+                Text(
+                  label,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGradientButton({
+    required String text,
+    required IconData icon,
+    required VoidCallback onTap,
+    bool enabled = true,
+    Color color = AppColors.primary,
+  }) {
+    return SizedBox(
+      height: 46.h,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          borderRadius: BorderRadius.circular(14.r),
+          child: Ink(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [color, _darker(color)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(14.r),
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.25),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 18.w),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: Colors.white, size: 18),
+                  SizedBox(width: 8.w),
+                  Text(text, style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -816,13 +1965,16 @@ class _TasksPageState extends State<TasksPage> {
   // --- Add Task Dialog ---
   void _showAddTaskDialog(BuildContext context, String currentUserId) {
     final db = MockDatabase.instance;
+    final currentUser = db.users.firstWhere((u) => u.id == currentUserId, orElse: () => db.users.first);
+    final isManager = currentUser.role == 'Manager';
+
     final titleCon = TextEditingController();
     final descCon = TextEditingController();
     final durationCon = TextEditingController(text: '8');
 
     String priority = 'MEDIUM';
     String status = 'Assigned';
-    String taskDept = 'Computer Science';
+    String taskDept = isManager ? currentUser.department : 'Computer Science';
     DateTime startDate = DateTime(2026, 7, 24);
     TimeOfDay startTime = const TimeOfDay(hour: 9, minute: 0);
     DateTime dueDate = DateTime(2026, 7, 27);
@@ -830,7 +1982,7 @@ class _TasksPageState extends State<TasksPage> {
 
     String assignMode = 'Individual'; // 'Individual' | 'Team'
     String selectedRole = 'Team Member';
-    String? selectedUserId = '4';
+    String? selectedUserId = isManager ? currentUserId : '4';
     String? selectedTeamId = 't1';
     bool allowReassignment = false;
 
@@ -838,50 +1990,390 @@ class _TasksPageState extends State<TasksPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
-          final usersForRole = db.users.where((u) => u.role == selectedRole).toList();
+          final usersForRole = db.users.where((u) {
+            if (u.role != selectedRole) return false;
+            if (isManager && u.department != currentUser.department) return false;
+            return true;
+          }).toList();
+          
+          final availableTeams = db.teams.where((t) {
+            if (isManager && t.department != currentUser.department) return false;
+            return true;
+          }).toList();
 
           return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
             backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28.r)),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: Container(
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(28.r)),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(28),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 54,
+                            height: 54,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF1E6FC4), Color(0xFF0F4C81)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(18.r),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(alpha: 0.25),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.task_alt_rounded, color: Colors.white, size: 28),
+                          ),
+                          SizedBox(width: 16.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Add New Task'.tr(context),
+                                  style: TextStyle(fontSize: 21.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                ),
+                                SizedBox(height: 5.h),
+                                Text(
+                                  'Create and delegate a new task.'.tr(context),
+                                  style: TextStyle(fontSize: 13.sp, color: AppColors.textSecondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary, size: 22),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 24.h),
+
+                      _buildFieldLabel(context, 'Title', icon: Icons.title),
+                      SizedBox(height: 10.h),
+                      TextFormField(
+                        controller: titleCon,
+                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                        decoration: _buildInputDecoration(context, 'Enter task title...', icon: Icons.title),
+                      ),
+                      SizedBox(height: 22.h),
+
+                      _buildFieldLabel(context, 'Description', icon: Icons.description_outlined),
+                      SizedBox(height: 10.h),
+                      TextFormField(
+                        controller: descCon,
+                        maxLines: 2,
+                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                        decoration: _buildInputDecoration(context, 'Enter task description...', icon: Icons.description_outlined),
+                      ),
+                      SizedBox(height: 22.h),
+
+                      _buildFieldLabel(context, 'Priority', icon: Icons.flag_outlined),
+                      SizedBox(height: 10.h),
+                      DropdownButtonFormField<String>(
+                        initialValue: priority,
+                        isExpanded: true,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+                        decoration: _buildInputDecoration(context, '', icon: Icons.flag_outlined),
+                        items: ['HIGH', 'MEDIUM', 'LOW'].map((p) => DropdownMenuItem(value: p, child: Text(p.tr(context), style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)))).toList(),
+                        onChanged: (v) => setDialogState(() => priority = v!),
+                      ),
+                      SizedBox(height: 22.h),
+
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildFieldLabel(context, 'Start Date', icon: Icons.calendar_today_outlined),
+                                SizedBox(height: 10.h),
+                                _datePickerField(context, DateFormat('yyyy-MM-dd').format(startDate), () async {
+                                  final picked = await showDatePicker(context: context, initialDate: startDate, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
+                                  if (picked != null) setDialogState(() => startDate = picked);
+                                }, icon: Icons.calendar_today_outlined),
+                              ],
+                            ),
+                          ),
+                          SizedBox(width: 16.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildFieldLabel(context, 'Due Date', icon: Icons.event_outlined),
+                                SizedBox(height: 10.h),
+                                _datePickerField(context, DateFormat('yyyy-MM-dd').format(dueDate), () async {
+                                  final picked = await showDatePicker(context: context, initialDate: dueDate, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
+                                  if (picked != null) setDialogState(() => dueDate = picked);
+                                }, icon: Icons.event_outlined),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 22.h),
+
+                      _buildFieldLabel(context, 'Estimated Duration (Hours)', icon: Icons.timer_outlined),
+                      SizedBox(height: 10.h),
+                      TextFormField(
+                        controller: durationCon,
+                        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                        decoration: _buildInputDecoration(context, 'e.g. 8', icon: Icons.timer_outlined),
+                      ),
+                      SizedBox(height: 22.h),
+
+                      _buildFieldLabel(context, 'Assignment Mode', icon: Icons.assignment_ind_outlined),
+                      SizedBox(height: 10.h),
+                      DropdownButtonFormField<String>(
+                        initialValue: assignMode,
+                        isExpanded: true,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+                        decoration: _buildInputDecoration(context, '', icon: Icons.assignment_ind_outlined),
+                        items: ['Individual', 'Team'].map((m) => DropdownMenuItem(value: m, child: Text(m.tr(context), style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)))).toList(),
+                        onChanged: (v) => setDialogState(() {
+                          assignMode = v!;
+                          selectedUserId = null;
+                          selectedTeamId = null;
+                        }),
+                      ),
+                      SizedBox(height: 22.h),
+
+                      if (assignMode == 'Individual') ...[
+                        _buildFieldLabel(context, 'Role Selection', icon: Icons.badge_outlined),
+                        SizedBox(height: 10.h),
+                        DropdownButtonFormField<String>(
+                          initialValue: selectedRole,
+                          isExpanded: true,
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+                          decoration: _buildInputDecoration(context, '', icon: Icons.badge_outlined),
+                          items: ['Team Member', 'Team Leader', 'Manager'].map((r) => DropdownMenuItem(value: r, child: Text(r.tr(context), style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)))).toList(),
+                          onChanged: (v) => setDialogState(() {
+                            selectedRole = v!;
+                            selectedUserId = null;
+                          }),
+                        ),
+                        SizedBox(height: 22.h),
+
+                        _buildFieldLabel(context, 'Select User', icon: Icons.person_outline),
+                        SizedBox(height: 10.h),
+                        DropdownButtonFormField<String>(
+                          initialValue: selectedUserId,
+                          isExpanded: true,
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+                          decoration: _buildInputDecoration(context, '', icon: Icons.person_outline),
+                          items: usersForRole.map((u) => DropdownMenuItem(
+                            value: u.id,
+                            child: Row(
+                              children: [
+                                _initialsAvatar(u.fullName, 28, AppColors.primary),
+                                SizedBox(width: 10.w),
+                                Flexible(child: Text(u.fullName, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary), overflow: TextOverflow.ellipsis)),
+                              ],
+                            ),
+                          )).toList(),
+                          onChanged: (v) => setDialogState(() => selectedUserId = v),
+                        ),
+                        SizedBox(height: 22.h),
+                      ] else ...[
+                        _buildFieldLabel(context, 'Select Team', icon: Icons.groups_outlined),
+                        SizedBox(height: 10.h),
+                        DropdownButtonFormField<String>(
+                          initialValue: selectedTeamId,
+                          isExpanded: true,
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+                          decoration: _buildInputDecoration(context, '', icon: Icons.groups_outlined),
+                          items: availableTeams.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)))).toList(),
+                          onChanged: (v) => setDialogState(() => selectedTeamId = v),
+                        ),
+                        SizedBox(height: 22.h),
+                      ],
+
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 2.h),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        child: SwitchListTile(
+                          title: Text(
+                            'Allow Reassignment'.tr(context),
+                            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          ),
+                          value: allowReassignment,
+                          activeTrackColor: AppColors.primary.withValues(alpha: 0.35),
+                          activeThumbColor: AppColors.primary,
+                          contentPadding: EdgeInsets.zero,
+                          onChanged: (v) => setDialogState(() => allowReassignment = v),
+                        ),
+                      ),
+                      SizedBox(height: 28.h),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: OutlinedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(vertical: 15.h),
+                                side: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+                              ),
+                              child: Text(
+                                'Cancel'.tr(context),
+                                style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 16.w),
+                          Expanded(
+                            child: Container(
+                              height: 52,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF1E6FC4), Color(0xFF0F4C81)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(14.r),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(alpha: 0.3),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(14.r),
+                                  onTap: () {
+                                    if (titleCon.text.isNotEmpty) {
+                                      var ownerId = '4';
+                                      if (assignMode == 'Individual' && selectedUserId != null) ownerId = selectedUserId!;
+                                      if (assignMode == 'Team' && selectedTeamId != null) {
+                                        ownerId = db.teams.firstWhere((t) => t.id == selectedTeamId).leaderId;
+                                      }
+                                      setState(() {
+                                        db.addTask(MockTask(
+                                          id: DateTime.now().millisecondsSinceEpoch.toString(),
+                                          ticketId: 'tic1',
+                                          title: titleCon.text,
+                                          description: titleCon.text,
+                                          assignedMemberId: ownerId,
+                                          deadline: DateFormat('yyyy-MM-dd').format(dueDate),
+                                          estimatedHours: int.tryParse(durationCon.text) ?? 8,
+                                          priority: priority,
+                                          status: status,
+                                          assignmentMode: assignMode,
+                                          assignedTeamId: selectedTeamId,
+                                          assignedRole: selectedRole,
+                                          startDate: DateFormat('yyyy-MM-dd').format(startDate),
+                                          startTime: '${startTime.hour}:${startTime.minute}',
+                                          dueTime: '${dueTime.hour}:${dueTime.minute}',
+                                          allowReassignment: allowReassignment,
+                                          assignedById: currentUserId,
+                                          currentOwnerId: ownerId,
+                                          taskDepartment: taskDept,
+                                          taskType: assignMode == 'Team' ? 'Team Task' : 'Individual Task',
+                                        ));
+                                      });
+                                      Navigator.pop(context);
+                                    }
+                                  },
+                                  child: Center(
+                                    child: Text(
+                                      'Create'.tr(context),
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // --- Edit Task Dialog ---
+  void _showEditTaskDialog(BuildContext context, MockTask task, String currentUserId) {
+    final db = MockDatabase.instance;
+    final currentUser = db.users.firstWhere((u) => u.id == currentUserId, orElse: () => db.users.first);
+    final isManager = currentUser.role == 'Manager';
+
+    final titleCon = TextEditingController(text: task.title);
+    final descCon = TextEditingController(text: task.description);
+    String priority = task.priority;
+    String status = task.status;
+    String taskDept = task.taskDepartment;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28.r)),
+          backgroundColor: Colors.white,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
             child: Container(
-              width: 500.w,
-              padding: EdgeInsets.all(32.w),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(28.r)),
+              padding: EdgeInsets.all(28.w),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Add New Task'.tr(context),
-                              style: TextStyle(
-                                fontSize: 20.sp,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF0F172A),
+                        _gradientChip(Icons.edit_outlined, Colors.orange, size: 52),
+                        SizedBox(width: 14.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Edit Task'.tr(context),
+                                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                               ),
-                            ),
-                            SizedBox(height: 4.h),
-                            Text(
-                              'Create and delegate a new task.'.tr(context),
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                color: const Color(0xFF94A3B8),
+                              SizedBox(height: 4.h),
+                              Text(
+                                'Modify the selected task attributes.'.tr(context),
+                                style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                         IconButton(
                           onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                          icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary, size: 22),
                         ),
                       ],
                     ),
-                    SizedBox(height: 12.h),
+                    SizedBox(height: 22.h),
                     const Divider(color: Color(0xFFF1F5F9), thickness: 1),
                     SizedBox(height: 20.h),
 
@@ -889,175 +2381,64 @@ class _TasksPageState extends State<TasksPage> {
                     SizedBox(height: 8.h),
                     TextFormField(
                       controller: titleCon,
+                      style: const TextStyle(fontSize: 14),
                       decoration: _buildInputDecoration(context, 'Enter task title...'),
                     ),
-                    SizedBox(height: 20.h),
+                    SizedBox(height: 18.h),
 
                     _buildFieldLabel(context, 'Description'),
                     SizedBox(height: 8.h),
                     TextFormField(
                       controller: descCon,
                       maxLines: 2,
+                      style: const TextStyle(fontSize: 14),
                       decoration: _buildInputDecoration(context, 'Enter task description...'),
                     ),
-                    SizedBox(height: 20.h),
+                    SizedBox(height: 18.h),
 
                     _buildFieldLabel(context, 'Priority'),
                     SizedBox(height: 8.h),
                     DropdownButtonFormField<String>(
-                      value: priority,
-                      icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                      initialValue: priority,
+                      isExpanded: true,
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
                       decoration: _buildInputDecoration(context, ''),
-                      items: ['HIGH', 'MEDIUM', 'LOW'].map((p) => DropdownMenuItem(value: p, child: Text(p.tr(context)))).toList(),
+                      items: ['HIGH', 'MEDIUM', 'LOW']
+                          .map((p) => DropdownMenuItem(value: p, child: Text(p.tr(context), overflow: TextOverflow.ellipsis)))
+                          .toList(),
                       onChanged: (v) => setDialogState(() => priority = v!),
                     ),
-                    SizedBox(height: 20.h),
+                    SizedBox(height: 18.h),
+
+                    _buildFieldLabel(context, 'Status'),
+                    SizedBox(height: 8.h),
+                    DropdownButtonFormField<String>(
+                      initialValue: status,
+                      isExpanded: true,
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+                      decoration: _buildInputDecoration(context, ''),
+                      items: ['Pending', 'Assigned', 'In Progress', 'Submitted', 'Under Review', 'Approved', 'Completed', 'Needs Changes', 'Rejected', 'Overdue']
+                          .map((s) => DropdownMenuItem(value: s, child: Text(s.tr(context), overflow: TextOverflow.ellipsis)))
+                          .toList(),
+                      onChanged: (v) => setDialogState(() => status = v!),
+                    ),
+                    SizedBox(height: 18.h),
 
                     _buildFieldLabel(context, 'Department'),
                     SizedBox(height: 8.h),
                     DropdownButtonFormField<String>(
-                      value: taskDept,
-                      icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                      initialValue: taskDept,
+                      isExpanded: true,
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
                       decoration: _buildInputDecoration(context, ''),
-                      items: ['Computer Science', 'Engineering', 'IT Services'].map((d) => DropdownMenuItem(value: d, child: Text(d.tr(context)))).toList(),
+                      items: isManager
+                          ? [DropdownMenuItem(value: currentUser.department, child: Text(currentUser.department.tr(context)))]
+                          : ['Computer Science', 'Engineering', 'IT Services']
+                              .map((d) => DropdownMenuItem(value: d, child: Text(d.tr(context), overflow: TextOverflow.ellipsis)))
+                              .toList(),
                       onChanged: (v) => setDialogState(() => taskDept = v!),
                     ),
-                    SizedBox(height: 20.h),
-
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildFieldLabel(context, 'Start Date'),
-                              SizedBox(height: 8.h),
-                              InkWell(
-                                onTap: () async {
-                                  final picked = await showDatePicker(context: context, initialDate: startDate, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
-                                  if (picked != null) setDialogState(() => startDate = picked);
-                                },
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEDF2F7),
-                                    borderRadius: BorderRadius.circular(12.r),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(DateFormat('yyyy-MM-dd').format(startDate), style: TextStyle(fontSize: 13.sp)),
-                                      const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(width: 16.w),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildFieldLabel(context, 'Due Date'),
-                              SizedBox(height: 8.h),
-                              InkWell(
-                                onTap: () async {
-                                  final picked = await showDatePicker(context: context, initialDate: dueDate, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
-                                  if (picked != null) setDialogState(() => dueDate = picked);
-                                },
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFEDF2F7),
-                                    borderRadius: BorderRadius.circular(12.r),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(DateFormat('yyyy-MM-dd').format(dueDate), style: TextStyle(fontSize: 13.sp)),
-                                      const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 20.h),
-
-                    _buildFieldLabel(context, 'Estimated Duration (Hours)'),
-                    SizedBox(height: 8.h),
-                    TextFormField(
-                      controller: durationCon,
-                      decoration: _buildInputDecoration(context, 'e.g. 8'),
-                    ),
-                    SizedBox(height: 20.h),
-
-                    _buildFieldLabel(context, 'Assignment Mode'),
-                    SizedBox(height: 8.h),
-                    DropdownButtonFormField<String>(
-                      value: assignMode,
-                      icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
-                      decoration: _buildInputDecoration(context, ''),
-                      items: ['Individual', 'Team'].map((m) => DropdownMenuItem(value: m, child: Text(m.tr(context)))).toList(),
-                      onChanged: (v) => setDialogState(() {
-                        assignMode = v!;
-                        selectedUserId = null;
-                        selectedTeamId = null;
-                      }),
-                    ),
-                    SizedBox(height: 20.h),
-
-                    if (assignMode == 'Individual') ...[
-                      _buildFieldLabel(context, 'Role Selection'),
-                      SizedBox(height: 8.h),
-                      DropdownButtonFormField<String>(
-                        value: selectedRole,
-                        icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
-                        decoration: _buildInputDecoration(context, ''),
-                        items: ['Team Member', 'Team Leader', 'Manager'].map((r) => DropdownMenuItem(value: r, child: Text(r.tr(context)))).toList(),
-                        onChanged: (v) => setDialogState(() {
-                          selectedRole = v!;
-                          selectedUserId = null;
-                        }),
-                      ),
-                      SizedBox(height: 20.h),
-
-                      _buildFieldLabel(context, 'Select User'),
-                      SizedBox(height: 8.h),
-                      DropdownButtonFormField<String>(
-                        value: selectedUserId,
-                        icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
-                        decoration: _buildInputDecoration(context, ''),
-                        items: usersForRole.map((u) => DropdownMenuItem(value: u.id, child: Text(u.fullName))).toList(),
-                        onChanged: (v) => setDialogState(() => selectedUserId = v),
-                      ),
-                      SizedBox(height: 20.h),
-                    ] else ...[
-                      _buildFieldLabel(context, 'Select Team'),
-                      SizedBox(height: 8.h),
-                      DropdownButtonFormField<String>(
-                        value: selectedTeamId,
-                        icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
-                        decoration: _buildInputDecoration(context, ''),
-                        items: db.teams.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))).toList(),
-                        onChanged: (v) => setDialogState(() => selectedTeamId = v),
-                      ),
-                      SizedBox(height: 20.h),
-                    ],
-
-                    SwitchListTile(
-                      title: Text('Allow Reassignment'.tr(context), style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: const Color(0xFF334155))),
-                      value: allowReassignment,
-                      activeColor: const Color(0xFF0F4C81),
-                      contentPadding: EdgeInsets.zero,
-                      onChanged: (v) => setDialogState(() => allowReassignment = v),
-                    ),
-                    SizedBox(height: 24.h),
+                    SizedBox(height: 28.h),
 
                     Row(
                       children: [
@@ -1065,9 +2446,9 @@ class _TasksPageState extends State<TasksPage> {
                           child: TextButton(
                             onPressed: () => Navigator.pop(context),
                             style: TextButton.styleFrom(
-                              padding: EdgeInsets.symmetric(vertical: 16.h),
+                              padding: EdgeInsets.symmetric(vertical: 14.h),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12.r),
+                                borderRadius: BorderRadius.circular(14.r),
                                 side: const BorderSide(color: Color(0xFFE2E8F0)),
                               ),
                             ),
@@ -1083,193 +2464,7 @@ class _TasksPageState extends State<TasksPage> {
                         ),
                         SizedBox(width: 16.w),
                         Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              if (titleCon.text.isNotEmpty) {
-                                var ownerId = '4';
-                                if (assignMode == 'Individual' && selectedUserId != null) ownerId = selectedUserId!;
-                                if (assignMode == 'Team' && selectedTeamId != null) {
-                                  ownerId = db.teams.firstWhere((t) => t.id == selectedTeamId).leaderId;
-                                }
-                                setState(() {
-                                  db.addTask(MockTask(
-                                    id: DateTime.now().millisecondsSinceEpoch.toString(),
-                                    ticketId: 'tic1',
-                                    title: titleCon.text,
-                                    description: titleCon.text,
-                                    assignedMemberId: ownerId,
-                                    deadline: DateFormat('yyyy-MM-dd').format(dueDate),
-                                    estimatedHours: int.tryParse(durationCon.text) ?? 8,
-                                    priority: priority,
-                                    status: status,
-                                    assignmentMode: assignMode,
-                                    assignedTeamId: selectedTeamId,
-                                    assignedRole: selectedRole,
-                                    startDate: DateFormat('yyyy-MM-dd').format(startDate),
-                                    startTime: '${startTime.hour}:${startTime.minute}',
-                                    dueTime: '${dueTime.hour}:${dueTime.minute}',
-                                    allowReassignment: allowReassignment,
-                                    assignedById: currentUserId,
-                                    currentOwnerId: ownerId,
-                                    taskDepartment: taskDept,
-                                    taskType: assignMode == 'Team' ? 'Team Task' : 'Individual Task',
-                                  ));
-                                });
-                                Navigator.pop(context);
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF0F4C81),
-                              padding: EdgeInsets.symmetric(vertical: 16.h),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12.r),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: Text(
-                              'Create'.tr(context),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // --- Edit Task Dialog ---
-  void _showEditTaskDialog(BuildContext context, MockTask task, String currentUserId) {
-    final db = MockDatabase.instance;
-    final titleCon = TextEditingController(text: task.title);
-    final descCon = TextEditingController(text: task.description);
-    String priority = task.priority;
-    String status = task.status;
-    String taskDept = task.taskDepartment;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
-          backgroundColor: Colors.white,
-          child: Container(
-            width: 500.w,
-            padding: EdgeInsets.all(32.w),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Edit Task'.tr(context),
-                            style: TextStyle(
-                              fontSize: 20.sp,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF0F172A),
-                            ),
-                          ),
-                          SizedBox(height: 4.h),
-                          Text(
-                            'Modify the selected task attributes.'.tr(context),
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              color: const Color(0xFF94A3B8),
-                            ),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12.h),
-                  const Divider(color: Color(0xFFF1F5F9), thickness: 1),
-                  SizedBox(height: 20.h),
-
-                  _buildFieldLabel(context, 'Title'),
-                  SizedBox(height: 8.h),
-                  TextFormField(
-                    controller: titleCon,
-                    decoration: _buildInputDecoration(context, 'Enter task title...'),
-                  ),
-                  SizedBox(height: 20.h),
-
-                  _buildFieldLabel(context, 'Description'),
-                  SizedBox(height: 8.h),
-                  TextFormField(
-                    controller: descCon,
-                    maxLines: 2,
-                    decoration: _buildInputDecoration(context, 'Enter task description...'),
-                  ),
-                  SizedBox(height: 20.h),
-
-                  _buildFieldLabel(context, 'Priority'),
-                  SizedBox(height: 8.h),
-                  DropdownButtonFormField<String>(
-                    value: priority,
-                    icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
-                    decoration: _buildInputDecoration(context, ''),
-                    items: ['HIGH', 'MEDIUM', 'LOW'].map((p) => DropdownMenuItem(value: p, child: Text(p.tr(context)))).toList(),
-                    onChanged: (v) => setDialogState(() => priority = v!),
-                  ),
-                  SizedBox(height: 20.h),
-
-                  _buildFieldLabel(context, 'Status'),
-                  SizedBox(height: 8.h),
-                  DropdownButtonFormField<String>(
-                    value: status,
-                    icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
-                    decoration: _buildInputDecoration(context, ''),
-                    items: ['Pending', 'Assigned', 'In Progress', 'Submitted', 'Under Review', 'Approved', 'Completed', 'Needs Changes', 'Rejected', 'Overdue'].map((s) => DropdownMenuItem(value: s, child: Text(s.tr(context)))).toList(),
-                    onChanged: (v) => setDialogState(() => status = v!),
-                  ),
-                  SizedBox(height: 32.h),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.symmetric(vertical: 16.h),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.r),
-                              side: const BorderSide(color: Color(0xFFE2E8F0)),
-                            ),
-                          ),
-                          child: Text(
-                            'Cancel'.tr(context),
-                            style: const TextStyle(
-                              color: Color(0xFF64748B),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 16.w),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
+                          child: _gradientButton(context, 'Save', () {
                             setState(() {
                               db.updateTaskStatus(task.id, status, db.users.firstWhere((u) => u.id == currentUserId).fullName);
                               // Update title/desc manually in list
@@ -1307,28 +2502,12 @@ class _TasksPageState extends State<TasksPage> {
                               }
                             });
                             Navigator.pop(context);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0F4C81),
-                            padding: EdgeInsets.symmetric(vertical: 16.h),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.r),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: Text(
-                            'Save'.tr(context),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
+                          }),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1337,35 +2516,91 @@ class _TasksPageState extends State<TasksPage> {
     );
   }
 
-  Widget _buildFieldLabel(BuildContext context, String label) {
-    return Text(
-      label.tr(context),
-      style: const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w600,
-        color: Color(0xFF334155),
+  String _initials(String name) {
+    final parts = name.split(' ').where((e) => e.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    return parts.take(2).map((e) => e[0]).join().toUpperCase();
+  }
+
+  Widget _initialsAvatar(String name, double size, Color color) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        shape: BoxShape.circle,
+      ),
+      child: Text(
+        _initials(name),
+        style: TextStyle(
+          color: color,
+          fontSize: size * 0.38,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
 
-  InputDecoration _buildInputDecoration(BuildContext context, String hint) {
+  Widget _datePickerField(BuildContext context, String value, VoidCallback onTap, {IconData icon = Icons.calendar_today_outlined}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14.r),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 15.h),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: AppColors.textSecondary),
+            SizedBox(width: 10.w),
+            Expanded(child: Text(value, style: TextStyle(fontSize: 13.sp, color: AppColors.textPrimary))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFieldLabel(BuildContext context, String label, {IconData? icon}) {
+    return Row(
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 15, color: AppColors.textSecondary),
+          SizedBox(width: 6.w),
+        ],
+        Text(
+          label.tr(context),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  InputDecoration _buildInputDecoration(BuildContext context, String hint, {IconData? icon}) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-      fillColor: const Color(0xFFEDF2F7),
+      hintStyle: const TextStyle(color: AppColors.textHint, fontSize: 14),
+      prefixIcon: icon != null ? Icon(icon, size: 19, color: AppColors.textSecondary) : null,
+      fillColor: const Color(0xFFF1F5F9),
       filled: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(14.r),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(14.r),
         borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12.r),
-        borderSide: const BorderSide(color: Color(0xFF0F4C81), width: 1),
+        borderRadius: BorderRadius.circular(14.r),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
       ),
     );
   }
@@ -1381,114 +2616,116 @@ class _TasksPageState extends State<TasksPage> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28.r)),
         backgroundColor: Colors.white,
-        child: Container(
-          width: 500.w,
-          padding: EdgeInsets.all(32.w),
-          child: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Submit Task Deliverables'.tr(context),
-                            style: TextStyle(
-                              fontSize: 20.sp,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF0F172A),
-                            ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: Container(
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(28.r)),
+            padding: EdgeInsets.all(28.w),
+            child: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _gradientChip(Icons.send_outlined, AppColors.primary, size: 52),
+                        SizedBox(width: 14.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Submit Task Deliverables'.tr(context),
+                                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                              ),
+                              SizedBox(height: 4.h),
+                              Text(
+                                'Enter submission details for task evaluation.'.tr(context),
+                                style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary),
+                              ),
+                            ],
                           ),
-                          SizedBox(height: 4.h),
-                          Text(
-                            'Enter submission details for task evaluation.'.tr(context),
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              color: const Color(0xFF94A3B8),
-                            ),
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12.h),
-                  const Divider(color: Color(0xFFF1F5F9), thickness: 1),
-                  SizedBox(height: 20.h),
-
-                  _buildFieldLabel(context, 'GitHub Repository Link'),
-                  SizedBox(height: 8.h),
-                  TextFormField(
-                    controller: githubCon,
-                    decoration: _buildInputDecoration(context, 'https://github.com/username/repo'),
-                    validator: (v) => v == null || v.isEmpty ? 'GitHub link is required'.tr(context) : null,
-                  ),
-                  SizedBox(height: 20.h),
-
-                  _buildFieldLabel(context, 'Pull Request Link'),
-                  SizedBox(height: 8.h),
-                  TextFormField(
-                    controller: prCon,
-                    decoration: _buildInputDecoration(context, 'https://github.com/username/repo/pull/1'),
-                  ),
-                  SizedBox(height: 20.h),
-
-                  _buildFieldLabel(context, 'Submission Report Summary'),
-                  SizedBox(height: 8.h),
-                  TextFormField(
-                    controller: reportCon,
-                    maxLines: 3,
-                    decoration: _buildInputDecoration(context, 'Describe what was accomplished...'),
-                    validator: (v) => v == null || v.isEmpty ? 'Report is required'.tr(context) : null,
-                  ),
-                  SizedBox(height: 20.h),
-
-                  _buildFieldLabel(context, 'Submission Notes / Comments'),
-                  SizedBox(height: 8.h),
-                  TextFormField(
-                    controller: notesCon,
-                    maxLines: 2,
-                    decoration: _buildInputDecoration(context, 'Additional notes for reviewer...'),
-                  ),
-                  SizedBox(height: 32.h),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
+                        ),
+                        IconButton(
                           onPressed: () => Navigator.pop(context),
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.symmetric(vertical: 16.h),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.r),
-                              side: const BorderSide(color: Color(0xFFE2E8F0)),
+                          icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary, size: 22),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 22.h),
+                    const Divider(color: Color(0xFFF1F5F9), thickness: 1),
+                    SizedBox(height: 20.h),
+
+                    _buildFieldLabel(context, 'GitHub Repository Link'),
+                    SizedBox(height: 8.h),
+                    TextFormField(
+                      controller: githubCon,
+                      style: const TextStyle(fontSize: 14),
+                      decoration: _buildInputDecoration(context, 'https://github.com/username/repo'),
+                      validator: (v) => v == null || v.isEmpty ? 'GitHub link is required'.tr(context) : null,
+                    ),
+                    SizedBox(height: 18.h),
+
+                    _buildFieldLabel(context, 'Pull Request Link'),
+                    SizedBox(height: 8.h),
+                    TextFormField(
+                      controller: prCon,
+                      style: const TextStyle(fontSize: 14),
+                      decoration: _buildInputDecoration(context, 'https://github.com/username/repo/pull/1'),
+                    ),
+                    SizedBox(height: 18.h),
+
+                    _buildFieldLabel(context, 'Submission Report Summary'),
+                    SizedBox(height: 8.h),
+                    TextFormField(
+                      controller: reportCon,
+                      maxLines: 3,
+                      style: const TextStyle(fontSize: 14),
+                      decoration: _buildInputDecoration(context, 'Describe what was accomplished...'),
+                      validator: (v) => v == null || v.isEmpty ? 'Report is required'.tr(context) : null,
+                    ),
+                    SizedBox(height: 18.h),
+
+                    _buildFieldLabel(context, 'Submission Notes / Comments'),
+                    SizedBox(height: 8.h),
+                    TextFormField(
+                      controller: notesCon,
+                      maxLines: 2,
+                      style: const TextStyle(fontSize: 14),
+                      decoration: _buildInputDecoration(context, 'Additional notes for reviewer...'),
+                    ),
+                    SizedBox(height: 28.h),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 14.h),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14.r),
+                                side: const BorderSide(color: Color(0xFFE2E8F0)),
+                              ),
                             ),
-                          ),
-                          child: Text(
-                            'Cancel'.tr(context),
-                            style: const TextStyle(
-                              color: Color(0xFF64748B),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                            child: Text(
+                              'Cancel'.tr(context),
+                              style: const TextStyle(
+                                color: Color(0xFF64748B),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      SizedBox(width: 16.w),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
+                        SizedBox(width: 16.w),
+                        Expanded(
+                          child: _gradientButton(context, 'Submit Task', () {
                             if (formKey.currentState!.validate()) {
                               setState(() {
                                 db.submitTask(
@@ -1504,28 +2741,12 @@ class _TasksPageState extends State<TasksPage> {
                                 SnackBar(content: Text('Task submitted successfully'.tr(context))),
                               );
                             }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0F4C81),
-                            padding: EdgeInsets.symmetric(vertical: 16.h),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12.r),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: Text(
-                            'Submit Task'.tr(context),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
+                          }),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1538,137 +2759,117 @@ class _TasksPageState extends State<TasksPage> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28.r)),
         backgroundColor: Colors.white,
-        child: Container(
-          width: 500.w,
-          padding: EdgeInsets.all(32.w),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Task Submission Details'.tr(context),
-                          style: TextStyle(
-                            fontSize: 20.sp,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF0F172A),
-                          ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: Container(
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(28.r)),
+            padding: EdgeInsets.all(28.w),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _gradientChip(Icons.assignment_turned_in_outlined, AppColors.success, size: 52),
+                      SizedBox(width: 14.w),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Task Submission Details'.tr(context),
+                              style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              'Review deliverables submitted by the owner.'.tr(context),
+                              style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary),
+                            ),
+                          ],
                         ),
-                        SizedBox(height: 4.h),
-                        Text(
-                          'Review deliverables submitted by the owner.'.tr(context),
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: const Color(0xFF94A3B8),
-                          ),
-                        ),
-                      ],
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 12.h),
-                const Divider(color: Color(0xFFF1F5F9), thickness: 1),
-                SizedBox(height: 20.h),
-
-                _buildFieldLabel(context, 'GitHub Repository Link'),
-                SizedBox(height: 8.h),
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(12.w),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEDF2F7),
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  child: Text(
-                    task.githubLink ?? 'No GitHub link provided.',
-                    style: TextStyle(fontSize: 14.sp, color: task.githubLink != null ? Colors.blue : Colors.black87),
-                  ),
-                ),
-                SizedBox(height: 20.h),
-
-                _buildFieldLabel(context, 'Pull Request Link'),
-                SizedBox(height: 8.h),
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(12.w),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEDF2F7),
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  child: Text(
-                    task.prLink ?? 'No PR link provided.',
-                    style: TextStyle(fontSize: 14.sp, color: task.prLink != null ? Colors.blue : Colors.black87),
-                  ),
-                ),
-                SizedBox(height: 20.h),
-
-                _buildFieldLabel(context, 'Submission Report Summary'),
-                SizedBox(height: 8.h),
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(12.w),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEDF2F7),
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  child: Text(
-                    task.submissionReport ?? 'No report summary provided.',
-                    style: TextStyle(fontSize: 14.sp, color: Colors.black87),
-                  ),
-                ),
-                SizedBox(height: 20.h),
-
-                _buildFieldLabel(context, 'Submission Notes / Comments'),
-                SizedBox(height: 8.h),
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(12.w),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEDF2F7),
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  child: Text(
-                    task.notes ?? 'No notes provided.',
-                    style: TextStyle(fontSize: 14.sp, color: Colors.black87),
-                  ),
-                ),
-                SizedBox(height: 32.h),
-
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0F4C81),
-                      padding: EdgeInsets.symmetric(vertical: 16.h),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.r),
                       ),
-                      elevation: 0,
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary, size: 22),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 22.h),
+                  const Divider(color: Color(0xFFF1F5F9), thickness: 1),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'GitHub Repository Link'),
+                  SizedBox(height: 8.h),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(14.r),
                     ),
                     child: Text(
-                      'Close'.tr(context),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
+                      task.githubLink ?? 'No GitHub link provided.'.tr(context),
+                      style: TextStyle(fontSize: 14.sp, color: task.githubLink != null ? Colors.blue : Colors.black87),
                     ),
                   ),
-                ),
-              ],
+                  SizedBox(height: 18.h),
+
+                  _buildFieldLabel(context, 'Pull Request Link'),
+                  SizedBox(height: 8.h),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(14.r),
+                    ),
+                    child: Text(
+                      task.prLink ?? 'No PR link provided.'.tr(context),
+                      style: TextStyle(fontSize: 14.sp, color: task.prLink != null ? Colors.blue : Colors.black87),
+                    ),
+                  ),
+                  SizedBox(height: 18.h),
+
+                  _buildFieldLabel(context, 'Submission Report Summary'),
+                  SizedBox(height: 8.h),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(14.r),
+                    ),
+                    child: Text(
+                      task.submissionReport ?? 'No report summary provided.'.tr(context),
+                      style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+                    ),
+                  ),
+                  SizedBox(height: 18.h),
+
+                  _buildFieldLabel(context, 'Submission Notes / Comments'),
+                  SizedBox(height: 8.h),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(14.r),
+                    ),
+                    child: Text(
+                      task.notes ?? 'No notes provided.'.tr(context),
+                      style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+                    ),
+                  ),
+                  SizedBox(height: 28.h),
+
+                  _gradientButton(context, 'Close', () => Navigator.pop(context),
+                      color: const Color(0xFF64748B)),
+                ],
+              ),
             ),
           ),
         ),

@@ -9,8 +9,6 @@ import 'notification_drawer.dart';
 import '../features/language/cubit/language_cubit.dart';
 import '../../../core/localization/translate_extension.dart';
 import '../features/auth/cubit/auth_cubit.dart';
-import '../../../core/styles/app_radius.dart';
-import '../../../core/styles/app_shadow.dart';
 import '../../../core/network/mock_database.dart';
 
 class _MobileNavItem {
@@ -34,7 +32,7 @@ List<_MobileNavItem> _getMobileNavItems(String role) {
     label: role == 'Team Member' ? 'My Tasks' : 'Tasks',
     route: '/tasks',
   ));
-  if (role == 'Manager' || role == 'Team Leader') {
+  if (role == 'Admin' || role == 'Manager' || role == 'Team Leader') {
     items.add(_MobileNavItem(
       icon: Icons.rate_review_outlined,
       activeIcon: Icons.rate_review,
@@ -50,14 +48,20 @@ List<_MobileNavItem> _getMobileNavItems(String role) {
       route: '/reports',
     ));
   }
-  items.add(_MobileNavItem(icon: Icons.warning_amber_outlined, activeIcon: Icons.warning_amber, label: 'Complaints', route: '/complaints'));
-  items.add(_MobileNavItem(
-    icon: Icons.analytics_outlined,
-    activeIcon: Icons.analytics,
-    label: role == 'Team Member' ? 'Score & Achievements' : 'Evaluations',
-    route: '/evaluations',
-  ));
-  items.add(_MobileNavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings, label: 'Profile Settings', route: '/settings'));
+  if (role != 'Manager' && role != 'Team Leader') {
+    items.add(_MobileNavItem(icon: Icons.warning_amber_outlined, activeIcon: Icons.warning_amber, label: 'Complaints', route: '/complaints'));
+  }
+  if (role != 'Manager' && role != 'Team Leader') {
+    items.add(_MobileNavItem(
+      icon: Icons.analytics_outlined,
+      activeIcon: Icons.analytics,
+      label: role == 'Team Member' ? 'Score & Achievements' : 'Evaluations',
+      route: '/evaluations',
+    ));
+  }
+  if (role != 'Manager' && role != 'Team Leader') {
+    items.add(_MobileNavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings, label: 'Profile Settings', route: '/settings'));
+  }
   return items;
 }
 
@@ -97,7 +101,7 @@ class MainLayout extends StatelessWidget {
     );
 
     for (int i = 0; i < paths.length; i++) {
-      breadcrumbItems.add(Text('  /  ', style: TextStyle(fontSize: 10.sp, color: Colors.grey.shade400)));
+      breadcrumbItems.add(Text('  /  ', style: TextStyle(fontSize: 10.sp, color: const Color(0xFFCBD5E1))));
       final label = paths[i].replaceAll('-', ' ').toUpperCase();
       breadcrumbItems.add(
         Text(
@@ -117,14 +121,62 @@ class MainLayout extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 16.w),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 1)),
-        boxShadow: AppShadow.soft,
+        border: Border(bottom: BorderSide(color: const Color(0xFFE2E8F0), width: 1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Breadcrumbs
           Row(children: breadcrumbItems),
+
+          // Centered logo (tablet only)
+          if (ResponsiveLayout.isTablet(context))
+            Expanded(
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        'assets/images/aitu_logo.png',
+                        height: 62.h,
+                        fit: BoxFit.contain,
+                      ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'جامعة أسيوط التكنولوجية',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Assiut Technological University',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 6.5.sp,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
 
           // Locale, Notifications & User menu
           Row(
@@ -135,16 +187,24 @@ class MainLayout extends StatelessWidget {
                   final nextLang = lang == 'EN' ? 'AR' : 'EN';
                   context.read<LanguageCubit>().changeLanguage(nextLang);
                 },
-                borderRadius: BorderRadius.circular(AppRadius.md.r),
+                borderRadius: BorderRadius.circular(12.r),
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 7.h),
                   decoration: BoxDecoration(
-                    border: Border.all(color: AppColors.border),
-                    borderRadius: BorderRadius.circular(AppRadius.md.r),
+                    color: const Color(0xFFF1F5F9),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    borderRadius: BorderRadius.circular(12.r),
                   ),
-                  child: Text(
-                    lang == 'EN' ? 'العربية' : 'English',
-                    style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: AppColors.primary),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.language, size: 15, color: AppColors.primary),
+                      SizedBox(width: 6.w),
+                      Text(
+                        lang == 'EN' ? 'العربية' : 'English',
+                        style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: AppColors.primary),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -152,15 +212,18 @@ class MainLayout extends StatelessWidget {
 
               // Role Switcher Dropdown (for demo and switching screens)
               Container(
-                height: 30.h,
-                padding: EdgeInsets.symmetric(horizontal: 8.w),
+                height: 32.h,
+                padding: EdgeInsets.symmetric(horizontal: 10.w),
                 decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(AppRadius.md.r),
+                  color: const Color(0xFFF1F5F9),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: ['Admin', 'Manager', 'Team Leader', 'Team Member'].contains(userRole) ? userRole : 'Team Member',
+                    isDense: true,
+                    icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary, size: 18),
                     items: ['Admin', 'Manager', 'Team Leader', 'Team Member']
                         .map((r) => DropdownMenuItem(
                               value: r,
@@ -187,26 +250,37 @@ class MainLayout extends StatelessWidget {
                     db.markNotificationsRead(userId);
                     Scaffold.of(context).openEndDrawer();
                   },
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Icon(Icons.notifications_outlined, size: 22.sp, color: AppColors.textSecondary),
-                      Positioned(
-                        right: -2.w,
-                        top: -2.h,
-                        child: Container(
-                          padding: EdgeInsets.all(3.w),
-                          decoration: const BoxDecoration(
-                            color: AppColors.error,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            db.notifications.where((n) => n.userId == userId && !n.isRead).length.toString(),
-                            style: TextStyle(color: Colors.white, fontSize: 7.sp, fontWeight: FontWeight.bold),
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Center(
+                          child: Icon(Icons.notifications_outlined, size: 20, color: AppColors.textSecondary),
+                        ),
+                        Positioned(
+                          right: 5.w,
+                          top: 3.h,
+                          child: Container(
+                            padding: EdgeInsets.all(3.w),
+                            decoration: const BoxDecoration(
+                              color: AppColors.error,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              db.notifications.where((n) => n.userId == userId && !n.isRead).length.toString(),
+                              style: TextStyle(color: Colors.white, fontSize: 7.sp, fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -245,9 +319,25 @@ class MainLayout extends StatelessWidget {
                 ],
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 15.r,
-                      backgroundColor: AppColors.aituRed,
+                    Container(
+                      width: 32,
+                      height: 32,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF1E6FC4), Color(0xFF0F4C81)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
                       child: Text(initials, style: TextStyle(fontSize: 10.sp, color: Colors.white, fontWeight: FontWeight.bold)),
                     ),
                     SizedBox(width: 6.w),
@@ -283,18 +373,60 @@ class MainLayout extends StatelessWidget {
         child: Scaffold(
           backgroundColor: AppColors.background,
           appBar: AppBar(
-            backgroundColor: AppColors.primary,
             elevation: 0,
+            toolbarHeight: 68.h,
+            flexibleSpace: const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1E6FC4), Color(0xFF0F4C81)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
             leading: Builder(
               builder: (context) => IconButton(
                 icon: const Icon(Icons.menu, color: Colors.white),
                 onPressed: () => Scaffold.of(context).openDrawer(),
               ),
             ),
-            title: Text(
-              title.tr(context),
-              style: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.bold),
+            title: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    'assets/images/aitu_logo.png',
+                    height: 68.h,
+                    fit: BoxFit.contain,
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'جامعة أسيوط التكنولوجية',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Assiut Technological University',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 7.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
+            centerTitle: true,
             actions: [
               IconButton(
                 icon: const Icon(Icons.notifications_outlined, color: Colors.white),

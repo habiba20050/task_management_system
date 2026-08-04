@@ -707,6 +707,72 @@ extension TranslateExtension on String {
         return localizations.viewFullDetails;
       case 'Print':
         return localizations.print;
+      case 'Upload Files':
+        return localizations.uploadFiles;
+      case 'Selected Files':
+        return localizations.selectedFiles;
+      case 'Send Notes':
+        return localizations.sendNotes;
+      case 'Send Deliverables':
+        return localizations.sendDeliverables;
+      case 'Tap to choose files':
+        return localizations.tapToChooseFiles;
+      case 'Any file type is supported (images, PDFs, zip, code...)':
+        return localizations.anyFileTypeSupported;
+      case 'Attach any file type to help solve this task.':
+        return localizations.attachAnyFileTypeToHelpSolveThisTask;
+      case 'Add a note or message to help solve this task.':
+        return localizations.addNoteOrMessageToHelpSolveThisTask;
+      case 'Write a note, explain your solution, or describe what you need...':
+        return localizations.writeNoteExplainSolutionOrDescribeWhatYouNeed;
+      case 'Please attach a file or write a note first':
+        return localizations.pleaseAttachAFileOrWriteANoteFirst;
+      case 'Deliverables sent successfully':
+        return localizations.deliverablesSentSuccessfully;
+      case 'Team Leader Actions':
+        return localizations.teamLeaderActions;
+      case 'Submit for Review':
+        return localizations.submitForReview;
+      case 'Review Deliverable':
+        return localizations.reviewDeliverable;
+      case 'Enter review feedback...':
+        return localizations.enterReviewFeedback;
+      case 'Approve':
+        return localizations.approve;
+      case 'Approve & Complete':
+        return localizations.approveAndComplete;
+      case 'Reject':
+        return localizations.reject;
+      case 'Edit Task':
+        return localizations.editTask;
+      case 'Reassign':
+        return localizations.reassign;
+      case 'Reassign Task':
+        return localizations.reassignTask;
+      case 'Select Team Member':
+        return localizations.selectTeamMember;
+      case 'Choose member...':
+        return localizations.chooseMember;
+      case 'Task reassigned successfully':
+        return localizations.taskReassignedSuccessfully;
+      case 'Task updated successfully':
+        return localizations.taskUpdatedSuccessfully;
+      case 'Save':
+        return localizations.save;
+      case 'Current Status':
+        return localizations.currentStatus;
+      case 'My Complaints':
+        return localizations.myComplaints;
+      case 'Track and manage your submitted complaints':
+        return localizations.trackAndManageYourSubmittedComplaints;
+      case 'Total':
+        return localizations.total;
+      case 'Complaint Analytics':
+        return localizations.complaintAnalytics;
+      case 'Your complaint is pending review.':
+        return localizations.complaintPendingReview;
+      case 'This complaint has been closed.':
+        return localizations.complaintClosed;
       default:
         return this;
     }

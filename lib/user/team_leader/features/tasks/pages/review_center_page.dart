@@ -116,15 +116,21 @@ class _ReviewCenterPageState extends State<ReviewCenterPage> {
                                   Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        task.title,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16.sp,
-                                          color: AppColors.textPrimary,
+                                      Expanded(
+                                        child: Text(
+                                          task.title,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16.sp,
+                                            color: AppColors.textPrimary,
+                                          ),
                                         ),
                                       ),
+                                      SizedBox(width: 8.w),
                                       Chip(
                                         label: Text(
                                           'Priority: ${task.priority}',

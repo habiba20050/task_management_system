@@ -5,6 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../../../../core/colors/app_colors.dart';
 import '../../../../../core/network/mock_database.dart';
 import '../../../../../responsive/responsive_layout.dart';
+import '../../../../shared/features/auth/cubit/auth_cubit.dart';
 import '../../../../shared/features/language/cubit/language_cubit.dart';
 import '../../../../../core/localization/translate_extension.dart';
 import '../../../../../core/widgets/cards/app_cards.dart';
@@ -18,45 +19,97 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  int _hoveredPieIndex = -1;
-
   @override
   Widget build(BuildContext context) {
     final isDesktop = ResponsiveLayout.isDesktop(context);
     final isTablet = ResponsiveLayout.isTablet(context);
     final db = MockDatabase.instance;
 
-    // 1. Calculations for the 10 KPI Cards
-    final totalTasks = db.tasks.length;
-    final completedTasks = db.tasks.where((t) => t.status == 'Completed' || t.status == 'Approved').length;
-    final inProgressTasks = db.tasks.where((t) => t.status == 'In Progress' || t.status == 'Needs Changes').length;
-    final pendingTasks = db.tasks.where((t) => t.status == 'Pending' || t.status == 'Assigned').length;
-    final reviewTasks = db.tasks.where((t) => t.status == 'Submitted' || t.status == 'Under Review').length;
-    final overdueTasks = db.tasks.where((t) => t.status == 'Overdue').length;
-    final totalEmployees = db.users.where((u) => u.role != 'Admin').length;
-    final totalDepts = db.departments.length;
-    final openComplaints = db.complaints.where((c) => c.status != 'Closed' && c.status != 'Resolved').length;
-    
-    final double avgPerformance = db.users.isEmpty
-        ? 0.0
-        : db.users.map((u) => u.finalScore).reduce((a, b) => a + b) / db.users.length;
+    // ── الحصول على المدير الحالي ──────────────────────────────────────
+    final authState = context.watch<AuthCubit>().state;
+    final currentUserId = authState is AuthSuccess ? authState.user.id : '';
 
-    // Lists for Widget Cards
-    final upcomingDeadlines = db.tasks.where((t) => t.status != 'Completed' && t.status != 'Approved').toList()
-      ..sort((a, b) => (DateTime.tryParse(a.deadline) ?? DateTime(9999)).compareTo(DateTime.tryParse(b.deadline) ?? DateTime(9999)));
+    // جلب بيانات المدير من قاعدة البيانات للحصول على القسم
+    final mockManager = db.users.firstWhere(
+      (u) => u.id == currentUserId,
+      orElse: () => db.users.firstWhere(
+        (u) => u.role == 'Manager',
+        orElse: () => db.users.first,
+      ),
+    );
+    final managerDept = mockManager.department;
+
+    // ── فلترة البيانات حسب قسم المدير ───────────────────────────────
+    // الفرق المرتبطة بهذا المدير (managerId == currentUserId)
+    final myTeams = db.teams.where((t) => t.managerId == currentUserId).toList();
+    final myTeamIds = myTeams.map((t) => t.id).toSet();
+
+    // Team Leaders التابعين لهذا المدير
+    final myLeaderIds = myTeams.map((t) => t.leaderId).toSet();
+    final myLeaders = db.users.where((u) => myLeaderIds.contains(u.id)).toList();
+
+    // كل أعضاء الفرق التابعين لهذا المدير
+    final myMemberIds = myTeams.expand((t) => t.memberIds).toSet();
+    final myMembers = db.users.where((u) => myMemberIds.contains(u.id)).toList();
+
+    // إجمالي الموظفين تحت المدير (Leaders + Members)
+    final allSubordinateIds = {...myLeaderIds, ...myMemberIds};
+    final totalEmployees = allSubordinateIds.length;
+
+    // المهام الخاصة بقسم المدير أو الفرق التابعة له
+    final deptTasks = db.tasks.where((t) =>
+      t.taskDepartment == managerDept ||
+      (t.assignedTeamId != null && myTeamIds.contains(t.assignedTeamId))
+    ).toList();
+
+    // ── KPI Cards ───────────────────────────────────────────────────
+    final totalTasks      = deptTasks.length;
+    final completedTasks  = deptTasks.where((t) => t.status == 'Completed' || t.status == 'Approved').length;
+    final inProgressTasks = deptTasks.where((t) => t.status == 'In Progress' || t.status == 'Needs Changes').length;
+    final pendingTasks    = deptTasks.where((t) => t.status == 'Pending' || t.status == 'Assigned').length;
+    final reviewTasks     = deptTasks.where((t) => t.status == 'Submitted' || t.status == 'Under Review').length;
+    final overdueTasks    = deptTasks.where((t) => t.status == 'Overdue').length;
+
+    final double avgPerformance = allSubordinateIds.isEmpty
+        ? 0.0
+        : db.users
+            .where((u) => allSubordinateIds.contains(u.id))
+            .map((u) => u.finalScore)
+            .fold(0.0, (a, b) => a + b) /
+          allSubordinateIds.length;
+
+    // ── Widget Lists ────────────────────────────────────────────────
+    final upcomingDeadlines = deptTasks
+        .where((t) => t.status != 'Completed' && t.status != 'Approved')
+        .toList()
+      ..sort((a, b) =>
+          (DateTime.tryParse(a.deadline) ?? DateTime(9999))
+              .compareTo(DateTime.tryParse(b.deadline) ?? DateTime(9999)));
 
     final recentActivities = db.auditLogs.take(5).toList();
-    final latestComplaints = db.complaints.take(5).toList();
-    
-    final topEmployees = List<MockUser>.from(db.users.where((u) => u.role == 'Team Member'))
+
+    final deptComplaints = db.complaints.take(5).toList();
+
+    final topSubordinates = db.users
+        .where((u) => allSubordinateIds.contains(u.id))
+        .toList()
       ..sort((a, b) => b.finalScore.compareTo(a.finalScore));
-      
-    final delayedEmployees = List<MockUser>.from(db.users.where((u) => u.role == 'Team Member'))
+
+    final delayedSubordinates = db.users
+        .where((u) => allSubordinateIds.contains(u.id))
+        .toList()
       ..sort((a, b) {
-        final aCount = db.tasks.where((t) => t.currentOwnerId == a.id && t.status == 'Overdue').length;
-        final bCount = db.tasks.where((t) => t.currentOwnerId == b.id && t.status == 'Overdue').length;
-        return bCount.compareTo(aCount);
+        final aOv = deptTasks.where((t) => t.currentOwnerId == a.id && t.status == 'Overdue').length;
+        final bOv = deptTasks.where((t) => t.currentOwnerId == b.id && t.status == 'Overdue').length;
+        return bOv.compareTo(aOv);
       });
+
+    // أفضل وأسوأ 3 Team Members فقط (role == 'Team Member')
+    final teamMembersOnly = db.users
+        .where((u) => myMemberIds.contains(u.id) && u.role == 'Team Member')
+        .toList();
+    final bestMembers  = List<MockUser>.from(teamMembersOnly)..sort((a, b) => b.finalScore.compareTo(a.finalScore));
+    final worstMembers = List<MockUser>.from(teamMembersOnly)..sort((a, b) => a.finalScore.compareTo(b.finalScore));
 
     return Container(
       color: AppColors.background,
@@ -66,14 +119,17 @@ class _DashboardPageState extends State<DashboardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Page Sub-header
+              // ── رأس الصفحة ──────────────────────────────────────────
+              _buildDeptHeader(context, managerDept, mockManager.fullName, myTeams.length, totalEmployees),
+              SizedBox(height: 20.h),
+
+              // ── KPI Cards ───────────────────────────────────────────
               Text(
                 'Performance Analytics Summary'.tr(context),
                 style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
               ),
-              SizedBox(height: 16.h),
+              SizedBox(height: 12.h),
 
-              // KPI Section: Grid of 10 equal cards with fixed height
               LayoutBuilder(
                 builder: (context, constraints) {
                   int crossAxisCount = 5;
@@ -94,16 +150,16 @@ class _DashboardPageState extends State<DashboardPage> {
                     itemCount: 10,
                     itemBuilder: (context, index) {
                       final statCards = [
-                        StatCard(title: 'Total Tasks'.tr(context), value: totalTasks.toString(), icon: Icons.checklist, accentColor: AppColors.primary),
-                        StatCard(title: 'Completed Tasks'.tr(context), value: completedTasks.toString(), icon: Icons.check_circle_outline, accentColor: AppColors.success),
-                        StatCard(title: 'In Progress Tasks'.tr(context), value: inProgressTasks.toString(), icon: Icons.pending_actions, accentColor: AppColors.inProgress),
-                        StatCard(title: 'Pending Tasks'.tr(context), value: pendingTasks.toString(), icon: Icons.hourglass_empty, accentColor: Colors.orange),
-                        StatCard(title: 'Review Tasks'.tr(context), value: reviewTasks.toString(), icon: Icons.rate_review, accentColor: Colors.deepPurple),
-                        StatCard(title: 'Overdue Tasks'.tr(context), value: overdueTasks.toString(), icon: Icons.error_outline, accentColor: AppColors.danger),
-                        StatCard(title: 'Total Employees'.tr(context), value: totalEmployees.toString(), icon: Icons.people_outline, accentColor: Colors.teal),
-                        StatCard(title: 'Total Departments'.tr(context), value: totalDepts.toString(), icon: Icons.business, accentColor: Colors.indigo),
-                        StatCard(title: 'Open Complaints'.tr(context), value: openComplaints.toString(), icon: Icons.warning_amber_outlined, accentColor: Colors.redAccent),
-                        StatCard(title: 'Average Performance Score'.tr(context), value: '${avgPerformance.toStringAsFixed(1)}%', icon: Icons.trending_up, accentColor: Colors.blueAccent),
+                        StatCard(title: 'Total Tasks'.tr(context),            value: totalTasks.toString(),                          icon: Icons.checklist,              accentColor: AppColors.primary),
+                        StatCard(title: 'Completed Tasks'.tr(context),        value: completedTasks.toString(),                      icon: Icons.check_circle_outline,   accentColor: AppColors.success),
+                        StatCard(title: 'In Progress Tasks'.tr(context),      value: inProgressTasks.toString(),                     icon: Icons.pending_actions,        accentColor: AppColors.inProgress),
+                        StatCard(title: 'Pending Tasks'.tr(context),          value: pendingTasks.toString(),                        icon: Icons.hourglass_empty,        accentColor: Colors.orange),
+                        StatCard(title: 'Review Tasks'.tr(context),           value: reviewTasks.toString(),                         icon: Icons.rate_review,            accentColor: Colors.deepPurple),
+                        StatCard(title: 'Overdue Tasks'.tr(context),          value: overdueTasks.toString(),                        icon: Icons.error_outline,          accentColor: AppColors.danger),
+                        StatCard(title: 'My Teams'.tr(context),               value: myTeams.length.toString(),                      icon: Icons.groups_outlined,        accentColor: Colors.teal),
+                        StatCard(title: 'Team Leaders'.tr(context),           value: myLeaders.length.toString(),                    icon: Icons.supervisor_account_outlined, accentColor: Colors.indigo),
+                        StatCard(title: 'Total Employees'.tr(context),        value: totalEmployees.toString(),                      icon: Icons.people_outline,         accentColor: Colors.blueGrey),
+                        StatCard(title: 'Average Performance Score'.tr(context), value: '${avgPerformance.toStringAsFixed(1)}%',     icon: Icons.trending_up,            accentColor: Colors.blueAccent),
                       ];
                       return statCards[index];
                     },
@@ -112,45 +168,45 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               SizedBox(height: 24.h),
 
-              // Charts Layout Grid 1
+              // ── Charts ──────────────────────────────────────────────
               if (isDesktop) ...[
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(child: _buildStatusDonutChart(completedTasks, inProgressTasks, pendingTasks, reviewTasks, overdueTasks)),
                     SizedBox(width: 16.w),
-                    Expanded(child: _buildWeeklyCompletionTrendChart(db)),
+                    Expanded(child: _buildTeamsProgressChart(myTeams)),
                     SizedBox(width: 16.w),
-                    Expanded(child: _buildMonthlyPerformanceTrendChart(db)),
+                    Expanded(child: _buildPriorityDistributionChart(deptTasks)),
                   ],
                 ),
                 SizedBox(height: 16.h),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: _buildDepartmentPerformanceChart(db)),
+                    Expanded(child: _buildMemberPerformanceChart(topSubordinates, db)),
                     SizedBox(width: 16.w),
-                    Expanded(child: _buildPriorityDistributionChart(db)),
+                    Expanded(child: _buildWeeklyCompletionTrendChart()),
                     SizedBox(width: 16.w),
-                    Expanded(child: _buildEmployeePerformanceRankingChart(db)),
+                    Expanded(child: _buildMonthlyPerformanceTrendChart()),
                   ],
                 ),
               ] else ...[
                 _buildStatusDonutChart(completedTasks, inProgressTasks, pendingTasks, reviewTasks, overdueTasks),
                 SizedBox(height: 16.h),
-                _buildWeeklyCompletionTrendChart(db),
+                _buildTeamsProgressChart(myTeams),
                 SizedBox(height: 16.h),
-                _buildMonthlyPerformanceTrendChart(db),
+                _buildPriorityDistributionChart(deptTasks),
                 SizedBox(height: 16.h),
-                _buildDepartmentPerformanceChart(db),
+                _buildMemberPerformanceChart(topSubordinates, db),
                 SizedBox(height: 16.h),
-                _buildPriorityDistributionChart(db),
+                _buildWeeklyCompletionTrendChart(),
                 SizedBox(height: 16.h),
-                _buildEmployeePerformanceRankingChart(db),
+                _buildMonthlyPerformanceTrendChart(),
               ],
               SizedBox(height: 24.h),
 
-              // Widgets Layout Grid 2
+              // ── Widget Cards Grid ────────────────────────────────────
               LayoutBuilder(
                 builder: (context, constraints) {
                   int cols = isDesktop ? 3 : (isTablet ? 2 : 1);
@@ -159,17 +215,19 @@ class _DashboardPageState extends State<DashboardPage> {
                       crossAxisCount: cols,
                       crossAxisSpacing: 14.w,
                       mainAxisSpacing: 14.h,
-                      mainAxisExtent: 210.h,
+                      mainAxisExtent: 220.h,
                     ),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: 5,
+                    itemCount: 7,
                     itemBuilder: (context, idx) {
                       if (idx == 0) return _buildUpcomingDeadlinesWidget(upcomingDeadlines);
-                      if (idx == 1) return _buildRecentActivityWidget(recentActivities);
-                      if (idx == 2) return _buildLatestComplaintsWidget(latestComplaints);
-                      if (idx == 3) return _buildTopEmployeesWidget(topEmployees);
-                      return _buildMostDelayedEmployeesWidget(delayedEmployees, db);
+                      if (idx == 1) return _buildMyTeamsWidget(myTeams, db);
+                      if (idx == 2) return _buildLatestComplaintsWidget(deptComplaints);
+                      if (idx == 3) return _buildTopSubordinatesWidget(topSubordinates);
+                      if (idx == 4) return _buildMostDelayedWidget(delayedSubordinates, deptTasks);
+                      if (idx == 5) return _buildBestMembersWidget(bestMembers);
+                      return _buildWorstMembersWidget(worstMembers);
                     },
                   );
                 },
@@ -181,30 +239,189 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // --- Donut Chart ---
+  // ── رأس صفحة القسم ────────────────────────────────────────────────
+  Widget _buildDeptHeader(BuildContext context, String dept, String managerName, int teamsCount, int empCount) {
+    return AppCard(
+      child: Row(
+        children: [
+          Container(
+            width: 52.w,
+            height: 52.h,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primary, AppColors.primary.withOpacity(0.7)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            child: Icon(Icons.corporate_fare, color: Colors.white, size: 26.sp),
+          ),
+          SizedBox(width: 14.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  dept,
+                  style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  '${'Manager'.tr(context)}: $managerName',
+                  style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _buildHeaderChip(Icons.groups, '$teamsCount ${'Teams'.tr(context)}', Colors.teal),
+              SizedBox(height: 4.h),
+              _buildHeaderChip(Icons.people, '$empCount ${'Employees'.tr(context)}', AppColors.primary),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderChip(IconData icon, String label, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12.sp, color: color),
+          SizedBox(width: 4.w),
+          Text(label, style: TextStyle(fontSize: 10.sp, color: color, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  // ── Donut Chart (Task Status) ─────────────────────────────────────
   Widget _buildStatusDonutChart(int comp, int prog, int pend, int rev, int ov) {
     final double total = (comp + prog + pend + rev + ov).toDouble();
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Task Status Distribution'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
+          Text('Task Status Distribution'.tr(context),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
           SizedBox(height: 10.h),
           SizedBox(
-            height: 140.h,
+            height: 150.h,
             child: total == 0
                 ? Center(child: Text('No tasks available.'.tr(context)))
-                : PieChart(
-                    PieChartData(
-                      sectionsSpace: 2,
-                      centerSpaceRadius: 26.r,
-                      sections: [
-                        PieChartSectionData(color: AppColors.success, value: comp.toDouble(), radius: 30.r, title: '${((comp/total)*100).toStringAsFixed(0)}%', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
-                        PieChartSectionData(color: AppColors.inProgress, value: prog.toDouble(), radius: 30.r, title: '${((prog/total)*100).toStringAsFixed(0)}%', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
-                        PieChartSectionData(color: Colors.orange, value: pend.toDouble(), radius: 30.r, title: '${((pend/total)*100).toStringAsFixed(0)}%', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
-                        PieChartSectionData(color: Colors.deepPurple, value: rev.toDouble(), radius: 30.r, title: '${((rev/total)*100).toStringAsFixed(0)}%', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
-                        PieChartSectionData(color: AppColors.danger, value: ov.toDouble(), radius: 30.r, title: '${((ov/total)*100).toStringAsFixed(0)}%', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
-                      ],
+                : Row(
+                    children: [
+                      Expanded(
+                        child: PieChart(
+                          PieChartData(
+                            sectionsSpace: 2,
+                            centerSpaceRadius: 28.r,
+                            sections: [
+                              PieChartSectionData(color: AppColors.success,    value: comp.toDouble(), radius: 30.r, title: '${((comp/total)*100).toStringAsFixed(0)}%', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
+                              PieChartSectionData(color: AppColors.inProgress, value: prog.toDouble(), radius: 30.r, title: '${((prog/total)*100).toStringAsFixed(0)}%', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
+                              PieChartSectionData(color: Colors.orange,        value: pend.toDouble(), radius: 30.r, title: '${((pend/total)*100).toStringAsFixed(0)}%', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
+                              PieChartSectionData(color: Colors.deepPurple,    value: rev.toDouble(),  radius: 30.r, title: '${((rev/total)*100).toStringAsFixed(0)}%',  titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
+                              PieChartSectionData(color: AppColors.danger,     value: ov.toDouble(),  radius: 30.r, title: '${((ov/total)*100).toStringAsFixed(0)}%',  titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _legendDot(AppColors.success,    'Done'.tr(context),       comp),
+                          _legendDot(AppColors.inProgress, 'In Progress'.tr(context),prog),
+                          _legendDot(Colors.orange,        'Pending'.tr(context),    pend),
+                          _legendDot(Colors.deepPurple,    'Review'.tr(context),     rev),
+                          _legendDot(AppColors.danger,     'Overdue'.tr(context),    ov),
+                        ],
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _legendDot(Color color, String label, int count) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 2.h),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(width: 8.w, height: 8.h, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          SizedBox(width: 4.w),
+          Text('$label ($count)', style: TextStyle(fontSize: 8.sp, color: AppColors.textSecondary)),
+        ],
+      ),
+    );
+  }
+
+  // ── Teams Progress Bar Chart ──────────────────────────────────────
+  Widget _buildTeamsProgressChart(List<MockTeam> myTeams) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Teams Progress'.tr(context),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
+          SizedBox(height: 10.h),
+          SizedBox(
+            height: 150.h,
+            child: myTeams.isEmpty
+                ? Center(child: Text('No teams assigned.'.tr(context)))
+                : BarChart(
+                    BarChartData(
+                      gridData: const FlGridData(show: false),
+                      titlesData: FlTitlesData(
+                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        leftTitles: AxisTitles(sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (v, m) => Text('${v.toInt()}%', style: TextStyle(fontSize: 7.sp)),
+                          reservedSize: 28.w,
+                        )),
+                        bottomTitles: AxisTitles(sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (v, m) {
+                            final idx = v.toInt();
+                            if (idx >= 0 && idx < myTeams.length) {
+                              final name = myTeams[idx].name;
+                              final shortName = name.length > 6 ? name.substring(0, 6) : name;
+                              return Text(shortName, style: TextStyle(fontSize: 7.sp));
+                            }
+                            return const Text('');
+                          },
+                        )),
+                      ),
+                      maxY: 100,
+                      borderData: FlBorderData(show: false),
+                      barGroups: List.generate(myTeams.length, (i) {
+                        return BarChartGroupData(x: i, barRods: [
+                          BarChartRodData(
+                            toY: (myTeams[i].progress * 100).clamp(0, 100),
+                            color: [Colors.teal, AppColors.primary, Colors.indigo, Colors.deepPurple][i % 4],
+                            width: 14.w,
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(4.r),
+                              topRight: Radius.circular(4.r),
+                            ),
+                          )
+                        ]);
+                      }),
                     ),
                   ),
           ),
@@ -213,16 +430,126 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // --- Weekly Line Chart ---
-  Widget _buildWeeklyCompletionTrendChart(MockDatabase db) {
+  // ── Priority Distribution ──────────────────────────────────────────
+  Widget _buildPriorityDistributionChart(List<MockTask> tasks) {
+    final high = tasks.where((t) => t.priority == 'HIGH').length;
+    final med  = tasks.where((t) => t.priority == 'MEDIUM').length;
+    final low  = tasks.where((t) => t.priority == 'LOW').length;
+    final double total = (high + med + low).toDouble();
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Weekly Completion Trend'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
+          Text('Priority Distribution'.tr(context),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
           SizedBox(height: 10.h),
           SizedBox(
-            height: 140.h,
+            height: 150.h,
+            child: total == 0
+                ? Center(child: Text('No tasks available.'.tr(context)))
+                : Row(
+                    children: [
+                      Expanded(
+                        child: PieChart(
+                          PieChartData(
+                            sectionsSpace: 2,
+                            centerSpaceRadius: 28.r,
+                            sections: [
+                              PieChartSectionData(color: AppColors.danger,  value: high.toDouble(), radius: 30.r, title: 'H', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
+                              PieChartSectionData(color: AppColors.primary, value: med.toDouble(),  radius: 30.r, title: 'M', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
+                              PieChartSectionData(color: AppColors.success, value: low.toDouble(),  radius: 30.r, title: 'L', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8.w),
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _legendDot(AppColors.danger,  'High'.tr(context),   high),
+                          _legendDot(AppColors.primary, 'Medium'.tr(context), med),
+                          _legendDot(AppColors.success, 'Low'.tr(context),    low),
+                        ],
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Employee Performance Bar Chart ────────────────────────────────
+  Widget _buildMemberPerformanceChart(List<MockUser> topUsers, MockDatabase db) {
+    final display = topUsers.take(5).toList();
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Employee Performance'.tr(context),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
+          SizedBox(height: 10.h),
+          SizedBox(
+            height: 150.h,
+            child: display.isEmpty
+                ? Center(child: Text('No employees found.'.tr(context)))
+                : BarChart(
+                    BarChartData(
+                      gridData: const FlGridData(show: false),
+                      titlesData: FlTitlesData(
+                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        leftTitles: AxisTitles(sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (v, m) => Text(v.toInt().toString(), style: TextStyle(fontSize: 7.sp)),
+                          reservedSize: 24.w,
+                        )),
+                        bottomTitles: AxisTitles(sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (v, m) {
+                            final idx = v.toInt();
+                            if (idx >= 0 && idx < display.length) {
+                              return Text(display[idx].fullName.split(' ')[0], style: TextStyle(fontSize: 7.sp));
+                            }
+                            return const Text('');
+                          },
+                        )),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      barGroups: List.generate(display.length, (idx) {
+                        return BarChartGroupData(x: idx, barRods: [
+                          BarChartRodData(
+                            toY: display[idx].finalScore,
+                            color: Colors.blueAccent,
+                            width: 12.w,
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(4.r),
+                              topRight: Radius.circular(4.r),
+                            ),
+                          )
+                        ]);
+                      }),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Weekly Trend ──────────────────────────────────────────────────
+  Widget _buildWeeklyCompletionTrendChart() {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Weekly Completion Trend'.tr(context),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
+          SizedBox(height: 10.h),
+          SizedBox(
+            height: 150.h,
             child: LineChart(
               LineChartData(
                 gridData: const FlGridData(show: false),
@@ -243,6 +570,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     isCurved: true,
                     color: AppColors.success,
                     barWidth: 2.w,
+                    dotData: const FlDotData(show: false),
                   ),
                 ],
               ),
@@ -253,16 +581,17 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // --- Monthly Performance Line Chart ---
-  Widget _buildMonthlyPerformanceTrendChart(MockDatabase db) {
+  // ── Monthly Trend ─────────────────────────────────────────────────
+  Widget _buildMonthlyPerformanceTrendChart() {
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Monthly Performance Trend'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
+          Text('Monthly Performance Trend'.tr(context),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
           SizedBox(height: 10.h),
           SizedBox(
-            height: 140.h,
+            height: 150.h,
             child: LineChart(
               LineChartData(
                 gridData: const FlGridData(show: false),
@@ -283,6 +612,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     isCurved: true,
                     color: AppColors.primary,
                     barWidth: 2.w,
+                    dotData: const FlDotData(show: false),
                   ),
                 ],
               ),
@@ -293,265 +623,338 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // --- Department Performance Bar Chart ---
-  Widget _buildDepartmentPerformanceChart(MockDatabase db) {
-    final csTotal = db.tasks.where((t) => t.taskDepartment == 'Computer Science').length;
-    final itTotal = db.tasks.where((t) => t.taskDepartment == 'IT Services' || t.taskDepartment == 'IT').length;
-    final engTotal = db.tasks.where((t) => t.taskDepartment == 'Engineering').length;
-
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Department Performance'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
-          SizedBox(height: 10.h),
-          SizedBox(
-            height: 140.h,
-            child: BarChart(
-              BarChartData(
-                gridData: const FlGridData(show: false),
-                titlesData: FlTitlesData(
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (v, m) => Text(v.toInt().toString(), style: TextStyle(fontSize: 8.sp)))),
-                  bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (v, m) {
-                    final depts = ['CS', 'IT', 'ENG'];
-                    if (v >= 0 && v < depts.length) return Text(depts[v.toInt()], style: TextStyle(fontSize: 8.sp));
-                    return const Text('');
-                  })),
-                ),
-                borderData: FlBorderData(show: false),
-                barGroups: [
-                  BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: csTotal.toDouble(), color: AppColors.primary, width: 10.w)]),
-                  BarChartGroupData(x: 1, barRods: [BarChartRodData(toY: itTotal.toDouble(), color: Colors.teal, width: 10.w)]),
-                  BarChartGroupData(x: 2, barRods: [BarChartRodData(toY: engTotal.toDouble(), color: Colors.indigo, width: 10.w)]),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- Priority Distribution Pie Chart ---
-  Widget _buildPriorityDistributionChart(MockDatabase db) {
-    final high = db.tasks.where((t) => t.priority == 'HIGH').length;
-    final med = db.tasks.where((t) => t.priority == 'MEDIUM').length;
-    final low = db.tasks.where((t) => t.priority == 'LOW').length;
-    final double total = (high + med + low).toDouble();
-
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Priority Distribution'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
-          SizedBox(height: 10.h),
-          SizedBox(
-            height: 140.h,
-            child: total == 0
-                ? Center(child: Text('No tasks available.'.tr(context)))
-                : PieChart(
-                    PieChartData(
-                      sectionsSpace: 2,
-                      centerSpaceRadius: 26.r,
-                      sections: [
-                        PieChartSectionData(color: AppColors.danger, value: high.toDouble(), radius: 30.r, title: 'H', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
-                        PieChartSectionData(color: AppColors.primary, value: med.toDouble(), radius: 30.r, title: 'M', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
-                        PieChartSectionData(color: AppColors.success, value: low.toDouble(), radius: 30.r, title: 'L', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
-                      ],
-                    ),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- Employee Performance Ranking Bar Chart ---
-  Widget _buildEmployeePerformanceRankingChart(MockDatabase db) {
-    final sorted = List<MockUser>.from(db.users)..sort((a, b) => b.finalScore.compareTo(a.finalScore));
-    final display = sorted.take(3).toList();
-
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Employee Performance Ranking'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
-          SizedBox(height: 10.h),
-          SizedBox(
-            height: 140.h,
-            child: display.isEmpty
-                ? Center(child: Text('No rank data.'.tr(context)))
-                : BarChart(
-                    BarChartData(
-                      gridData: const FlGridData(show: false),
-                      titlesData: FlTitlesData(
-                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                        leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (v, m) => Text(v.toInt().toString(), style: TextStyle(fontSize: 8.sp)))),
-                        bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (v, m) {
-                          if (v >= 0 && v < display.length) return Text(display[v.toInt()].fullName.split(' ')[0], style: TextStyle(fontSize: 8.sp));
-                          return const Text('');
-                        })),
-                      ),
-                      borderData: FlBorderData(show: false),
-                      barGroups: List.generate(display.length, (idx) {
-                        return BarChartGroupData(x: idx, barRods: [BarChartRodData(toY: display[idx].finalScore, color: Colors.blueAccent, width: 12.w)]);
-                      }),
-                    ),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- Upcoming Deadlines Widget ---
+  // ── Widget: Upcoming Deadlines ────────────────────────────────────
   Widget _buildUpcomingDeadlinesWidget(List<MockTask> list) {
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Upcoming Deadlines'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
+          Text('Upcoming Deadlines'.tr(context),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
           const Divider(),
           Expanded(
-            child: ListView.builder(
-              itemCount: list.take(3).length,
-              itemBuilder: (context, idx) {
-                final task = list[idx];
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  title: Text(task.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.sp)),
-                  subtitle: Text(task.deadline, style: TextStyle(fontSize: 9.sp, color: Colors.grey)),
-                  trailing: Icon(Icons.alarm, size: 14.sp, color: AppColors.danger),
-                );
-              },
-            ),
-          )
+            child: list.isEmpty
+                ? Center(child: Text('No upcoming deadlines.'.tr(context), style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary)))
+                : ListView.builder(
+                    itemCount: list.take(4).length,
+                    itemBuilder: (context, idx) {
+                      final task = list[idx];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        title: Text(task.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.sp), overflow: TextOverflow.ellipsis),
+                        subtitle: Text(task.deadline, style: TextStyle(fontSize: 9.sp, color: Colors.grey)),
+                        trailing: Icon(Icons.alarm, size: 14.sp, color: AppColors.danger),
+                      );
+                    },
+                  ),
+          ),
         ],
       ),
     );
   }
 
-  // --- Recent Activity Widget ---
-  Widget _buildRecentActivityWidget(List<MockAuditLog> logs) {
+  // ── Widget: My Teams ──────────────────────────────────────────────
+  Widget _buildMyTeamsWidget(List<MockTeam> myTeams, MockDatabase db) {
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Recent Activities'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
+          Text('My Teams'.tr(context),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
           const Divider(),
           Expanded(
-            child: ListView.builder(
-              itemCount: logs.take(3).length,
-              itemBuilder: (context, idx) {
-                final log = logs[idx];
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  title: Text(log.operation, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10.sp)),
-                  subtitle: Text('${log.userEmail} | ${log.date}', style: TextStyle(fontSize: 9.sp, color: Colors.grey)),
-                );
-              },
-            ),
-          )
+            child: myTeams.isEmpty
+                ? Center(child: Text('No teams assigned.'.tr(context), style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary)))
+                : ListView.builder(
+                    itemCount: myTeams.take(4).length,
+                    itemBuilder: (context, idx) {
+                      final team = myTeams[idx];
+                      final leader = db.users.firstWhere(
+                        (u) => u.id == team.leaderId,
+                        orElse: () => MockUser(id: '', email: '', fullName: 'Unknown', role: '', department: ''),
+                      );
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        leading: CircleAvatar(
+                          radius: 14.r,
+                          backgroundColor: Colors.teal.shade50,
+                          child: Icon(Icons.group, size: 14.sp, color: Colors.teal),
+                        ),
+                        title: Text(team.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10.sp), overflow: TextOverflow.ellipsis),
+                        subtitle: Text('Leader: ${leader.fullName}', style: TextStyle(fontSize: 8.sp, color: Colors.grey)),
+                        trailing: SizedBox(
+                          width: 50.w,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('${(team.progress * 100).toInt()}%', style: TextStyle(fontSize: 9.sp, fontWeight: FontWeight.bold, color: AppColors.success)),
+                              SizedBox(height: 2.h),
+                              LinearProgressIndicator(
+                                value: team.progress,
+                                backgroundColor: Colors.grey.shade200,
+                                color: AppColors.success,
+                                minHeight: 4.h,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
         ],
       ),
     );
   }
 
-  // --- Latest Complaints Widget ---
+  // ── Widget: Latest Complaints ─────────────────────────────────────
   Widget _buildLatestComplaintsWidget(List<MockComplaint> list) {
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Latest Complaints'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
+          Text('Latest Complaints'.tr(context),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
           const Divider(),
           Expanded(
-            child: ListView.builder(
-              itemCount: list.take(3).length,
-              itemBuilder: (context, idx) {
-                final complaint = list[idx];
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  title: Text(complaint.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.sp)),
-                  subtitle: Text('${complaint.category.tr(context)} | ${complaint.date}', style: TextStyle(fontSize: 9.sp, color: Colors.grey)),
-                  trailing: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                    decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(4.r)),
-                    child: Text(complaint.status.tr(context), style: TextStyle(color: AppColors.danger, fontSize: 8.sp, fontWeight: FontWeight.bold)),
+            child: list.isEmpty
+                ? Center(child: Text('No complaints.'.tr(context), style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary)))
+                : ListView.builder(
+                    itemCount: list.take(4).length,
+                    itemBuilder: (context, idx) {
+                      final c = list[idx];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        title: Text(c.title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.sp), overflow: TextOverflow.ellipsis),
+                        subtitle: Text('${c.category.tr(context)} | ${c.date}', style: TextStyle(fontSize: 9.sp, color: Colors.grey)),
+                        trailing: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                          decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(4.r)),
+                          child: Text(c.status.tr(context), style: TextStyle(color: AppColors.danger, fontSize: 8.sp, fontWeight: FontWeight.bold)),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
-          )
+          ),
         ],
       ),
     );
   }
 
-  // --- Top Employees Widget ---
-  Widget _buildTopEmployeesWidget(List<MockUser> list) {
+  // ── Widget: Top Subordinates ──────────────────────────────────────
+  Widget _buildTopSubordinatesWidget(List<MockUser> list) {
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Top Employees'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
+          Text('Top Performers'.tr(context),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
           const Divider(),
           Expanded(
-            child: ListView.builder(
-              itemCount: list.take(3).length,
-              itemBuilder: (context, idx) {
-                final user = list[idx];
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  leading: CircleAvatar(radius: 12.r, child: Text(user.fullName[0])),
-                  title: Text(user.fullName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.sp)),
-                  subtitle: Text(user.department.tr(context), style: TextStyle(fontSize: 9.sp, color: Colors.grey)),
-                  trailing: Text('${user.finalScore.toInt()}%', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.success, fontSize: 11.sp)),
-                );
-              },
-            ),
-          )
+            child: list.isEmpty
+                ? Center(child: Text('No employees found.'.tr(context), style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary)))
+                : ListView.builder(
+                    itemCount: list.take(4).length,
+                    itemBuilder: (context, idx) {
+                      final user = list[idx];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        leading: CircleAvatar(
+                          radius: 14.r,
+                          backgroundColor: AppColors.primary.withOpacity(0.1),
+                          child: Text(user.fullName[0], style: TextStyle(fontSize: 11.sp, color: AppColors.primary, fontWeight: FontWeight.bold)),
+                        ),
+                        title: Text(user.fullName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.sp)),
+                        subtitle: Text(user.role.tr(context), style: TextStyle(fontSize: 9.sp, color: Colors.grey)),
+                        trailing: Text(
+                          '${user.finalScore.toInt()}%',
+                          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.success, fontSize: 11.sp),
+                        ),
+                      );
+                    },
+                  ),
+          ),
         ],
       ),
     );
   }
 
-  // --- Most Delayed Employees Widget ---
-  Widget _buildMostDelayedEmployeesWidget(List<MockUser> list, MockDatabase db) {
+  // ── Widget: Most Delayed ──────────────────────────────────────────
+  Widget _buildMostDelayedWidget(List<MockUser> list, List<MockTask> deptTasks) {
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Most Delayed Employees'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
+          Text('Most Delayed'.tr(context),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
           const Divider(),
           Expanded(
-            child: ListView.builder(
-              itemCount: list.take(3).length,
-              itemBuilder: (context, idx) {
-                final user = list[idx];
-                final overdueCount = db.tasks.where((t) => t.currentOwnerId == user.id && t.status == 'Overdue').length;
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  leading: CircleAvatar(radius: 12.r, child: Text(user.fullName[0])),
-                  title: Text(user.fullName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.sp)),
-                  subtitle: Text('${user.department.tr(context)}', style: TextStyle(fontSize: 9.sp, color: Colors.grey)),
-                  trailing: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
-                    decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(4.r)),
-                    child: Text('$overdueCount ' + 'Overdue'.tr(context), style: TextStyle(color: AppColors.danger, fontSize: 8.sp, fontWeight: FontWeight.bold)),
+            child: list.isEmpty
+                ? Center(child: Text('No employees found.'.tr(context), style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary)))
+                : ListView.builder(
+                    itemCount: list.take(4).length,
+                    itemBuilder: (context, idx) {
+                      final user = list[idx];
+                      final overdueCount = deptTasks.where((t) => t.currentOwnerId == user.id && t.status == 'Overdue').length;
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        leading: CircleAvatar(
+                          radius: 14.r,
+                          backgroundColor: Colors.red.shade50,
+                          child: Text(user.fullName[0], style: TextStyle(fontSize: 11.sp, color: AppColors.danger, fontWeight: FontWeight.bold)),
+                        ),
+                        title: Text(user.fullName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.sp)),
+                        subtitle: Text(user.role.tr(context), style: TextStyle(fontSize: 9.sp, color: Colors.grey)),
+                        trailing: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                          decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(4.r)),
+                          child: Text(
+                            '$overdueCount ${'Overdue'.tr(context)}',
+                            style: TextStyle(color: AppColors.danger, fontSize: 8.sp, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
-          )
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Widget: Best 3 Team Members ───────────────────────────────────
+  Widget _buildBestMembersWidget(List<MockUser> list) {
+    final display = list.take(3).toList();
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.emoji_events, size: 16.sp, color: Colors.amber.shade700),
+              SizedBox(width: 6.w),
+              Text(
+                'Best Team Members'.tr(context),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary),
+              ),
+            ],
+          ),
+          const Divider(),
+          Expanded(
+            child: display.isEmpty
+                ? Center(child: Text('No members found.'.tr(context), style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary)))
+                : ListView.builder(
+                    itemCount: display.length,
+                    itemBuilder: (context, idx) {
+                      final user = display[idx];
+                      final medals = ['🥇', '🥈', '🥉'];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        leading: SizedBox(
+                          width: 36.w,
+                          child: Center(
+                            child: Text(medals[idx], style: TextStyle(fontSize: 20.sp)),
+                          ),
+                        ),
+                        title: Text(
+                          user.fullName,
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.sp),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(user.department, style: TextStyle(fontSize: 9.sp, color: Colors.grey)),
+                        trailing: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          child: Text(
+                            '${user.finalScore.toInt()}%',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.success,
+                              fontSize: 11.sp,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Widget: Worst 3 Team Members ──────────────────────────────────
+  Widget _buildWorstMembersWidget(List<MockUser> list) {
+    final display = list.take(3).toList();
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.trending_down, size: 16.sp, color: AppColors.danger),
+              SizedBox(width: 6.w),
+              Text(
+                'Needs Improvement'.tr(context),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary),
+              ),
+            ],
+          ),
+          const Divider(),
+          Expanded(
+            child: display.isEmpty
+                ? Center(child: Text('No members found.'.tr(context), style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary)))
+                : ListView.builder(
+                    itemCount: display.length,
+                    itemBuilder: (context, idx) {
+                      final user = display[idx];
+                      final score = user.finalScore;
+                      final scoreColor = score >= 70 ? Colors.orange : AppColors.danger;
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        leading: CircleAvatar(
+                          radius: 14.r,
+                          backgroundColor: Colors.red.shade50,
+                          child: Text(
+                            '${idx + 1}',
+                            style: TextStyle(fontSize: 11.sp, color: AppColors.danger, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        title: Text(
+                          user.fullName,
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.sp),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(user.department, style: TextStyle(fontSize: 9.sp, color: Colors.grey)),
+                        trailing: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                          decoration: BoxDecoration(
+                            color: scoreColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          child: Text(
+                            '${score.toInt()}%',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: scoreColor,
+                              fontSize: 11.sp,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
         ],
       ),
     );

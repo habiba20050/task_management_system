@@ -13,14 +13,15 @@ class AppTheme {
 
   static ThemeData getTheme({required String langCode, required bool isDark}) {
     final bool isArabic = langCode.toUpperCase() == 'AR';
-    
+    const String cairoFamily = 'Cairo';
+
     // Choose base TextTheme using Google Fonts
     final TextTheme baseTextTheme = isDark
         ? ThemeData.dark().textTheme
         : ThemeData.light().textTheme;
-        
+
     final TextTheme fontTextTheme = isArabic
-        ? GoogleFonts.cairoTextTheme(baseTextTheme)
+        ? baseTextTheme.apply(fontFamily: cairoFamily)
         : GoogleFonts.interTextTheme(baseTextTheme);
 
     // Apply custom colors to TextTheme
@@ -105,7 +106,7 @@ class AppTheme {
         elevation: 0,
         centerTitle: true,
         titleTextStyle: TextStyle(
-          fontFamily: isArabic ? GoogleFonts.cairo().fontFamily : GoogleFonts.inter().fontFamily,
+          fontFamily: isArabic ? cairoFamily : GoogleFonts.inter().fontFamily,
           color: Colors.white,
           fontSize: 18.sp,
           fontWeight: FontWeight.w600,
@@ -134,7 +135,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(AppRadius.md.r),
           ),
           textStyle: TextStyle(
-            fontFamily: isArabic ? GoogleFonts.cairo().fontFamily : GoogleFonts.inter().fontFamily,
+            fontFamily: isArabic ? cairoFamily : GoogleFonts.inter().fontFamily,
             fontSize: 14.sp,
             fontWeight: FontWeight.w600,
           ),
@@ -153,7 +154,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(AppRadius.md.r),
           ),
           textStyle: TextStyle(
-            fontFamily: isArabic ? GoogleFonts.cairo().fontFamily : GoogleFonts.inter().fontFamily,
+            fontFamily: isArabic ? cairoFamily : GoogleFonts.inter().fontFamily,
             fontSize: 14.sp,
             fontWeight: FontWeight.w600,
           ),
@@ -168,7 +169,7 @@ class AppTheme {
             vertical: AppSpacing.xs.h,
           ),
           textStyle: TextStyle(
-            fontFamily: isArabic ? GoogleFonts.cairo().fontFamily : GoogleFonts.inter().fontFamily,
+            fontFamily: isArabic ? cairoFamily : GoogleFonts.inter().fontFamily,
             fontSize: 14.sp,
             fontWeight: FontWeight.w600,
           ),
@@ -208,13 +209,13 @@ class AppTheme {
         headingRowColor: MaterialStateProperty.all(isDark ? const Color(0xFF242424) : AppColors.background),
         dataRowColor: MaterialStateProperty.all(surfaceColor),
         headingTextStyle: TextStyle(
-          fontFamily: isArabic ? GoogleFonts.cairo().fontFamily : GoogleFonts.inter().fontFamily,
+          fontFamily: isArabic ? cairoFamily : GoogleFonts.inter().fontFamily,
           color: textColor,
           fontWeight: FontWeight.bold,
           fontSize: 13.sp,
         ),
         dataTextStyle: TextStyle(
-          fontFamily: isArabic ? GoogleFonts.cairo().fontFamily : GoogleFonts.inter().fontFamily,
+          fontFamily: isArabic ? cairoFamily : GoogleFonts.inter().fontFamily,
           color: textColor,
           fontSize: 13.sp,
         ),

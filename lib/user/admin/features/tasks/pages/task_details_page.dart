@@ -12,6 +12,7 @@ import '../../../../../core/styles/app_radius.dart';
 import '../../../../../core/styles/app_shadow.dart';
 import '../../../../../core/widgets/buttons/app_buttons.dart';
 import '../../../../../core/widgets/cards/app_cards.dart';
+import '../../../../../responsive/responsive_layout.dart';
 
 class TaskDetailsPage extends StatefulWidget {
   final String taskId;
@@ -169,12 +170,25 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> with SingleTickerProv
             
             // Tab Bar
             Container(
-              color: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 6.h),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14.r),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
               child: TabBar(
                 controller: _tabController,
-                labelColor: AppColors.primary,
+                isScrollable: ResponsiveLayout.isMobile(context),
+                tabAlignment: ResponsiveLayout.isMobile(context) ? TabAlignment.center : TabAlignment.fill,
+                labelColor: Colors.white,
                 unselectedLabelColor: AppColors.textSecondary,
-                indicatorColor: AppColors.primary,
+                labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp),
+                unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 13.sp),
+                dividerColor: Colors.transparent,
+                indicator: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
                 tabs: [
                   Tab(text: 'Overview'.tr(context)),
                   Tab(text: 'Discussion'.tr(context)),

@@ -116,7 +116,7 @@ class Sidebar extends StatelessWidget {
                   isSelected: _isRouteSelected(context, '/tasks'),
                 ));
 
-                if (role == 'Manager' || role == 'Team Leader') {
+                if (role == 'Admin' || role == 'Manager' || role == 'Team Leader') {
                   navWidgets.add(_SidebarNavItem(
                     icon: Icons.rate_review_outlined,
                     label: 'Review Center',
@@ -134,7 +134,7 @@ class Sidebar extends StatelessWidget {
                   ));
                 }
 
-                if (role == 'Admin' || role == 'Manager') {
+                if (role == 'Admin') {
                   navWidgets.add(_SidebarNavItem(
                     icon: Icons.manage_accounts_outlined,
                     label: 'Users & Roles',

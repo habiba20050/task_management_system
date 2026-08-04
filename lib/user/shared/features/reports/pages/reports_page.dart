@@ -273,7 +273,7 @@ class _ReportsPageState extends State<ReportsPage> {
             Text('Task Status Distribution'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp)),
             SizedBox(height: 10.h),
             SizedBox(
-              height: 130.h,
+              height: 82.h,
               child: total == 0
                   ? Center(child: Text('No tasks available.'.tr(context)))
                   : PieChart(
@@ -301,7 +301,7 @@ class _ReportsPageState extends State<ReportsPage> {
             Text('Weekly Performance'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp)),
             SizedBox(height: 10.h),
             SizedBox(
-              height: 130.h,
+              height: 82.h,
               child: LineChart(
                 LineChartData(
                   gridData: const FlGridData(show: false),
@@ -332,7 +332,7 @@ class _ReportsPageState extends State<ReportsPage> {
             Text('Monthly Trend'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp)),
             SizedBox(height: 10.h),
             SizedBox(
-              height: 130.h,
+              height: 82.h,
               child: LineChart(
                 LineChartData(
                   gridData: const FlGridData(show: false),
@@ -363,7 +363,7 @@ class _ReportsPageState extends State<ReportsPage> {
             Text('Department Performance'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp)),
             SizedBox(height: 10.h),
             SizedBox(
-              height: 130.h,
+              height: 82.h,
               child: BarChart(
                 BarChartData(
                   gridData: const FlGridData(show: false),
@@ -388,7 +388,7 @@ class _ReportsPageState extends State<ReportsPage> {
             Text('Team Performance'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp)),
             SizedBox(height: 10.h),
             SizedBox(
-              height: 130.h,
+              height: 82.h,
               child: BarChart(
                 BarChartData(
                   gridData: const FlGridData(show: false),
@@ -411,7 +411,7 @@ class _ReportsPageState extends State<ReportsPage> {
             Text('User Performance'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp)),
             SizedBox(height: 10.h),
             SizedBox(
-              height: 130.h,
+              height: 82.h,
               child: BarChart(
                 BarChartData(
                   gridData: const FlGridData(show: false),
@@ -434,7 +434,7 @@ class _ReportsPageState extends State<ReportsPage> {
             Text('Priority Distribution'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp)),
             SizedBox(height: 10.h),
             SizedBox(
-              height: 130.h,
+              height: 82.h,
               child: total == 0
                   ? Center(child: Text('No tasks available.'.tr(context)))
                   : PieChart(
@@ -461,7 +461,7 @@ class _ReportsPageState extends State<ReportsPage> {
             Text('Completion Time'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp)),
             SizedBox(height: 10.h),
             SizedBox(
-              height: 130.h,
+              height: 82.h,
               child: BarChart(
                 BarChartData(
                   gridData: const FlGridData(show: false),
@@ -486,7 +486,7 @@ class _ReportsPageState extends State<ReportsPage> {
             Text('Overdue Analysis'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.sp)),
             SizedBox(height: 10.h),
             SizedBox(
-              height: 130.h,
+              height: 82.h,
               child: BarChart(
                 BarChartData(
                   gridData: const FlGridData(show: false),

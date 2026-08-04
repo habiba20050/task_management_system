@@ -1456,12 +1456,33 @@ class MockDatabase {
     }
   }
 
+  void addTaskAttachments(String taskId, List<String> fileNames) {
+    final idx = _tasks.indexWhere((t) => t.id == taskId);
+    if (idx != -1 && fileNames.isNotEmpty) {
+      final task = _tasks[idx];
+      for (final name in fileNames) {
+        if (!task.attachments.contains(name)) {
+          task.attachments.add(name);
+        }
+      }
+      task.activities.add(
+        MockTaskActivity(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          user: 'Employee',
+          action: 'Uploaded ${fileNames.length} file(s)',
+          date: DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now()),
+        ),
+      );
+      save();
+    }
+  }
+
   void deleteTask(String id) {
     _tasks.removeWhere((t) => t.id == id);
     save();
   }
 
-  void updateTaskDetails(String taskId, {String? title, String? description, String? priority, String? deadline}) {
+  void updateTaskDetails(String taskId, {String? title, String? description, String? priority, String? deadline, String? dueTime}) {
     final idx = _tasks.indexWhere((t) => t.id == taskId);
     if (idx != -1) {
       final task = _tasks[idx];
@@ -1510,6 +1531,7 @@ class MockDatabase {
       if (description != null) _tasks[idx] = _copyWithDescription(_tasks[idx], description);
       if (priority != null) _tasks[idx] = _copyWithPriority(_tasks[idx], priority);
       if (deadline != null) _tasks[idx] = _copyWithDeadline(_tasks[idx], deadline);
+      if (dueTime != null) _tasks[idx] = _copyWithDueTime(_tasks[idx], dueTime);
       save();
     }
   }
@@ -1565,6 +1587,26 @@ class MockDatabase {
       assignmentMode: t.assignmentMode, assignedTeamId: t.assignedTeamId,
       assignedDepartment: t.assignedDepartment, assignedRole: t.assignedRole,
       startDate: t.startDate, startTime: t.startTime, dueTime: t.dueTime,
+      allowReassignment: t.allowReassignment, assignedById: t.assignedById,
+      currentOwnerId: t.currentOwnerId, taskDepartment: t.taskDepartment,
+      taskType: t.taskType, estimatedTime: t.estimatedTime,
+      actualTime: t.actualTime, timerRunning: t.timerRunning,
+      timerStartTime: t.timerStartTime, checklist: t.checklist,
+      history: t.history, activities: t.activities, comments: t.comments,
+    );
+  }
+
+  MockTask _copyWithDueTime(MockTask t, String dt) {
+    return MockTask(
+      id: t.id, ticketId: t.ticketId, title: t.title, description: t.description,
+      assignedMemberId: t.assignedMemberId, deadline: t.deadline,
+      estimatedHours: t.estimatedHours, priority: t.priority, status: t.status,
+      attachments: t.attachments, githubLink: t.githubLink, prLink: t.prLink,
+      notes: t.notes, submissionReport: t.submissionReport,
+      leaderFeedback: t.leaderFeedback, managerFeedback: t.managerFeedback,
+      assignmentMode: t.assignmentMode, assignedTeamId: t.assignedTeamId,
+      assignedDepartment: t.assignedDepartment, assignedRole: t.assignedRole,
+      startDate: t.startDate, startTime: t.startTime, dueTime: dt,
       allowReassignment: t.allowReassignment, assignedById: t.assignedById,
       currentOwnerId: t.currentOwnerId, taskDepartment: t.taskDepartment,
       taskType: t.taskType, estimatedTime: t.estimatedTime,
