@@ -103,7 +103,7 @@ class Sidebar extends StatelessWidget {
                 if (role == 'Admin' || role == 'Manager') {
                   navWidgets.add(_SidebarNavItem(
                     icon: Icons.people_outline,
-                    label: 'Teams',
+                    label: 'Teams & Departments',
                     route: '/team',
                     isSelected: _isRouteSelected(context, '/team'),
                   ));
@@ -223,14 +223,18 @@ class _SidebarNavItem extends StatelessWidget {
           },
           borderRadius: BorderRadius.circular(10.r),
           hoverColor: Colors.grey.shade100,
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
             padding: EdgeInsets.symmetric(
-              horizontal: isTablet ? 8.w : 16.w,
+              horizontal: isTablet ? 8.w : 14.w,
               vertical: 12.h,
             ),
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.primary.withOpacity(0.08) : Colors.transparent,
+              color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
               borderRadius: BorderRadius.circular(10.r),
+              border: isSelected
+                  ? const Border(left: BorderSide(color: AppColors.primary, width: 4))
+                  : null,
             ),
             child: Row(
               children: [

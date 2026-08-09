@@ -59,15 +59,34 @@ class _EvaluationsPageState extends State<EvaluationsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
-              Text(
-                role == 'Team Member' ? 'Score & Achievements'.tr(context) : 'Performance Evaluation'.tr(context),
-                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-              ),
-              SizedBox(height: 4.h),
-              Text(
-                'Autocalculated weight-based metrics and rankings'.tr(context),
-                style: TextStyle(fontSize: 11.sp, color: Colors.grey),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        role == 'Team Member' ? 'Score & Achievements'.tr(context) : 'Performance Evaluation'.tr(context),
+                        style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        'Autocalculated weight-based metrics and rankings'.tr(context),
+                        style: TextStyle(fontSize: 11.sp, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  if (role == 'Admin' || role == 'Manager' || role == 'Team Leader')
+                    PrimaryButton(
+                      text: 'Add Evaluation'.tr(context),
+                      prefixIcon: const Icon(Icons.star, color: Colors.white, size: 16),
+                      onPressed: () {
+                        if (employees.isNotEmpty) {
+                          _showEmployee360Modal(context, employees.first, user.id, role);
+                        }
+                      },
+                    ),
+                ],
               ),
               SizedBox(height: 16.h),
 

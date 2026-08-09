@@ -248,7 +248,9 @@ class MockTask {
   final String assignedById;
   String currentOwnerId;
   final String taskDepartment;
-  final String taskType; // 'Individual Task' | 'Team Task'
+  final String taskType; // 'Individual Task' | 'Team Task' | 'Custom / Multiple'
+  final List<String> customAssigneeIds;
+  final String? submissionType;
   final double estimatedTime; // in hours
   double actualTime; // accumulated in seconds
   bool timerRunning;
@@ -279,6 +281,8 @@ class MockTask {
     this.assignedTeamId,
     this.assignedDepartment,
     this.assignedRole,
+    this.customAssigneeIds = const [],
+    this.submissionType = 'Software / Code',
     this.startDate = '2026-07-24',
     this.startTime = '09:00',
     this.dueTime = '17:00',
@@ -318,6 +322,8 @@ class MockTask {
         'assignedTeamId': assignedTeamId,
         'assignedDepartment': assignedDepartment,
         'assignedRole': assignedRole,
+        'customAssigneeIds': customAssigneeIds,
+        'submissionType': submissionType,
         'startDate': startDate,
         'startTime': startTime,
         'dueTime': dueTime,
@@ -357,6 +363,8 @@ class MockTask {
         assignedTeamId: json['assignedTeamId'] as String?,
         assignedDepartment: json['assignedDepartment'] as String?,
         assignedRole: json['assignedRole'] as String?,
+        customAssigneeIds: List<String>.from(json['customAssigneeIds'] as List? ?? []),
+        submissionType: json['submissionType'] as String? ?? 'Software / Code',
         startDate: json['startDate'] as String? ?? '2026-07-24',
         startTime: json['startTime'] as String? ?? '09:00',
         dueTime: json['dueTime'] as String? ?? '17:00',

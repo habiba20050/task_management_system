@@ -245,13 +245,14 @@ class NotificationDrawer extends StatelessWidget {
     required String title,
     required String description,
     required String time,
+    String taskId = '1',
   }) {
     return InkWell(
       onTap: () {
         // Close the drawer first
         Navigator.pop(context);
-        // Navigate to dashboard with query param to show "My Tasks"
-        context.go('/dashboard?showMyTasks=true');
+        // Navigate directly to task details
+        GoRouter.of(context).go('/tasks/$taskId');
       },
       child: Container(
         decoration: BoxDecoration(

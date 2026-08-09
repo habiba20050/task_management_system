@@ -429,6 +429,14 @@ class MainLayout extends StatelessWidget {
             centerTitle: true,
             actions: [
               IconButton(
+                icon: const Icon(Icons.language, color: Colors.white),
+                tooltip: lang == 'EN' ? 'العربية' : 'English',
+                onPressed: () {
+                  final nextLang = lang == 'EN' ? 'AR' : 'EN';
+                  context.read<LanguageCubit>().changeLanguage(nextLang);
+                },
+              ),
+              IconButton(
                 icon: const Icon(Icons.notifications_outlined, color: Colors.white),
                 onPressed: () {
                   db.markNotificationsRead(userId);

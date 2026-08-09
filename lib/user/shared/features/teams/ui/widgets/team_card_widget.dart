@@ -146,13 +146,18 @@ class TeamCardWidget extends StatelessWidget {
               children: [
                 InkWell(
                   onTap: () => _navigateToDetails(context),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 2.h),
+                  borderRadius: BorderRadius.circular(6.r),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6.r),
+                    ),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline, size: 13.sp, color: AppColors.primary),
+                        Icon(Icons.visibility_outlined, size: 12.sp, color: AppColors.primary),
                         SizedBox(width: 4.w),
-                        Text('Details'.tr(context), style: TextStyle(fontSize: 9.5.sp, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                        Text('View Team Details'.tr(context), style: TextStyle(fontSize: 8.5.sp, color: AppColors.primary, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),

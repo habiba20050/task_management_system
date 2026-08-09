@@ -823,15 +823,16 @@ class _TasksPageState extends State<TasksPage> {
     String priority = 'MEDIUM';
     String status = 'Assigned';
     String taskDept = 'Computer Science';
-    DateTime startDate = DateTime(2026, 7, 24);
+    DateTime startDate = DateTime.now();
     TimeOfDay startTime = const TimeOfDay(hour: 9, minute: 0);
-    DateTime dueDate = DateTime(2026, 7, 27);
+    DateTime dueDate = DateTime.now().add(const Duration(days: 5));
     TimeOfDay dueTime = const TimeOfDay(hour: 17, minute: 0);
 
-    String assignMode = 'Individual'; // 'Individual' | 'Team'
+    String assignMode = 'Individual'; // 'Individual' | 'Team' | 'Custom'
     String selectedRole = 'Team Member';
     String? selectedUserId = '4';
     String? selectedTeamId = 't1';
+    List<String> selectedCustomUserIds = ['4'];
     bool allowReassignment = false;
 
     showDialog(
@@ -1003,7 +1004,10 @@ class _TasksPageState extends State<TasksPage> {
                       value: assignMode,
                       icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
                       decoration: _buildInputDecoration(context, ''),
-                      items: ['Individual', 'Team'].map((m) => DropdownMenuItem(value: m, child: Text(m.tr(context)))).toList(),
+                      items: ['Individual', 'Team', 'Custom'].map((m) => DropdownMenuItem(
+                        value: m,
+                        child: Text(m == 'Custom' ? 'Custom / Multiple Individuals'.tr(context) : m.tr(context)),
+                      )).toList(),
                       onChanged: (v) => setDialogState(() {
                         assignMode = v!;
                         selectedUserId = null;
@@ -1037,7 +1041,7 @@ class _TasksPageState extends State<TasksPage> {
                         onChanged: (v) => setDialogState(() => selectedUserId = v),
                       ),
                       SizedBox(height: 20.h),
-                    ] else ...[
+                    ] else if (assignMode == 'Team') ...[
                       _buildFieldLabel(context, 'Select Team'),
                       SizedBox(height: 8.h),
                       DropdownButtonFormField<String>(
@@ -1046,6 +1050,40 @@ class _TasksPageState extends State<TasksPage> {
                         decoration: _buildInputDecoration(context, ''),
                         items: db.teams.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))).toList(),
                         onChanged: (v) => setDialogState(() => selectedTeamId = v),
+                      ),
+                      SizedBox(height: 20.h),
+                    ] else ...[
+                      _buildFieldLabel(context, 'Select Multiple Individuals'),
+                      SizedBox(height: 8.h),
+                      Container(
+                        constraints: BoxConstraints(maxHeight: 160.h),
+                        padding: EdgeInsets.all(8.w),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: ListView(
+                          shrinkWrap: true,
+                          children: db.users.map((u) {
+                            final isChecked = selectedCustomUserIds.contains(u.id);
+                            return CheckboxListTile(
+                              dense: true,
+                              title: Text(u.fullName, style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600)),
+                              subtitle: Text('${u.role} (${u.department})', style: TextStyle(fontSize: 10.sp, color: Colors.grey)),
+                              value: isChecked,
+                              onChanged: (val) {
+                                setDialogState(() {
+                                  if (val == true) {
+                                    selectedCustomUserIds.add(u.id);
+                                  } else {
+                                    selectedCustomUserIds.remove(u.id);
+                                  }
+                                });
+                              },
+                            );
+                          }).toList(),
+                        ),
                       ),
                       SizedBox(height: 20.h),
                     ],
@@ -1153,6 +1191,8 @@ class _TasksPageState extends State<TasksPage> {
     final db = MockDatabase.instance;
     final titleCon = TextEditingController(text: task.title);
     final descCon = TextEditingController(text: task.description);
+    final hoursCon = TextEditingController(text: task.estimatedHours.toString());
+    String taskDeadlineStr = task.deadline;
     String priority = task.priority;
     String status = task.status;
     String taskDept = task.taskDepartment;
@@ -1242,6 +1282,50 @@ class _TasksPageState extends State<TasksPage> {
                     items: ['Pending', 'Assigned', 'In Progress', 'Submitted', 'Under Review', 'Approved', 'Completed', 'Needs Changes', 'Rejected', 'Overdue'].map((s) => DropdownMenuItem(value: s, child: Text(s.tr(context)))).toList(),
                     onChanged: (v) => setDialogState(() => status = v!),
                   ),
+                  SizedBox(height: 20.h),
+
+                  // Deadline & Hours editing
+                  _buildFieldLabel(context, 'Due Date'),
+                  SizedBox(height: 8.h),
+                  InkWell(
+                    onTap: () async {
+                      DateTime initialDate = DateTime.tryParse(task.deadline) ?? DateTime.now();
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: initialDate,
+                        firstDate: DateTime(2026, 1, 1),
+                        lastDate: DateTime(2027, 12, 31),
+                      );
+                      if (picked != null) {
+                        setDialogState(() {
+                          taskDeadlineStr = DateFormat('yyyy-MM-dd').format(picked);
+                        });
+                      }
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEDF2F7),
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(taskDeadlineStr, style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold)),
+                          const Icon(Icons.calendar_today, size: 16, color: AppColors.primary),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'Estimated Duration (Hours)'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: hoursCon,
+                    keyboardType: TextInputType.number,
+                    decoration: _buildInputDecoration(context, 'e.g. 10'),
+                  ),
                   SizedBox(height: 32.h),
 
                   Row(
@@ -1282,8 +1366,8 @@ class _TasksPageState extends State<TasksPage> {
                                   title: titleCon.text,
                                   description: descCon.text,
                                   assignedMemberId: oldTask.assignedMemberId,
-                                  deadline: oldTask.deadline,
-                                  estimatedHours: oldTask.estimatedHours,
+                                  deadline: taskDeadlineStr,
+                                  estimatedHours: int.tryParse(hoursCon.text) ?? oldTask.estimatedHours,
                                   priority: priority,
                                   status: status,
                                   assignmentMode: oldTask.assignmentMode,
@@ -1427,30 +1511,46 @@ class _TasksPageState extends State<TasksPage> {
                   const Divider(color: Color(0xFFF1F5F9), thickness: 1),
                   SizedBox(height: 20.h),
 
-                  _buildFieldLabel(context, 'GitHub Repository Link'),
+                  _buildFieldLabel(context, 'Submission Type'),
                   SizedBox(height: 8.h),
-                  TextFormField(
-                    controller: githubCon,
-                    decoration: _buildInputDecoration(context, 'https://github.com/username/repo'),
-                    validator: (v) => v == null || v.isEmpty ? 'GitHub link is required'.tr(context) : null,
+                  DropdownButtonFormField<String>(
+                    value: task.submissionType ?? 'Software / Code',
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                    decoration: _buildInputDecoration(context, ''),
+                    items: [
+                      'Software / Code',
+                      'Document',
+                      'Design',
+                      'Physical Work',
+                      'Administrative Work',
+                      'Other'
+                    ].map((st) => DropdownMenuItem(value: st, child: Text(st.tr(context)))).toList(),
+                    onChanged: (v) => task.submissionReport = '${v ?? 'Document'} Submission',
                   ),
                   SizedBox(height: 20.h),
 
-                  _buildFieldLabel(context, 'Pull Request Link'),
+                  _buildFieldLabel(context, 'External Links / Google Drive / Docs'),
                   SizedBox(height: 8.h),
                   TextFormField(
                     controller: prCon,
-                    decoration: _buildInputDecoration(context, 'https://github.com/username/repo/pull/1'),
+                    decoration: _buildInputDecoration(context, 'https://drive.google.com/... or external link'),
                   ),
                   SizedBox(height: 20.h),
 
-                  _buildFieldLabel(context, 'Submission Report Summary'),
+                  _buildFieldLabel(context, 'GitHub Repository Link (Optional)'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: githubCon,
+                    decoration: _buildInputDecoration(context, 'https://github.com/username/repo (Optional)'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildFieldLabel(context, 'Submission Summary & Details'),
                   SizedBox(height: 8.h),
                   TextFormField(
                     controller: reportCon,
                     maxLines: 3,
-                    decoration: _buildInputDecoration(context, 'Describe what was accomplished...'),
-                    validator: (v) => v == null || v.isEmpty ? 'Report is required'.tr(context) : null,
+                    decoration: _buildInputDecoration(context, 'Describe deliverables and work completed...'),
                   ),
                   SizedBox(height: 20.h),
 

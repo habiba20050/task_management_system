@@ -39,6 +39,14 @@ extension TranslateExtension on String {
         return localizations.linksOptionalCommaSeparated;
       case 'Manager':
         return localizations.manager;
+      case 'Teams & Departments':
+        return localizations.localeName == 'ar' ? 'الفرق والأقسام' : 'Teams & Departments';
+      case 'View Team Details':
+        return localizations.localeName == 'ar' ? 'عرض تفاصيل الفريق' : 'View Team Details';
+      case 'Custom / Multiple Individuals':
+        return localizations.localeName == 'ar' ? 'تخصيص / عدة أفراد' : 'Custom / Multiple Individuals';
+      case 'Add Evaluation':
+        return localizations.localeName == 'ar' ? 'إضافة تقييم' : 'Add Evaluation';
       case 'Teams':
         return localizations.teams;
       case 'HIGH':

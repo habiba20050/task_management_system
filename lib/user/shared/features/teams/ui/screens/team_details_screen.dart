@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../model/team_model.dart';
 import '../../../../../../core/network/mock_database.dart';
 import '../../../../../../core/localization/translate_extension.dart';
+import '../../../../../../core/colors/app_colors.dart';
 
 class TeamDetailsScreen extends StatelessWidget {
   final TeamModel team;
@@ -52,9 +54,9 @@ class TeamDetailsScreen extends StatelessWidget {
     // Fetch members
     final members = db.users.where((u) => mockTeam.memberIds.contains(u.id)).toList();
 
-    // Fetch team tasks (tasks assigned to members in the team)
+    // Fetch team tasks (tasks explicitly assigned to this team or assigned to team members)
     final memberIdsSet = mockTeam.memberIds.toSet();
-    final tasks = db.tasks.where((t) => memberIdsSet.contains(t.assignedMemberId)).toList();
+    final tasks = db.tasks.where((t) => t.assignedTeamId == mockTeam.id || (t.assignedMemberId.isNotEmpty && memberIdsSet.contains(t.assignedMemberId))).toList();
     final completedTasks = tasks.where((t) => t.status == 'Completed' || t.status == 'Approved' || t.status == 'Approved With Suggestions').toList();
     final totalTasksCount = tasks.length;
     final completedTasksCount = completedTasks.length;
@@ -437,11 +439,16 @@ class TeamDetailsScreen extends StatelessWidget {
                 );
 
                 return ListTile(
+                  onTap: () {
+                    Navigator.of(context, rootNavigator: true).pop();
+                    GoRouter.of(context).go('/tasks/${task.id}');
+                  },
+                  leading: const Icon(Icons.task_alt, color: AppColors.primary),
                   title: Text(
                     task.title,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text('Assigned to'.tr(context) + ': ${assignee.fullName} | ' + 'Deadline'.tr(context) + ': ${task.deadline}'),
+                  subtitle: Text('${'Assigned to'.tr(context)}: ${assignee.fullName} | ${'Deadline'.tr(context)}: ${task.deadline}'),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
