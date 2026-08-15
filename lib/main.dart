@@ -1,12 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'config/dependency_injection/service_locator.dart';
 import 'config/routes/app_router.dart';
-import 'user/shared/features/auth/cubit/auth_cubit.dart';
-import 'user/shared/features/language/cubit/language_cubit.dart';
+import 'package:task_management_system/auth/cubit/auth_cubit.dart';
+import 'package:task_management_system/language/cubit/language_cubit.dart';
 import 'l10n/app_localizations.dart';
 
 void main() async {

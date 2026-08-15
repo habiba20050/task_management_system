@@ -2,53 +2,59 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:task_management_system/user/shared/features/teams/cubit/teams_cubit.dart';
-import 'package:task_management_system/user/shared/features/teams/ui/screens/teams_dashboard_screen.dart';
+import 'package:task_management_system/user/admin/features/users/pages/users_page.dart' as admin_users;
+import '../../user/admin/features/teams/ui/screens/teams_dashboard_screen.dart' as admin_teams;
 import '../../user/manager/features/teams/ui/screens/teams_dashboard_screen.dart' as manager_teams;
-import '../../user/shared/features/auth/pages/login_page.dart';
-import '../../user/shared/features/auth/pages/forget_password_page.dart';
-import '../../user/shared/features/auth/pages/verify_email_page.dart';
-import '../../user/shared/features/auth/pages/create_new_password_page.dart';
-import '../../user/shared/features/dashboard/pages/dashboard_page.dart' as shared_dash;
-import '../../user/admin/features/dashboard/pages/dashboard_page.dart' as admin_dash;
-import '../../user/manager/features/dashboard/pages/dashboard_page.dart' as manager_dash;
-import '../../user/team_leader/features/dashboard/pages/dashboard_page.dart' as leader_dash;
-import '../../user/team_member/features/dashboard/pages/dashboard_page.dart' as member_dash;
-import '../../user/shared/features/tasks/pages/tasks_page.dart';
-import '../../user/admin/features/tasks/pages/tasks_page.dart' as admin_tasks;
-import '../../user/manager/features/tasks/pages/tasks_page.dart' as manager_tasks;
-import '../../user/team_leader/features/tasks/pages/tasks_page.dart' as leader_tasks;
-import '../../user/team_member/features/tasks/pages/tasks_page.dart' as member_tasks;
-import '../../user/shared/features/tasks/pages/task_details_page.dart';
-import '../../user/team_leader/features/tasks/pages/task_details_page.dart' as leader_task_details;
-import '../../user/manager/features/tasks/pages/task_details_page.dart' as manager_task_details;
-import '../../user/team_member/features/tasks/pages/task_details_page.dart' as member_task_details;
-import '../../user/shared/features/users/ui/screens/users_roles_screen.dart';
-import '../../user/shared/features/profile/pages/profile_page.dart';
-import '../../user/shared/features/profile/cubit/profile_cubit.dart';
-import '../../user/shared/features/reports/pages/reports_page.dart';
-import '../../user/team_leader/features/reports/pages/reports_page.dart' as leader_reports;
-import '../../user/manager/features/reports/pages/reports_page.dart' as manager_reports;
-import '../../user/shared/features/audit_log/pages/audit_log_page.dart';
+import 'package:task_management_system/auth/pages/login_page.dart';
+import 'package:task_management_system/auth/pages/forget_password_page.dart';
+import 'package:task_management_system/auth/pages/verify_email_page.dart';
+import 'package:task_management_system/auth/pages/create_new_password_page.dart';
+import '/user/admin/features/dashboard/pages/dashboard_page.dart' as admin_dash;
+import '/user/manager/features/dashboard/pages/dashboard_page.dart' as manager_dash;
+import '/user/team_leader/features/dashboard/pages/dashboard_page.dart' as leader_dash;
+import '/user/team_member/features/dashboard/pages/dashboard_page.dart' as member_dash;
+import '/user/admin/features/tasks/pages/tasks_page.dart' as admin_tasks;
+import '/user/manager/features/tasks/pages/tasks_page.dart' as manager_tasks;
+import '/user/team_leader/features/tasks/pages/tasks_page.dart' as leader_tasks;
+import '/user/team_member/features/tasks/pages/tasks_page.dart' as member_tasks;
+import '/user/team_leader/features/tasks/pages/task_details_page.dart' as leader_task_details;
+import '/user/manager/features/tasks/pages/task_details_page.dart' as manager_task_details;
+import '/user/team_member/features/tasks/pages/task_details_page.dart' as member_task_details;
+import '/user/admin/features/tasks/pages/task_details_page.dart' as admin_task_details;
+import '/user/team_leader/features/reports/pages/reports_page.dart' as leader_reports;
+import '/user/manager/features/reports/pages/reports_page.dart' as manager_reports;
+import '/user/admin/features/reports/pages/reports_page.dart' as admin_reports;
 import '../../user/manager/features/audit_log/pages/audit_log_page.dart' as manager_audit;
-import '../../user/shared/widgets/main_layout.dart';
+import '../../user/shared/features/audit_log/pages/audit_log_page.dart' as shared_audit;
 import '../dependency_injection/service_locator.dart';
-import '../../user/shared/features/auth/cubit/auth_cubit.dart';
-import '../../user/shared/features/complaints/pages/complaints_page.dart';
+import 'package:task_management_system/auth/cubit/auth_cubit.dart';
 import '../../user/team_member/features/complaints/pages/complaints_page.dart' as member_complaints;
 import '../../user/team_leader/features/complaints/pages/complaints_page.dart' as leader_complaints;
 import '../../user/manager/features/complaints/pages/complaints_page.dart' as manager_complaints;
-import '../../user/shared/features/evaluations/pages/evaluations_page.dart';
+import '../../user/admin/features/complaints/pages/complaints_page.dart' as admin_complaints;
 import '../../user/team_member/features/evaluations/pages/evaluations_page.dart' as member_evals;
 import '../../user/team_leader/features/evaluations/pages/evaluations_page.dart' as leader_evals;
 import '../../user/manager/features/evaluations/pages/evaluations_page.dart' as manager_evals;
+import '../../user/admin/features/evaluations/pages/evaluations_page.dart' as admin_evals;
 import '../../user/team_member/features/profile/pages/profile_page.dart' as member_profile;
 import '../../user/team_leader/features/profile/pages/profile_page.dart' as leader_profile;
 import '../../user/manager/features/profile/pages/profile_page.dart' as manager_profile;
-import '../../user/shared/features/tasks/pages/review_center_page.dart';
+import '../../user/admin/features/profile/pages/profile_page.dart' as admin_profile;
 import '../../user/team_leader/features/tasks/pages/review_center_page.dart' as leader_review;
 import '../../user/admin/features/tasks/pages/review_center_page.dart' as admin_review;
 import '../../user/manager/features/tasks/pages/review_center_page.dart' as manager_review;
+import 'package:task_management_system/widgets/main_layout.dart';
+import '/user/shared/features/dashboard/pages/dashboard_page.dart' as shared_dash;
+import '/user/shared/features/tasks/pages/tasks_page.dart' as shared_tasks;
+import '/user/shared/features/reports/pages/reports_page.dart' as shared_reports;
+import '/user/shared/features/complaints/pages/complaints_page.dart' as shared_complaints;
+import '/user/shared/features/profile/pages/profile_page.dart' as shared_profile;
+import '/user/shared/features/tasks/pages/review_center_page.dart' as shared_review;
+import '/user/shared/features/tasks/pages/task_details_page.dart' as shared_task_details;
+import '/user/shared/features/evaluations/pages/evaluations_page.dart' as shared_evals;
+import '../../user/shared/features/teams/ui/screens/teams_dashboard_screen.dart' as shared_teams;
+import '../../user/shared/features/teams/cubit/teams_cubit.dart';
+import '../../user/shared/features/profile/cubit/profile_cubit.dart';
 
 class AppRouter {
   AppRouter._();
@@ -180,7 +186,7 @@ class AppRouter {
           GoRoute(
             path: usersRoles,
             name: 'usersRoles',
-            builder: (context, state) => const UsersRolesScreen(),
+            builder: (context, state) => const admin_users.UsersPage(),
           ),
           GoRoute(
             path: complaints,
@@ -252,7 +258,7 @@ class _TasksResolver extends StatelessWidget {
           return const member_tasks.TasksPage();
       }
     }
-    return const TasksPage();
+    return const shared_tasks.TasksPage();
   }
 }
 
@@ -264,13 +270,15 @@ class _ReportsResolver extends StatelessWidget {
   Widget build(BuildContext context) {
     final authState = context.watch<AuthCubit>().state;
     if (authState is AuthSuccess) {
-      if (authState.user.role == 'Team Leader') {
+      if (authState.user.role == 'Admin') {
+        return const admin_reports.ReportsPage();
+      } else if (authState.user.role == 'Team Leader') {
         return const leader_reports.ReportsPage();
       } else if (authState.user.role == 'Manager') {
         return const manager_reports.ReportsPage();
       }
     }
-    return const ReportsPage();
+    return const shared_reports.ReportsPage();
   }
 }
 
@@ -289,9 +297,11 @@ class _ComplaintsResolver extends StatelessWidget {
           return const leader_complaints.ComplaintsPage();
         case 'Manager':
           return const manager_complaints.ComplaintsPage();
+        case 'Admin':
+          return const admin_complaints.ComplaintsPage();
       }
     }
-    return const ComplaintsPage();
+    return const shared_complaints.ComplaintsPage();
   }
 }
 
@@ -310,9 +320,11 @@ class _ProfileResolver extends StatelessWidget {
           return const leader_profile.ProfilePage();
         case 'Manager':
           return const manager_profile.ProfilePage();
+        case 'Admin':
+          return const admin_profile.ProfilePage();
       }
     }
-    return const ProfilePage();
+    return const shared_profile.ProfilePage();
   }
 }
 
@@ -334,7 +346,7 @@ class _ReviewCenterResolver extends StatelessWidget {
 
       }
     }
-    return const ReviewCenterPage();
+    return const shared_review.ReviewCenterPage();
   }
 }
 
@@ -356,8 +368,11 @@ class _TaskDetailsResolver extends StatelessWidget {
       if (authState.user.role == 'Team Member') {
         return member_task_details.TaskDetailsPage(taskId: taskId);
       }
+      if (authState.user.role == 'Admin') {
+        return admin_task_details.TaskDetailsPage(taskId: taskId);
+      }
     }
-    return TaskDetailsPage(taskId: taskId);
+    return shared_task_details.TaskDetailsPage(taskId: taskId);
   }
 }
 
@@ -376,9 +391,11 @@ class _EvaluationsResolver extends StatelessWidget {
           return const leader_evals.EvaluationsPage();
         case 'Manager':
           return const manager_evals.EvaluationsPage();
+        case 'Admin':
+          return const admin_evals.EvaluationsPage();
       }
     }
-    return const EvaluationsPage();
+    return const shared_evals.EvaluationsPage();
   }
 }
 
@@ -409,7 +426,10 @@ class _TeamsResolver extends StatelessWidget {
     if (authState is AuthSuccess && authState.user.role == 'Manager') {
       return const manager_teams.TeamsDashboardScreen();
     }
-    return const TeamsDashboardScreen();
+    if (authState is AuthSuccess && authState.user.role == 'Admin') {
+      return const admin_teams.TeamsDashboardScreen();
+    }
+    return const shared_teams.TeamsDashboardScreen();
   }
 }
 
@@ -423,6 +443,6 @@ class _AuditLogsResolver extends StatelessWidget {
     if (authState is AuthSuccess && authState.user.role == 'Manager') {
       return const manager_audit.AuditLogPage();
     }
-    return const AuditLogPage();
+    return const shared_audit.AuditLogPage();
   }
 }

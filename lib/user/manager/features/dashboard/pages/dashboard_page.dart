@@ -1,12 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../../../core/colors/app_colors.dart';
 import '../../../../../core/network/mock_database.dart';
 import '../../../../../responsive/responsive_layout.dart';
-import '../../../../shared/features/auth/cubit/auth_cubit.dart';
-import '../../../../shared/features/language/cubit/language_cubit.dart';
+import 'package:task_management_system/auth/cubit/auth_cubit.dart';
 import '../../../../../core/localization/translate_extension.dart';
 import '../../../../../core/widgets/cards/app_cards.dart';
 
@@ -25,11 +24,11 @@ class _DashboardPageState extends State<DashboardPage> {
     final isTablet = ResponsiveLayout.isTablet(context);
     final db = MockDatabase.instance;
 
-    // ── الحصول على المدير الحالي ──────────────────────────────────────
+    // ── الحصول على المستخدم الحالي ──────────────────────────────────────
     final authState = context.watch<AuthCubit>().state;
-    final currentUserId = authState is AuthSuccess ? authState.user.id : '';
+    final currentUserId = authState is AuthSuccess ? authState.user.id : '1';
 
-    // جلب بيانات المدير من قاعدة البيانات للحصول على القسم
+    // جلب بيانات المستخدم من قاعدة البيانات للحصول على القسم والدور
     final mockManager = db.users.firstWhere(
       (u) => u.id == currentUserId,
       orElse: () => db.users.firstWhere(
@@ -37,30 +36,51 @@ class _DashboardPageState extends State<DashboardPage> {
         orElse: () => db.users.first,
       ),
     );
+    final isAdmin = mockManager.role == 'Admin';
     final managerDept = mockManager.department;
 
-    // ── فلترة البيانات حسب قسم المدير ───────────────────────────────
-    // الفرق المرتبطة بهذا المدير (managerId == currentUserId)
-    final myTeams = db.teams.where((t) => t.managerId == currentUserId).toList();
-    final myTeamIds = myTeams.map((t) => t.id).toSet();
+    // ── نطاق البيانات (الأدمن يشاهد كل شيء، المدير يقتصر على قسمه) ────
+    final List<MockTeam> myTeams;
+    final Set<String> myTeamIds;
+    final Set<String> myLeaderIds;
+    final Set<String> myMemberIds;
+    final Set<String> allSubordinateIds;
+    final List<MockTask> deptTasks;
 
-    // Team Leaders التابعين لهذا المدير
-    final myLeaderIds = myTeams.map((t) => t.leaderId).toSet();
+    if (isAdmin) {
+      // كل الفرق وكل المهام وكل الموظفين
+      myTeams = List.from(db.teams);
+      myTeamIds = myTeams.map((t) => t.id).toSet();
+      myLeaderIds = myTeams.map((t) => t.leaderId).toSet();
+      myMemberIds = myTeams.expand((t) => t.memberIds).toSet();
+      allSubordinateIds = db.users.where((u) => u.role != 'Admin').map((u) => u.id).toSet();
+      deptTasks = List.from(db.tasks);
+    } else {
+      // الفرق المرتبطة بهذا المدير (managerId == currentUserId)
+      myTeams = db.teams.where((t) => t.managerId == currentUserId).toList();
+      myTeamIds = myTeams.map((t) => t.id).toSet();
+
+      // Team Leaders التابعين لهذا المدير
+      myLeaderIds = myTeams.map((t) => t.leaderId).toSet();
+
+      // كل أعضاء الفرق التابعين لهذا المدير
+      myMemberIds = myTeams.expand((t) => t.memberIds).toSet();
+
+      // إجمالي الموظفين تحت المدير (Leaders + Members)
+      allSubordinateIds = {...myLeaderIds, ...myMemberIds};
+
+      // المهام الخاصة بقسم المدير أو الفرق التابعة له
+      deptTasks = db.tasks.where((t) =>
+        t.taskDepartment == managerDept ||
+        (t.assignedTeamId != null && myTeamIds.contains(t.assignedTeamId))
+      ).toList();
+    }
+
+    // Team Leaders التابعين للمستخدم
     final myLeaders = db.users.where((u) => myLeaderIds.contains(u.id)).toList();
 
-    // كل أعضاء الفرق التابعين لهذا المدير
-    final myMemberIds = myTeams.expand((t) => t.memberIds).toSet();
-    final myMembers = db.users.where((u) => myMemberIds.contains(u.id)).toList();
-
-    // إجمالي الموظفين تحت المدير (Leaders + Members)
-    final allSubordinateIds = {...myLeaderIds, ...myMemberIds};
+    // إجمالي الموظفين
     final totalEmployees = allSubordinateIds.length;
-
-    // المهام الخاصة بقسم المدير أو الفرق التابعة له
-    final deptTasks = db.tasks.where((t) =>
-      t.taskDepartment == managerDept ||
-      (t.assignedTeamId != null && myTeamIds.contains(t.assignedTeamId))
-    ).toList();
 
     // ── KPI Cards ───────────────────────────────────────────────────
     final totalTasks      = deptTasks.length;
@@ -86,10 +106,7 @@ class _DashboardPageState extends State<DashboardPage> {
           (DateTime.tryParse(a.deadline) ?? DateTime(9999))
               .compareTo(DateTime.tryParse(b.deadline) ?? DateTime(9999)));
 
-    final recentActivities = db.auditLogs.take(5).toList();
-
     final deptComplaints = db.complaints.take(5).toList();
-
     final topSubordinates = db.users
         .where((u) => allSubordinateIds.contains(u.id))
         .toList()
@@ -112,15 +129,22 @@ class _DashboardPageState extends State<DashboardPage> {
     final worstMembers = List<MockUser>.from(teamMembersOnly)..sort((a, b) => a.finalScore.compareTo(b.finalScore));
 
     return Container(
-      color: AppColors.background,
+      color: AppColors.dashboardBg,
       child: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+          padding: EdgeInsets.symmetric(horizontal: isDesktop ? 32.w : 16.w, vertical: 16.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── رأس الصفحة ──────────────────────────────────────────
-              _buildDeptHeader(context, managerDept, mockManager.fullName, myTeams.length, totalEmployees),
+              _buildDeptHeader(
+                context,
+                isAdmin: isAdmin,
+                dept: managerDept,
+                managerName: mockManager.fullName,
+                teamsCount: myTeams.length,
+                empCount: totalEmployees,
+              ),
               SizedBox(height: 20.h),
 
               // ── KPI Cards ───────────────────────────────────────────
@@ -239,51 +263,50 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ── رأس صفحة القسم ────────────────────────────────────────────────
-  Widget _buildDeptHeader(BuildContext context, String dept, String managerName, int teamsCount, int empCount) {
-    return AppCard(
-      child: Row(
-        children: [
-          Container(
-            width: 52.w,
-            height: 52.h,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primary, AppColors.primary.withOpacity(0.7)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12.r),
-            ),
-            child: Icon(Icons.corporate_fare, color: Colors.white, size: 26.sp),
-          ),
-          SizedBox(width: 14.w),
-          Expanded(
-            child: Column(
+  // ── رأس الصفحة ────────────────────────────────────────────────────
+  Widget _buildDeptHeader(BuildContext context,
+      {required bool isAdmin,
+      required String dept,
+      required String managerName,
+      required int teamsCount,
+      required int empCount}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _gradientChip(Icons.dashboard_outlined, AppColors.primary, size: 44),
+            SizedBox(width: 12.w),
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  dept,
-                  style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  isAdmin ? 'Dashboard'.tr(context) : dept,
+                  style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                 ),
-                SizedBox(height: 2.h),
+                SizedBox(height: 3.h),
                 Text(
-                  '${'Manager'.tr(context)}: $managerName',
-                  style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary),
+                  isAdmin
+                      ? 'Track all departments, teams & employees'.tr(context)
+                      : '${'Manager'.tr(context)}: $managerName',
+                  style: TextStyle(fontSize: 13.sp, color: AppColors.textSecondary),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _buildHeaderChip(Icons.groups, '$teamsCount ${'Teams'.tr(context)}', Colors.teal),
-              SizedBox(height: 4.h),
-              _buildHeaderChip(Icons.people, '$empCount ${'Employees'.tr(context)}', AppColors.primary),
-            ],
-          ),
-        ],
-      ),
+          ],
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            _buildHeaderChip(Icons.groups, '$teamsCount ${'Teams'.tr(context)}', Colors.teal),
+            SizedBox(height: 4.h),
+            _buildHeaderChip(Icons.people, '$empCount ${'Employees'.tr(context)}', AppColors.primary),
+          ],
+        ),
+      ],
     );
   }
 
@@ -291,7 +314,7 @@ class _DashboardPageState extends State<DashboardPage> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20.r),
       ),
       child: Row(
@@ -308,7 +331,7 @@ class _DashboardPageState extends State<DashboardPage> {
   // ── Donut Chart (Task Status) ─────────────────────────────────────
   Widget _buildStatusDonutChart(int comp, int prog, int pend, int rev, int ov) {
     final double total = (comp + prog + pend + rev + ov).toDouble();
-    return AppCard(
+    return _modernCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -372,7 +395,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // ── Teams Progress Bar Chart ──────────────────────────────────────
   Widget _buildTeamsProgressChart(List<MockTeam> myTeams) {
-    return AppCard(
+    return _modernCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -437,7 +460,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final low  = tasks.where((t) => t.priority == 'LOW').length;
     final double total = (high + med + low).toDouble();
 
-    return AppCard(
+    return _modernCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -484,7 +507,7 @@ class _DashboardPageState extends State<DashboardPage> {
   // ── Employee Performance Bar Chart ────────────────────────────────
   Widget _buildMemberPerformanceChart(List<MockUser> topUsers, MockDatabase db) {
     final display = topUsers.take(5).toList();
-    return AppCard(
+    return _modernCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -541,7 +564,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // ── Weekly Trend ──────────────────────────────────────────────────
   Widget _buildWeeklyCompletionTrendChart() {
-    return AppCard(
+    return _modernCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -583,7 +606,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // ── Monthly Trend ─────────────────────────────────────────────────
   Widget _buildMonthlyPerformanceTrendChart() {
-    return AppCard(
+    return _modernCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -625,7 +648,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // ── Widget: Upcoming Deadlines ────────────────────────────────────
   Widget _buildUpcomingDeadlinesWidget(List<MockTask> list) {
-    return AppCard(
+    return _modernCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -656,7 +679,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // ── Widget: My Teams ──────────────────────────────────────────────
   Widget _buildMyTeamsWidget(List<MockTeam> myTeams, MockDatabase db) {
-    return AppCard(
+    return _modernCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -711,7 +734,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // ── Widget: Latest Complaints ─────────────────────────────────────
   Widget _buildLatestComplaintsWidget(List<MockComplaint> list) {
-    return AppCard(
+    return _modernCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -746,7 +769,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // ── Widget: Top Subordinates ──────────────────────────────────────
   Widget _buildTopSubordinatesWidget(List<MockUser> list) {
-    return AppCard(
+    return _modernCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -765,7 +788,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         dense: true,
                         leading: CircleAvatar(
                           radius: 14.r,
-                          backgroundColor: AppColors.primary.withOpacity(0.1),
+                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                           child: Text(user.fullName[0], style: TextStyle(fontSize: 11.sp, color: AppColors.primary, fontWeight: FontWeight.bold)),
                         ),
                         title: Text(user.fullName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.sp)),
@@ -785,7 +808,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // ── Widget: Most Delayed ──────────────────────────────────────────
   Widget _buildMostDelayedWidget(List<MockUser> list, List<MockTask> deptTasks) {
-    return AppCard(
+    return _modernCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -830,7 +853,7 @@ class _DashboardPageState extends State<DashboardPage> {
   // ── Widget: Best 3 Team Members ───────────────────────────────────
   Widget _buildBestMembersWidget(List<MockUser> list) {
     final display = list.take(3).toList();
-    return AppCard(
+    return _modernCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -895,7 +918,7 @@ class _DashboardPageState extends State<DashboardPage> {
   // ── Widget: Worst 3 Team Members ──────────────────────────────────
   Widget _buildWorstMembersWidget(List<MockUser> list) {
     final display = list.take(3).toList();
-    return AppCard(
+    return _modernCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -939,7 +962,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         trailing: Container(
                           padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                           decoration: BoxDecoration(
-                            color: scoreColor.withOpacity(0.1),
+                            color: scoreColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8.r),
                           ),
                           child: Text(
@@ -957,6 +980,55 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ],
       ),
+    );
+  }
+
+  // ─── Modern UI helpers ────────────────────────────────────────────────
+  Color _darker(Color c, [double f = 0.18]) {
+    final hsl = HSLColor.fromColor(c);
+    return hsl.withLightness((hsl.lightness - f).clamp(0.0, 1.0)).toColor();
+  }
+
+  Widget _gradientChip(IconData icon, Color color, {double size = 40}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color, _darker(color)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(size * 0.32),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.28),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Icon(icon, color: Colors.white, size: size * 0.48),
+    );
+  }
+
+  Widget _modernCard({required Widget child, EdgeInsetsGeometry? padding}) {
+    return Container(
+      width: double.infinity,
+      padding: padding ?? EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18.r),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: child,
     );
   }
 }

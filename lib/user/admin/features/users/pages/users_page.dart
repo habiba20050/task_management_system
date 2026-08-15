@@ -1,11 +1,12 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../core/colors/app_colors.dart';
 import '../../../../../core/network/mock_database.dart';
 import '../../../../../responsive/responsive_layout.dart';
-import '../../../../../user/shared/widgets/custom_button.dart';
-import '../../../../../user/shared/widgets/notification_drawer.dart';
+import '../../../../../core/widgets/cards/app_cards.dart';
+import 'package:task_management_system/widgets/custom_button.dart';
+import 'package:task_management_system/widgets/notification_drawer.dart';
 
 class UsersPage extends StatefulWidget {
   const UsersPage({super.key});
@@ -129,7 +130,7 @@ class _UsersPageState extends State<UsersPage> {
               borderRadius: BorderRadius.circular(20.r),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.02),
+                  color: Colors.black.withValues(alpha: 0.02),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -164,7 +165,7 @@ class _UsersPageState extends State<UsersPage> {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
+                          color: Colors.black.withValues(alpha: 0.02),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
@@ -250,7 +251,7 @@ class _UsersPageState extends State<UsersPage> {
         ],
         SizedBox(width: 16.w),
         ElevatedButton(
-          onPressed: () {},
+          onPressed: () => _showAddUserDialog(context),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF0A448C),
             foregroundColor: Colors.white,
@@ -271,8 +272,6 @@ class _UsersPageState extends State<UsersPage> {
   }
 
   Widget _buildKPIStatsGrid(BuildContext context) {
-    final isDesktop = ResponsiveLayout.isDesktop(context);
-    final isTablet = ResponsiveLayout.isTablet(context);
     final db = MockDatabase.instance;
 
     final totalUsers = db.users.length;
@@ -281,124 +280,28 @@ class _UsersPageState extends State<UsersPage> {
     final members = db.users.where((u) => u.role == 'Team Member').length;
 
     final cards = [
-      _buildKPICard(
-        icon: Icons.people_outline,
-        iconColor: const Color(0xFF2F80ED),
-        iconBgColor: const Color(0xFFEAF2FF),
-        value: totalUsers.toString(),
-        label: 'Total Users',
-      ),
-      _buildKPICard(
-        icon: Icons.shield_outlined,
-        iconColor: const Color(0xFFEB5757),
-        iconBgColor: const Color(0xFFFFECEB),
-        value: admins.toString(),
-        label: 'Admins',
-      ),
-      _buildKPICard(
-        icon: Icons.workspace_premium_outlined,
-        iconColor: const Color(0xFFF2C94C),
-        iconBgColor: const Color(0xFFFFF9E6),
-        value: managers.toString(),
-        label: 'Managers',
-      ),
-      _buildKPICard(
-        icon: Icons.person_add_alt_outlined,
-        iconColor: const Color(0xFF27AE60),
-        iconBgColor: const Color(0xFFE8F8EE),
-        value: members.toString(),
-        label: 'Members',
-      ),
+      StatCard(title: 'Total Users', value: totalUsers.toString(), icon: Icons.people_outline, accentColor: AppColors.primary),
+      StatCard(title: 'Admins', value: admins.toString(), icon: Icons.shield_outlined, accentColor: AppColors.danger),
+      StatCard(title: 'Managers', value: managers.toString(), icon: Icons.workspace_premium_outlined, accentColor: const Color(0xFFF59E0B)),
+      StatCard(title: 'Members', value: members.toString(), icon: Icons.person_add_alt_outlined, accentColor: AppColors.success),
     ];
 
-    if (isDesktop) {
-      return Row(
-        children: [
-          Expanded(child: cards[0]),
-          SizedBox(width: 16.w),
-          Expanded(child: cards[1]),
-          SizedBox(width: 16.w),
-          Expanded(child: cards[2]),
-          SizedBox(width: 16.w),
-          Expanded(child: cards[3]),
-        ],
-      );
-    } else if (isTablet) {
-      return GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisSpacing: 16.w,
-        mainAxisSpacing: 16.h,
-        childAspectRatio: 1.8,
-        children: cards,
-      );
-    } else {
-      return Column(
-        children: cards.map((c) => Padding(
-          padding: EdgeInsets.only(bottom: 12.h),
-          child: c,
-        )).toList(),
-      );
-    }
-  }
-
-  Widget _buildKPICard({
-    required IconData icon,
-    required Color iconColor,
-    required Color iconBgColor,
-    required String value,
-    required String label,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(18.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        int crossAxisCount = constraints.maxWidth < 600 ? 2 : (constraints.maxWidth < 1100 ? 3 : 4);
+        return GridView.builder(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 12.w,
+            mainAxisSpacing: 12.h,
+            mainAxisExtent: 76.h,
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(12.w),
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: iconColor, size: 22.sp),
-          ),
-          SizedBox(width: 16.w),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 26.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 2.h),
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: cards.length,
+          itemBuilder: (context, index) => cards[index],
+        );
+      },
     );
   }
 
@@ -414,7 +317,7 @@ class _UsersPageState extends State<UsersPage> {
         border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -515,7 +418,7 @@ class _UsersPageState extends State<UsersPage> {
         borderRadius: BorderRadius.circular(16.r),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.01),
+            color: Colors.black.withValues(alpha: 0.01),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -525,7 +428,8 @@ class _UsersPageState extends State<UsersPage> {
         scrollDirection: Axis.horizontal,
         child: DataTable(
           headingRowHeight: 56.h,
-          dataRowHeight: 64.h,
+          dataRowMaxHeight: 64.h,
+          dataRowMinHeight: 64.h,
           horizontalMargin: 24.w,
           columns: [
             DataColumn(label: _headerText('USER')),
@@ -654,7 +558,7 @@ class _UsersPageState extends State<UsersPage> {
                         child: IconButton(
                           padding: EdgeInsets.zero,
                           icon: Icon(Icons.edit_outlined, color: const Color(0xFF2F80ED), size: 14.sp),
-                          onPressed: () {},
+                          onPressed: () => _showEditUserDialog(context, user),
                         ),
                       ),
                       SizedBox(width: 8.w),
@@ -668,7 +572,7 @@ class _UsersPageState extends State<UsersPage> {
                         child: IconButton(
                           padding: EdgeInsets.zero,
                           icon: Icon(Icons.delete_outline, color: const Color(0xFFEB5757), size: 14.sp),
-                          onPressed: () {},
+                          onPressed: () => _showDeleteUserDialog(context, user),
                         ),
                       ),
                     ],
@@ -690,6 +594,442 @@ class _UsersPageState extends State<UsersPage> {
         fontSize: 11.sp,
         fontWeight: FontWeight.bold,
         letterSpacing: 0.5,
+      ),
+    );
+  }
+
+  void _showAddUserDialog(BuildContext context) {
+    final db = MockDatabase.instance;
+    final nameCon = TextEditingController();
+    final emailCon = TextEditingController();
+    final phoneCon = TextEditingController();
+    String dept = db.departments.isNotEmpty ? db.departments.first.name : 'Computer Science';
+    String role = 'Team Member';
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+          backgroundColor: Colors.white,
+          child: Container(
+            width: 500.w,
+            padding: EdgeInsets.all(32.w),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Add User',
+                            style: TextStyle(
+                              fontSize: 20.sp,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            'Register a new system user profile.',
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12.h),
+                  const Divider(color: Color(0xFFF1F5F9), thickness: 1),
+                  SizedBox(height: 20.h),
+
+                  _buildDialogFieldLabel('Name'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: nameCon,
+                    decoration: _buildDialogInputDecoration('Enter full name...'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildDialogFieldLabel('Email'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: emailCon,
+                    decoration: _buildDialogInputDecoration('e.g. user@aitu.edu'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildDialogFieldLabel('Phone'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: phoneCon,
+                    decoration: _buildDialogInputDecoration('e.g. +201012345678'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildDialogFieldLabel('Department'),
+                  SizedBox(height: 8.h),
+                  DropdownButtonFormField<String>(
+                    initialValue: dept,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                    decoration: _buildDialogInputDecoration(''),
+                    items: db.departments.map((d) => DropdownMenuItem(value: d.name, child: Text(d.name))).toList(),
+                    onChanged: (v) => setDialogState(() => dept = v!),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildDialogFieldLabel('Role'),
+                  SizedBox(height: 8.h),
+                  DropdownButtonFormField<String>(
+                    initialValue: role,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                    decoration: _buildDialogInputDecoration(''),
+                    items: ['Admin', 'Manager', 'Team Leader', 'Team Member'].map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                    onChanged: (v) => setDialogState(() => role = v!),
+                  ),
+                  SizedBox(height: 32.h),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              side: const BorderSide(color: Color(0xFFE2E8F0)),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: Color(0xFF64748B),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16.w),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (nameCon.text.isNotEmpty && emailCon.text.isNotEmpty) {
+                              try {
+                                db.addUser(
+                                  MockUser(
+                                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                                    email: emailCon.text.trim(),
+                                    fullName: nameCon.text.trim(),
+                                    role: role,
+                                    department: dept,
+                                    phone: phoneCon.text.trim(),
+                                  ),
+                                  currentAdminId,
+                                );
+                                setState(() {});
+                                Navigator.pop(context);
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(e.toString())),
+                                );
+                              }
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0F4C81),
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Create',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showEditUserDialog(BuildContext context, MockUser user) {
+    final db = MockDatabase.instance;
+    final nameCon = TextEditingController(text: user.fullName);
+    final emailCon = TextEditingController(text: user.email);
+    final phoneCon = TextEditingController(text: user.phone);
+    String dept = user.department;
+    String role = user.role;
+    String status = user.status;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24.r)),
+          backgroundColor: Colors.white,
+          child: Container(
+            width: 500.w,
+            padding: EdgeInsets.all(32.w),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Edit User',
+                            style: TextStyle(
+                              fontSize: 20.sp,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            'Update system user profile attributes.',
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12.h),
+                  const Divider(color: Color(0xFFF1F5F9), thickness: 1),
+                  SizedBox(height: 20.h),
+
+                  _buildDialogFieldLabel('Name'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: nameCon,
+                    decoration: _buildDialogInputDecoration('Enter full name...'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildDialogFieldLabel('Email'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: emailCon,
+                    decoration: _buildDialogInputDecoration('e.g. user@aitu.edu'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildDialogFieldLabel('Phone'),
+                  SizedBox(height: 8.h),
+                  TextFormField(
+                    controller: phoneCon,
+                    decoration: _buildDialogInputDecoration('e.g. +201012345678'),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildDialogFieldLabel('Department'),
+                  SizedBox(height: 8.h),
+                  DropdownButtonFormField<String>(
+                    initialValue: dept,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                    decoration: _buildDialogInputDecoration(''),
+                    items: db.departments.map((d) => DropdownMenuItem(value: d.name, child: Text(d.name))).toList(),
+                    onChanged: (v) => setDialogState(() => dept = v!),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildDialogFieldLabel('Role'),
+                  SizedBox(height: 8.h),
+                  DropdownButtonFormField<String>(
+                    initialValue: role,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                    decoration: _buildDialogInputDecoration(''),
+                    items: ['Admin', 'Manager', 'Team Leader', 'Team Member'].map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                    onChanged: (v) => setDialogState(() => role = v!),
+                  ),
+                  SizedBox(height: 20.h),
+
+                  _buildDialogFieldLabel('Status'),
+                  SizedBox(height: 8.h),
+                  DropdownButtonFormField<String>(
+                    initialValue: status,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF64748B)),
+                    decoration: _buildDialogInputDecoration(''),
+                    items: ['Active', 'Inactive'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                    onChanged: (v) => setDialogState(() => status = v!),
+                  ),
+                  SizedBox(height: 32.h),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              side: const BorderSide(color: Color(0xFFE2E8F0)),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: Color(0xFF64748B),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16.w),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (nameCon.text.isNotEmpty && emailCon.text.isNotEmpty) {
+                              db.editUser(
+                                MockUser(
+                                  id: user.id,
+                                  email: emailCon.text.trim(),
+                                  fullName: nameCon.text.trim(),
+                                  role: role,
+                                  department: dept,
+                                  phone: phoneCon.text.trim(),
+                                  status: status,
+                                ),
+                                currentAdminId,
+                              );
+                              setState(() {});
+                              Navigator.pop(context);
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0F4C81),
+                            padding: EdgeInsets.symmetric(vertical: 16.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Save',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteUserDialog(BuildContext context, MockUser user) {
+    final db = MockDatabase.instance;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        backgroundColor: Colors.white,
+        title: const Text(
+          'Delete User',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text('Are you sure you want to delete "${user.fullName}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              db.deleteUser(user.id, currentAdminId);
+              setState(() {});
+              Navigator.pop(context);
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String get currentAdminId {
+    final admin = MockDatabase.instance.users
+        .where((u) => u.role == 'Admin')
+        .toList();
+    return admin.isNotEmpty ? admin.first.id : '1';
+  }
+
+  Widget _buildDialogFieldLabel(String label) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF334155),
+      ),
+    );
+  }
+
+  InputDecoration _buildDialogInputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+      fillColor: const Color(0xFFEDF2F7),
+      filled: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: const BorderSide(color: Color(0xFF0F4C81), width: 1),
       ),
     );
   }

@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../../core/colors/app_colors.dart';
 import '../../../../../core/network/mock_database.dart';
-import '../../../../shared/features/auth/cubit/auth_cubit.dart';
+import 'package:task_management_system/auth/cubit/auth_cubit.dart';
 import '../../../../../core/localization/translate_extension.dart';
 import '../../../../../responsive/responsive_layout.dart';
 

@@ -1,15 +1,71 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../../shared/features/teams/model/team_model.dart';
 import '../../../../../../core/network/mock_database.dart';
 import '../../../../../../core/localization/translate_extension.dart';
+import '../../../../../../core/colors/app_colors.dart';
+import '../../../../../../responsive/responsive_layout.dart';
 
 class TeamDetailsScreen extends StatelessWidget {
   final TeamModel team;
 
   const TeamDetailsScreen({super.key, required this.team});
 
+  bool _isCompleted(String s) =>
+      s == 'Completed' || s == 'Approved' || s == 'Approved With Suggestions';
+
+  bool _isInProgress(String s) =>
+      s == 'In Progress' ||
+      s == 'Submitted' ||
+      s == 'Under Review' ||
+      s == 'Needs Changes' ||
+      s == 'Reopened' ||
+      s == 'Overdue';
+
+  bool _isPending(String s) => s == 'Pending' || s == 'Assigned';
+
+  Color _statusColor(String s) =>
+      _isCompleted(s) ? AppColors.success : (_isInProgress(s) ? Colors.orange : AppColors.textSecondary);
+
+  Color _priorityColor(String p) =>
+      p == 'High' ? AppColors.error : (p == 'Medium' ? Colors.orange : AppColors.success);
+
+  Color _darker(Color c, [double f = 0.18]) {
+    final hsl = HSLColor.fromColor(c);
+    return hsl.withLightness((hsl.lightness - f).clamp(0.0, 1.0)).toColor();
+  }
+
+  String _initials(String name) {
+    final parts = name.split(' ').where((e) => e.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    return parts.take(2).map((e) => e[0]).join().toUpperCase();
+  }
+
+  Widget _gradientChip(IconData icon, Color color, {double size = 40}) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [color, _darker(color)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(size * 0.32),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.28),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: Colors.white, size: size * 0.48),
+      );
+
   @override
   Widget build(BuildContext context) {
+    final isDesktop = ResponsiveLayout.isDesktop(context);
     final db = MockDatabase.instance;
 
     // Fetch live data from MockDatabase using the team's id
@@ -20,8 +76,8 @@ class TeamDetailsScreen extends StatelessWidget {
         name: team.name,
         managerId: '2', // default manager Prof. Khalid
         department: team.department,
-        leaderId: '3',  // default leader Eng. Nour
-        memberIds: ['4', '5'],
+        leaderId: '3', // default leader Eng. Nour
+        memberIds: const ['4', '5'],
       ),
     );
 
@@ -52,419 +108,539 @@ class TeamDetailsScreen extends StatelessWidget {
     // Fetch members
     final members = db.users.where((u) => mockTeam.memberIds.contains(u.id)).toList();
 
-    // Fetch team tasks (tasks assigned to members in the team)
+    // Fetch team tasks (assigned directly to the team or to its members)
     final memberIdsSet = mockTeam.memberIds.toSet();
-    final tasks = db.tasks.where((t) => memberIdsSet.contains(t.assignedMemberId)).toList();
-    final completedTasks = tasks.where((t) => t.status == 'Completed' || t.status == 'Approved' || t.status == 'Approved With Suggestions').toList();
+    final tasks = db.tasks
+        .where((t) => t.assignedTeamId == team.id || memberIdsSet.contains(t.assignedMemberId))
+        .toList();
+
+    final completedTasks = tasks.where((t) => _isCompleted(t.status)).toList();
+    final pendingTasks = tasks.where((t) => _isPending(t.status)).toList();
+    final inProgressTasks = tasks.where((t) => _isInProgress(t.status)).toList();
     final totalTasksCount = tasks.length;
     final completedTasksCount = completedTasks.length;
-    final remainingTasksCount = totalTasksCount - completedTasksCount;
-    final double completionRate = totalTasksCount > 0 ? completedTasksCount / totalTasksCount : 0.0;
+    final double completionRate =
+        totalTasksCount > 0 ? completedTasksCount / totalTasksCount : 0.0;
 
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      elevation: 10,
-      backgroundColor: const Color(0xFFEDF2F7),
-      child: Container(
-        width: 1000,
-        height: 680,
-        padding: const EdgeInsets.all(24),
-        child: Column(
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+        ),
+        titleSpacing: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Row
-            Row(
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(
-                    Icons.arrow_back,
-                    size: 16,
-                    color: Colors.white,
-                  ),
-                  label: Text(
-                    'Back to Teams'.tr(context),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0F4C81),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Text(
-                  team.name,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
-                ),
-              ],
+            Text(
+              team.name,
+              style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 16),
-            const Divider(color: Color(0xFFE2E8F0), thickness: 1),
-            const SizedBox(height: 16),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            Text(
+              'Team Details'.tr(context),
+              style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.close, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(isDesktop ? 32.w : 16.w),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── 1. Team Information ──────────────────────────────
+              _sectionCard(
+                title: 'Team Information'.tr(context),
+                icon: Icons.badge_outlined,
+                iconColor: AppColors.primary,
+                child: Column(
                   children: [
-                    // Left Column (Management & Progress)
-                    Expanded(
-                      flex: 1,
-                      child: Column(
-                        children: [
-                          _buildManagementCard(context, manager, leader),
-                          const SizedBox(height: 20),
-                          _buildProgressCard(context, completedTasksCount, remainingTasksCount, totalTasksCount, completionRate),
-                        ],
-                      ),
+                    Row(
+                      children: [
+                        _gradientChip(Icons.group_work_outlined, AppColors.primary, size: 48),
+                        SizedBox(width: 14.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                team.name,
+                                style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 4.h),
+                              _deptBadge(context, team.department),
+                            ],
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text('${team.membersCount} ${'Members'.tr(context)}',
+                                style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                            SizedBox(height: 2.h),
+                            Text('$totalTasksCount ${'Tasks'.tr(context)}',
+                                style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 20),
-                    // Right Column (Members & Tasks details)
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        children: [
-                          _buildMembersList(context, members, tasks),
-                          const SizedBox(height: 20),
-                          _buildTeamTasksList(context, tasks, members),
-                        ],
-                      ),
+                    SizedBox(height: 20.h),
+                    const Divider(color: Color(0xFFF1F5F9)),
+                    SizedBox(height: 16.h),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _infoTile(
+                            icon: Icons.person_pin_outlined,
+                            color: Colors.orange,
+                            label: 'Team Leader'.tr(context),
+                            value: leader.fullName,
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: _infoTile(
+                            icon: Icons.manage_accounts_outlined,
+                            color: Colors.blue,
+                            label: 'Manager'.tr(context),
+                            value: manager.fullName,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12.h),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _infoTile(
+                            icon: Icons.apartment_outlined,
+                            color: AppColors.primary,
+                            label: 'Department'.tr(context),
+                            value: team.department.tr(context),
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: _infoTile(
+                            icon: Icons.people_alt_outlined,
+                            color: Colors.teal,
+                            label: 'Team Size'.tr(context),
+                            value: '${team.membersCount} ${'members'.tr(context)}',
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
+              SizedBox(height: 16.h),
+
+              // ── 2. Task Overview Stats ───────────────────────────
+              _sectionCard(
+                title: 'Task Overview'.tr(context),
+                icon: Icons.insights_outlined,
+                iconColor: AppColors.primary,
+                child: _statsRow(context,
+                  _statBox(
+                    'Total Tasks'.tr(context),
+                    '$totalTasksCount',
+                    Icons.assignment_outlined,
+                    AppColors.primary,
+                  ),
+                  _statBox(
+                    'Completed'.tr(context),
+                    '$completedTasksCount',
+                    Icons.check_circle_outline,
+                    AppColors.success,
+                  ),
+                  _statBox(
+                    'In Progress'.tr(context),
+                    '${inProgressTasks.length}',
+                    Icons.hourglass_top_outlined,
+                    Colors.orange,
+                  ),
+                  _statBox(
+                    'Pending'.tr(context),
+                    '${pendingTasks.length}',
+                    Icons.schedule_outlined,
+                    AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              SizedBox(height: 16.h),
+
+              // ── 3. Task Progress ─────────────────────────────────
+              _sectionCard(
+                title: 'Task Progress'.tr(context),
+                icon: Icons.trending_up_outlined,
+                iconColor: Colors.purple,
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Completion Rate'.tr(context),
+                            style: TextStyle(fontSize: 13.sp, color: AppColors.textSecondary)),
+                        Text(
+                          '${(completionRate * 100).toInt()}%',
+                          style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: AppColors.success),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12.h),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8.r),
+                      child: LinearProgressIndicator(
+                        value: completionRate,
+                        minHeight: 10.h,
+                        backgroundColor: Colors.grey.shade200,
+                        color: AppColors.success,
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
+                    Row(
+                      children: [
+                        Expanded(child: _miniStat('Completed'.tr(context), '$completedTasksCount', AppColors.success)),
+                        Container(width: 1, height: 28.h, color: const Color(0xFFE2E8F0)),
+                        Expanded(child: _miniStat('In Progress'.tr(context), '${inProgressTasks.length}', Colors.orange)),
+                        Container(width: 1, height: 28.h, color: const Color(0xFFE2E8F0)),
+                        Expanded(child: _miniStat('Pending'.tr(context), '${pendingTasks.length}', AppColors.textSecondary)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16.h),
+
+              // ── 4. Team Members ──────────────────────────────────
+              _sectionCard(
+                title: 'Team Members'.tr(context),
+                icon: Icons.people_outline,
+                iconColor: Colors.indigo,
+                trailing: Text('(${members.length})',
+                    style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                child: members.isEmpty
+                    ? Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        child: Text('No members assigned to this team.'.tr(context),
+                            style: TextStyle(color: Colors.grey, fontSize: 13.sp)),
+                      )
+                    : Column(
+                        children: members.map((m) {
+                          final memberTasks = tasks.where((t) => t.assignedMemberId == m.id).toList();
+                          return Container(
+                            margin: EdgeInsets.only(bottom: 10.h),
+                            padding: EdgeInsets.all(12.w),
+                            decoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(14.r),
+                            ),
+                            child: Row(
+                              children: [
+                                _avatar(m.fullName, 38, AppColors.primary),
+                                SizedBox(width: 12.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(m.fullName,
+                                          style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                          overflow: TextOverflow.ellipsis),
+                                      SizedBox(height: 2.h),
+                                      Text(
+                                        '${memberTasks.length} ${'tasks taken'.tr(context)}',
+                                        style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE8F8EE),
+                                    borderRadius: BorderRadius.circular(12.r),
+                                  ),
+                                  child: Text(
+                                    '${m.points} ${'Points'.tr(context)}',
+                                    style: TextStyle(color: const Color(0xFF27AE60), fontWeight: FontWeight.bold, fontSize: 11.sp),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+              ),
+              SizedBox(height: 16.h),
+
+              // ── 5. Team Tasks ────────────────────────────────────
+              _sectionCard(
+                title: 'Team Tasks'.tr(context),
+                icon: Icons.assignment_outlined,
+                iconColor: Colors.deepOrange,
+                trailing: Text('($totalTasksCount)',
+                    style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold, color: AppColors.textSecondary)),
+                child: tasks.isEmpty
+                    ? Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        child: Center(
+                          child: Text('No tasks assigned to this team.'.tr(context),
+                              style: TextStyle(color: Colors.grey, fontSize: 13.sp)),
+                        ),
+                      )
+                    : Column(
+                        children: tasks.map((task) {
+                          final assignee = members.firstWhere(
+                            (u) => u.id == task.assignedMemberId,
+                            orElse: () => MockUser(id: '', email: '', fullName: 'Unassigned', role: '', department: ''),
+                          );
+                          return InkWell(
+                            onTap: () => context.go('/tasks/${task.id}'),
+                            borderRadius: BorderRadius.circular(14.r),
+                            child: Container(
+                              margin: EdgeInsets.only(bottom: 10.h),
+                              padding: EdgeInsets.all(14.w),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14.r),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      _gradientChip(Icons.task_alt_outlined, AppColors.primary, size: 34),
+                                      SizedBox(width: 10.w),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              task.title,
+                                              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            SizedBox(height: 2.h),
+                                            Text(
+                                              '${task.ticketId} | ${'Assigned to'.tr(context)}: ${assignee.fullName}',
+                                              style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 20.sp),
+                                    ],
+                                  ),
+                                  SizedBox(height: 10.h),
+                                  Wrap(
+                                    spacing: 8.w,
+                                    runSpacing: 6.h,
+                                    children: [
+                                      _tag(task.priority.tr(context), _priorityColor(task.priority), _priorityColor(task.priority).withValues(alpha: 0.1)),
+                                      _tag(task.status.tr(context), _statusColor(task.status), _statusColor(task.status).withValues(alpha: 0.1)),
+                                      _tag(task.deadline, AppColors.textSecondary, AppColors.background),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildManagementCard(BuildContext context, MockUser manager, MockUser leader) {
+  Widget _sectionCard({
+    required String title,
+    required IconData icon,
+    required Color iconColor,
+    required Widget child,
+    Widget? trailing,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Team Supervision'.tr(context),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0F172A),
-            ),
+          Row(
+            children: [
+              Icon(icon, color: iconColor, size: 20),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                ),
+              ),
+              ?trailing,
+            ],
           ),
-          const SizedBox(height: 20),
-          _buildUserTile(
-            leader.fullName,
-            leader.fullName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase(),
-            'TEAM LEADER'.tr(context),
-            const Color(0xFFFFFBEB),
-            Colors.orange,
-          ),
-          const SizedBox(height: 16),
-          _buildUserTile(
-            manager.fullName,
-            manager.fullName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase(),
-            'PROJECT MANAGER'.tr(context),
-            const Color(0xFFEFF6FF),
-            Colors.blue,
-          ),
+          SizedBox(height: 16.h),
+          child,
         ],
       ),
     );
   }
 
-  Widget _buildUserTile(
-    String name,
-    String initials,
-    String role,
-    Color bgColor,
-    Color textColor,
-  ) {
+  Widget _infoTile({required IconData icon, required Color color, required String label, required String value}) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12.w),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14.r),
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: textColor,
-            radius: 18,
-            child: Text(
-              initials,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
+          Icon(icon, color: color, size: 18),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(fontSize: 10.sp, color: AppColors.textSecondary)),
+                SizedBox(height: 2.h),
+                Text(value,
+                    style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                    overflow: TextOverflow.ellipsis),
+              ],
             ),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                role,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                name,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1E293B),
-                ),
-              ),
-            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildProgressCard(BuildContext context, int completed, int remaining, int total, double rate) {
+  Widget _deptBadge(BuildContext context, String dept) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 3.h),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20.r),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Text(dept.tr(context),
+          style: TextStyle(color: AppColors.primary, fontSize: 10.sp, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget _statsRow(BuildContext context, Widget a, Widget b, Widget c, Widget d) {
+    final isWide = ResponsiveLayout.isDesktop(context) || ResponsiveLayout.isTablet(context);
+    if (isWide) {
+      return Row(children: [
+        Expanded(child: a), SizedBox(width: 12.w),
+        Expanded(child: b), SizedBox(width: 12.w),
+        Expanded(child: c), SizedBox(width: 12.w),
+        Expanded(child: d),
+      ]);
+    }
+    return Column(children: [
+      Row(children: [Expanded(child: a), SizedBox(width: 10.w), Expanded(child: b)]),
+      SizedBox(height: 10.h),
+      Row(children: [Expanded(child: c), SizedBox(width: 10.w), Expanded(child: d)]),
+    ]);
+  }
+
+  Widget _statBox(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14.r),
+      ),
+      child: Row(
         children: [
-          Text(
-            'Task Score & Completion'.tr(context),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0F172A),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Center(
-            child: Stack(
-              alignment: Alignment.center,
+          Icon(icon, color: color, size: 22),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 120,
-                  height: 120,
-                  child: CircularProgressIndicator(
-                    value: rate,
-                    strokeWidth: 10,
-                    backgroundColor: const Color(0xFFE2E8F0),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFF10B981),
-                    ),
-                  ),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(value, style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                 ),
-                Text(
-                  '${(rate * 100).toInt()}%',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF10B981),
-                  ),
+                SizedBox(height: 2.h),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(label, style: TextStyle(fontSize: 10.sp, color: AppColors.textSecondary)),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                children: [
-                  Text('Completed'.tr(context), style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                  const SizedBox(height: 4),
-                  Text('$completed', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 16)),
-                ],
-              ),
-              Column(
-                children: [
-                  Text('Remaining'.tr(context), style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                  const SizedBox(height: 4),
-                  Text('$remaining', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 16)),
-                ],
-              ),
-              Column(
-                children: [
-                  Text('Total Tasks'.tr(context), style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                  const SizedBox(height: 4),
-                  Text('$total', style: const TextStyle(color: Color(0xFF0F172A), fontWeight: FontWeight.bold, fontSize: 16)),
-                ],
-              ),
-            ],
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildMembersList(BuildContext context, List<MockUser> members, List<MockTask> tasks) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Members'.tr(context) + ' (${members.length})',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0F172A),
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (members.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text('No members assigned to this team.'.tr(context), style: const TextStyle(color: Colors.grey)),
-            )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: members.length,
-              separatorBuilder: (_, _) => const Divider(color: Color(0xFFF1F5F9)),
-              itemBuilder: (context, index) {
-                final member = members[index];
-                final initials = member.fullName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase();
-                final memberTasks = tasks.where((t) => t.assignedMemberId == member.id).toList();
-
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: const Color(0xFF64748B),
-                    child: Text(
-                      initials,
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  title: Text(
-                    member.fullName,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Text('${memberTasks.length} ' + 'tasks taken'.tr(context)),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F8EE),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${member.points} ' + 'Points'.tr(context),
-                      style: const TextStyle(color: Color(0xFF27AE60), fontWeight: FontWeight.bold, fontSize: 12),
-                    ),
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
+  Widget _miniStat(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(value, style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.bold, color: color)),
+        SizedBox(height: 2.h),
+        Text(label, style: TextStyle(fontSize: 10.sp, color: AppColors.textSecondary)),
+      ],
     );
   }
 
-  Widget _buildTeamTasksList(BuildContext context, List<MockTask> tasks, List<MockUser> members) {
+  Widget _tag(String text, Color color, Color bg) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: bg,
+        borderRadius: BorderRadius.circular(8.r),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Active Team Tasks Details'.tr(context),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0F172A),
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (tasks.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  'No active tasks found.'.tr(context),
-                  style: const TextStyle(color: Color(0xFF94A3B8)),
-                ),
-              ),
-            )
-          else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: tasks.length,
-              separatorBuilder: (_, _) => const Divider(color: Color(0xFFF1F5F9)),
-              itemBuilder: (context, index) {
-                final task = tasks[index];
-                final assignee = members.firstWhere(
-                  (u) => u.id == task.assignedMemberId,
-                  orElse: () => MockUser(id: '', email: '', fullName: 'Unassigned', role: '', department: ''),
-                );
+      child: Text(text, style: TextStyle(color: color, fontSize: 10.sp, fontWeight: FontWeight.bold)),
+    );
+  }
 
-                return ListTile(
-                  title: Text(
-                    task.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text('Assigned to'.tr(context) + ': ${assignee.fullName} | ' + 'Deadline'.tr(context) + ': ${task.deadline}'),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: task.status == 'Completed' || task.status == 'Approved'
-                          ? const Color(0xFFE8F8EE)
-                          : const Color(0xFFFFF9E6),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      task.status.tr(context),
-                      style: TextStyle(
-                        color: task.status == 'Completed' || task.status == 'Approved'
-                            ? Colors.green
-                            : Colors.orange,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-        ],
+  Widget _avatar(String name, double size, Color color) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        shape: BoxShape.circle,
+      ),
+      child: Text(
+        _initials(name),
+        style: TextStyle(
+          color: color,
+          fontSize: size * 0.36,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

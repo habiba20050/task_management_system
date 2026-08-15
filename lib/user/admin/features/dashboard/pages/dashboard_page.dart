@@ -5,7 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../../../../core/colors/app_colors.dart';
 import '../../../../../core/network/mock_database.dart';
 import '../../../../../responsive/responsive_layout.dart';
-import '../../../../shared/features/language/cubit/language_cubit.dart';
+import 'package:task_management_system/language/cubit/language_cubit.dart';
 import '../../../../../core/localization/translate_extension.dart';
 import '../../../../../core/widgets/cards/app_cards.dart';
 
@@ -36,10 +36,15 @@ class _DashboardPageState extends State<DashboardPage> {
     final totalEmployees = db.users.where((u) => u.role != 'Admin').length;
     final totalDepts = db.departments.length;
     final openComplaints = db.complaints.where((c) => c.status != 'Closed' && c.status != 'Resolved').length;
+    final totalTeams = db.teams.length;
     
     final double avgPerformance = db.users.isEmpty
         ? 0.0
         : db.users.map((u) => u.finalScore).reduce((a, b) => a + b) / db.users.length;
+
+    final double avgTeamProgress = db.teams.isEmpty
+        ? 0.0
+        : db.teams.map((t) => t.progress).reduce((a, b) => a + b) / db.teams.length;
 
     // Lists for Widget Cards
     final upcomingDeadlines = db.tasks.where((t) => t.status != 'Completed' && t.status != 'Approved').toList()
@@ -76,11 +81,13 @@ class _DashboardPageState extends State<DashboardPage> {
               // KPI Section: Grid of 10 equal cards with fixed height
               LayoutBuilder(
                 builder: (context, constraints) {
-                  int crossAxisCount = 5;
+                  int crossAxisCount = 6;
                   if (constraints.maxWidth < 600) {
                     crossAxisCount = 2;
-                  } else if (constraints.maxWidth < 1100) {
+                  } else if (constraints.maxWidth < 900) {
                     crossAxisCount = 3;
+                  } else if (constraints.maxWidth < 1200) {
+                    crossAxisCount = 4;
                   }
                   return GridView.builder(
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -91,7 +98,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     ),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: 10,
+                    itemCount: 12,
                     itemBuilder: (context, index) {
                       final statCards = [
                         StatCard(title: 'Total Tasks'.tr(context), value: totalTasks.toString(), icon: Icons.checklist, accentColor: AppColors.primary),
@@ -104,6 +111,8 @@ class _DashboardPageState extends State<DashboardPage> {
                         StatCard(title: 'Total Departments'.tr(context), value: totalDepts.toString(), icon: Icons.business, accentColor: Colors.indigo),
                         StatCard(title: 'Open Complaints'.tr(context), value: openComplaints.toString(), icon: Icons.warning_amber_outlined, accentColor: Colors.redAccent),
                         StatCard(title: 'Average Performance Score'.tr(context), value: '${avgPerformance.toStringAsFixed(1)}%', icon: Icons.trending_up, accentColor: Colors.blueAccent),
+                        StatCard(title: 'Total Teams'.tr(context), value: totalTeams.toString(), icon: Icons.groups, accentColor: Colors.deepOrange),
+                        StatCard(title: 'Avg Team Progress'.tr(context), value: '${avgTeamProgress.toStringAsFixed(1)}%', icon: Icons.auto_graph, accentColor: Colors.lightGreen),
                       ];
                       return statCards[index];
                     },
@@ -135,6 +144,17 @@ class _DashboardPageState extends State<DashboardPage> {
                     Expanded(child: _buildEmployeePerformanceRankingChart(db)),
                   ],
                 ),
+                SizedBox(height: 16.h),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _buildTeamsProgressChart(db)),
+                    SizedBox(width: 16.w),
+                    Expanded(child: _buildRoleDistributionChart(db)),
+                    SizedBox(width: 16.w),
+                    Expanded(child: _buildAssignmentModeChart(db)),
+                  ],
+                ),
               ] else ...[
                 _buildStatusDonutChart(completedTasks, inProgressTasks, pendingTasks, reviewTasks, overdueTasks),
                 SizedBox(height: 16.h),
@@ -147,6 +167,12 @@ class _DashboardPageState extends State<DashboardPage> {
                 _buildPriorityDistributionChart(db),
                 SizedBox(height: 16.h),
                 _buildEmployeePerformanceRankingChart(db),
+                SizedBox(height: 16.h),
+                _buildTeamsProgressChart(db),
+                SizedBox(height: 16.h),
+                _buildRoleDistributionChart(db),
+                SizedBox(height: 16.h),
+                _buildAssignmentModeChart(db),
               ],
               SizedBox(height: 24.h),
 
@@ -399,6 +425,114 @@ class _DashboardPageState extends State<DashboardPage> {
                       barGroups: List.generate(display.length, (idx) {
                         return BarChartGroupData(x: idx, barRods: [BarChartRodData(toY: display[idx].finalScore, color: Colors.blueAccent, width: 12.w)]);
                       }),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Teams Progress Bar Chart ---
+  Widget _buildTeamsProgressChart(MockDatabase db) {
+    final teams = db.teams.take(5).toList();
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Teams Progress'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
+          SizedBox(height: 10.h),
+          SizedBox(
+            height: 140.h,
+            child: teams.isEmpty
+                ? Center(child: Text('No teams available.'.tr(context)))
+                : BarChart(
+                    BarChartData(
+                      gridData: const FlGridData(show: false),
+                      titlesData: FlTitlesData(
+                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (v, m) => Text(v.toInt().toString(), style: TextStyle(fontSize: 8.sp)))),
+                        bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (v, m) {
+                          if (v >= 0 && v < teams.length) return Text(teams[v.toInt()].name, style: TextStyle(fontSize: 8.sp));
+                          return const Text('');
+                        })),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      barGroups: List.generate(teams.length, (idx) {
+                        return BarChartGroupData(x: idx, barRods: [BarChartRodData(toY: teams[idx].progress, color: Colors.deepOrange, width: 12.w)]);
+                      }),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Users by Role Pie Chart ---
+  Widget _buildRoleDistributionChart(MockDatabase db) {
+    final admins = db.users.where((u) => u.role == 'Admin').length;
+    final managers = db.users.where((u) => u.role == 'Manager').length;
+    final leaders = db.users.where((u) => u.role == 'Team Leader').length;
+    final members = db.users.where((u) => u.role == 'Team Member').length;
+    final total = (admins + managers + leaders + members).toDouble();
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Users by Role'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
+          SizedBox(height: 10.h),
+          SizedBox(
+            height: 140.h,
+            child: total == 0
+                ? Center(child: Text('No users available.'.tr(context)))
+                : PieChart(
+                    PieChartData(
+                      sectionsSpace: 2,
+                      centerSpaceRadius: 26.r,
+                      sections: [
+                        if (admins > 0) PieChartSectionData(color: Colors.redAccent, value: admins.toDouble(), radius: 30.r, title: 'Ad', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
+                        if (managers > 0) PieChartSectionData(color: Colors.blueAccent, value: managers.toDouble(), radius: 30.r, title: 'Mg', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
+                        if (leaders > 0) PieChartSectionData(color: Colors.orangeAccent, value: leaders.toDouble(), radius: 30.r, title: 'TL', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
+                        if (members > 0) PieChartSectionData(color: Colors.greenAccent, value: members.toDouble(), radius: 30.r, title: 'TM', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Tasks by Assignment Pie Chart ---
+  Widget _buildAssignmentModeChart(MockDatabase db) {
+    final ind = db.tasks.where((t) => t.assignmentMode == 'Individual').length;
+    final team = db.tasks.where((t) => t.assignmentMode == 'Team').length;
+    final dept = db.tasks.where((t) => t.assignmentMode == 'Department').length;
+    final double total = (ind + team + dept).toDouble();
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Tasks by Assignment'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp, color: AppColors.textPrimary)),
+          SizedBox(height: 10.h),
+          SizedBox(
+            height: 140.h,
+            child: total == 0
+                ? Center(child: Text('No tasks available.'.tr(context)))
+                : PieChart(
+                    PieChartData(
+                      sectionsSpace: 2,
+                      centerSpaceRadius: 26.r,
+                      sections: [
+                        if (ind > 0) PieChartSectionData(color: Colors.cyan, value: ind.toDouble(), radius: 30.r, title: 'Ind', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
+                        if (team > 0) PieChartSectionData(color: Colors.purpleAccent, value: team.toDouble(), radius: 30.r, title: 'Team', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
+                        if (dept > 0) PieChartSectionData(color: Colors.amber, value: dept.toDouble(), radius: 30.r, title: 'Dept', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
+                      ],
                     ),
                   ),
           ),

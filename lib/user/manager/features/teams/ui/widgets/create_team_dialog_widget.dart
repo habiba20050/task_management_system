@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../shared/features/teams/cubit/teams_cubit.dart';
 import '../../../../../shared/features/teams/model/team_model.dart';
 import '../../../../../../core/network/mock_database.dart';
-import '../../../../../shared/features/auth/cubit/auth_cubit.dart';
+import 'package:task_management_system/auth/cubit/auth_cubit.dart';
 import '../../../../../../core/localization/translate_extension.dart';
 import '../../../../../../core/colors/app_colors.dart';
 

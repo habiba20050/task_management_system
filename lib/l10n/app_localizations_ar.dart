@@ -251,6 +251,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get totalUsers => 'إجمالي المستخدمين';
 
   @override
+  String get totalTeams => 'إجمالي الفرق';
+
+  @override
+  String get organizationOverview => 'نظرة عامة على المؤسسة';
+
+  @override
+  String get departmentSummary => 'ملخص الأقسام';
+
+  @override
   String get admins => 'المسؤولين';
 
   @override
@@ -774,6 +783,24 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get assignmentMode => 'طريقة التعيين';
+
+  @override
+  String get userType => 'نوع المستخدم';
+
+  @override
+  String get group => 'مجموعة';
+
+  @override
+  String get teamScope => 'نطاق الفريق';
+
+  @override
+  String get forWhom => 'لمن';
+
+  @override
+  String get wholeTeam => 'الفريق كامل';
+
+  @override
+  String get specificPerson => 'شخص معين';
 
   @override
   String get individual => 'فردي';

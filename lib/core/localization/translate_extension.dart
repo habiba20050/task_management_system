@@ -171,6 +171,12 @@ extension TranslateExtension on String {
         return localizations.inviteUser;
       case 'Total Users':
         return localizations.totalUsers;
+      case 'Total Teams':
+        return localizations.totalTeams;
+      case 'Organization Overview':
+        return localizations.organizationOverview;
+      case 'Department Summary':
+        return localizations.departmentSummary;
       case 'Admins':
         return localizations.admins;
       case 'Managers':
@@ -333,6 +339,8 @@ extension TranslateExtension on String {
         return localizations.admin;
       case 'Team Member':
         return localizations.teamMember;
+      case 'Team Leader':
+        return localizations.localeName == 'ar' ? 'قائد الفريق' : 'Team Leader';
       case 'Member':
         return localizations.member;
       case 'All':
@@ -515,6 +523,18 @@ extension TranslateExtension on String {
         return localizations.taskStatus;
       case 'Assignment Mode':
         return localizations.assignmentMode;
+      case 'User Type':
+        return localizations.userType;
+      case 'Group':
+        return localizations.group;
+      case 'Team Scope':
+        return localizations.teamScope;
+      case 'For Whom':
+        return localizations.forWhom;
+      case 'Whole Team':
+        return localizations.wholeTeam;
+      case 'Specific Person':
+        return localizations.specificPerson;
       case 'Individual':
         return localizations.individual;
       case 'Team':

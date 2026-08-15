@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../../core/colors/app_colors.dart';
 import '../../../../../responsive/responsive_layout.dart';
-import '../../../../../user/shared/widgets/custom_button.dart';
-import '../../../../../user/shared/widgets/notification_drawer.dart';
+import 'package:task_management_system/widgets/custom_button.dart';
+import 'package:task_management_system/widgets/notification_drawer.dart';
 import '../../../../shared/features/profile/cubit/profile_cubit.dart';
 
 class ProfilePage extends StatefulWidget {

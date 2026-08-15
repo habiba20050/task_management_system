@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../../shared/features/teams/cubit/teams_cubit.dart';
@@ -11,7 +11,7 @@ import '../../../../../../core/colors/app_colors.dart';
 import '../../../../../../responsive/responsive_layout.dart';
 import '../../../../../shared/features/teams/model/team_model.dart';
 import '../../../../../../core/network/mock_database.dart';
-import '../../../../../shared/features/auth/cubit/auth_cubit.dart';
+import 'package:task_management_system/auth/cubit/auth_cubit.dart';
 
 class TeamsDashboardScreen extends StatefulWidget {
   const TeamsDashboardScreen({super.key});

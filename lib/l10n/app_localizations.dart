@@ -566,6 +566,24 @@ abstract class AppLocalizations {
   /// **'Total Users'**
   String get totalUsers;
 
+  /// No description provided for @totalTeams.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Teams'**
+  String get totalTeams;
+
+  /// No description provided for @organizationOverview.
+  ///
+  /// In en, this message translates to:
+  /// **'Organization Overview'**
+  String get organizationOverview;
+
+  /// No description provided for @departmentSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Department Summary'**
+  String get departmentSummary;
+
   /// No description provided for @admins.
   ///
   /// In en, this message translates to:
@@ -1597,6 +1615,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Assignment Mode'**
   String get assignmentMode;
+
+  /// No description provided for @userType.
+  ///
+  /// In en, this message translates to:
+  /// **'User Type'**
+  String get userType;
+
+  /// No description provided for @group.
+  ///
+  /// In en, this message translates to:
+  /// **'Group'**
+  String get group;
+
+  /// No description provided for @teamScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Team Scope'**
+  String get teamScope;
+
+  /// No description provided for @forWhom.
+  ///
+  /// In en, this message translates to:
+  /// **'For Whom'**
+  String get forWhom;
+
+  /// No description provided for @wholeTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Whole Team'**
+  String get wholeTeam;
+
+  /// No description provided for @specificPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'Specific Person'**
+  String get specificPerson;
 
   /// No description provided for @individual.
   ///

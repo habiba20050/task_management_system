@@ -1,14 +1,14 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../../core/colors/app_colors.dart';
 import '../../../../../responsive/responsive_layout.dart';
-import '../../../../../user/shared/widgets/custom_button.dart';
-import '../../../../../user/shared/widgets/notification_drawer.dart';
+import 'package:task_management_system/widgets/custom_button.dart';
+import 'package:task_management_system/widgets/notification_drawer.dart';
 import '../../../../shared/features/profile/cubit/profile_cubit.dart';
 import '../../../../../core/network/mock_database.dart';
-import '../../../../shared/features/auth/cubit/auth_cubit.dart';
-import '../../../../shared/features/auth/model/user_model.dart';
+import 'package:task_management_system/auth/cubit/auth_cubit.dart';
+import 'package:task_management_system/auth/model/user_model.dart';
 import '../../../../../core/widgets/cards/app_cards.dart';
 
 class ProfilePage extends StatefulWidget {

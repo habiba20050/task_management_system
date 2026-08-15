@@ -249,6 +249,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get totalUsers => 'Total Users';
 
   @override
+  String get totalTeams => 'Total Teams';
+
+  @override
+  String get organizationOverview => 'Organization Overview';
+
+  @override
+  String get departmentSummary => 'Department Summary';
+
+  @override
   String get admins => 'Admins';
 
   @override
@@ -772,6 +781,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get assignmentMode => 'Assignment Mode';
+
+  @override
+  String get userType => 'User Type';
+
+  @override
+  String get group => 'Group';
+
+  @override
+  String get teamScope => 'Team Scope';
+
+  @override
+  String get forWhom => 'For Whom';
+
+  @override
+  String get wholeTeam => 'Whole Team';
+
+  @override
+  String get specificPerson => 'Specific Person';
 
   @override
   String get individual => 'Individual';

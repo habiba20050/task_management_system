@@ -3,19 +3,18 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import '../../core/network/dio_factory.dart';
 import '../../core/storage/local_storage.dart';
-import '../../user/shared/features/auth/repository/auth_repository.dart';
-import '../../user/shared/features/auth/repository/auth_repository_impl.dart';
-import '../../user/shared/features/auth/service/auth_api.dart';
-import '../../user/shared/features/profile/cubit/profile_cubit.dart';
+import 'package:task_management_system/auth/repository/auth_repository.dart';
+import 'package:task_management_system/auth/repository/auth_repository_impl.dart';
+import 'package:task_management_system/auth/service/auth_api.dart';
+import 'package:task_management_system/language/cubit/language_cubit.dart';
+import 'package:task_management_system/auth/cubit/auth_cubit.dart';
+import '../../user/shared/features/profile/service/profile_api.dart';
 import '../../user/shared/features/profile/repository/profile_repository.dart';
 import '../../user/shared/features/profile/repository/profile_repository_impl.dart';
-import '../../user/shared/features/profile/service/profile_api.dart';
-import '../../user/shared/features/teams/cubit/teams_cubit.dart';
+import '../../user/shared/features/profile/cubit/profile_cubit.dart';
 import '../../user/shared/features/teams/repository/teams_repository.dart';
+import '../../user/shared/features/teams/cubit/teams_cubit.dart';
 import '../../user/shared/features/users/cubit/users_cubit.dart';
-import '../../user/shared/features/language/cubit/language_cubit.dart';
-
-import '../../user/shared/features/auth/cubit/auth_cubit.dart';
 import '../../core/network/mock_database.dart';
 
 final getIt = GetIt.instance;

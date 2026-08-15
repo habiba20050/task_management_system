@@ -193,10 +193,8 @@ class TeamCardWidget extends StatelessWidget {
   }
 
   void _navigateToDetails(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => TeamDetailsScreen(team: team),
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => TeamDetailsScreen(team: team)),
     );
   }
 }
