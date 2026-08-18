@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -1804,12 +1804,12 @@ class _TasksPageState extends State<TasksPage> with SingleTickerProviderStateMix
 
   BoxDecoration _modernCardDecoration() => BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18.r),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: const Color(0xFFE2E8F0).withOpacity(0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -1982,7 +1982,8 @@ class _TasksPageState extends State<TasksPage> with SingleTickerProviderStateMix
 
     String assignMode = 'Individual'; // 'Individual' | 'Team'
     String selectedRole = 'Team Member';
-    String? selectedUserId = isManager ? currentUserId : '4';
+    final selectedUserIds = <String>{};
+    selectedUserIds.add(isManager ? currentUserId : '4');
     String? selectedTeamId = 't1';
     bool allowReassignment = false;
 
@@ -2146,7 +2147,7 @@ class _TasksPageState extends State<TasksPage> with SingleTickerProviderStateMix
                         items: ['Individual', 'Team'].map((m) => DropdownMenuItem(value: m, child: Text(m.tr(context), style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)))).toList(),
                         onChanged: (v) => setDialogState(() {
                           assignMode = v!;
-                          selectedUserId = null;
+                          selectedUserIds.clear();
                           selectedTeamId = null;
                         }),
                       ),
@@ -2163,29 +2164,74 @@ class _TasksPageState extends State<TasksPage> with SingleTickerProviderStateMix
                           items: ['Team Member', 'Team Leader', 'Manager'].map((r) => DropdownMenuItem(value: r, child: Text(r.tr(context), style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)))).toList(),
                           onChanged: (v) => setDialogState(() {
                             selectedRole = v!;
-                            selectedUserId = null;
+                            selectedUserIds.clear();
+                            final filtered = db.users.where((u) {
+                              if (u.role != selectedRole) return false;
+                              if (isManager && u.department != currentUser.department) return false;
+                              return true;
+                            }).toList();
+                            if (filtered.isNotEmpty) {
+                              selectedUserIds.add(filtered.first.id);
+                            }
                           }),
                         ),
                         SizedBox(height: 22.h),
 
-                        _buildFieldLabel(context, 'Select User', icon: Icons.person_outline),
+                        _buildFieldLabel(context, 'Select User (Select one or more)', icon: Icons.people_outline),
                         SizedBox(height: 10.h),
-                        DropdownButtonFormField<String>(
-                          initialValue: selectedUserId,
-                          isExpanded: true,
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
-                          decoration: _buildInputDecoration(context, '', icon: Icons.person_outline),
-                          items: usersForRole.map((u) => DropdownMenuItem(
-                            value: u.id,
-                            child: Row(
-                              children: [
-                                _initialsAvatar(u.fullName, 28, AppColors.primary),
-                                SizedBox(width: 10.w),
-                                Flexible(child: Text(u.fullName, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary), overflow: TextOverflow.ellipsis)),
-                              ],
-                            ),
-                          )).toList(),
-                          onChanged: (v) => setDialogState(() => selectedUserId = v),
+                        Wrap(
+                          spacing: 8.w,
+                          runSpacing: 8.h,
+                          children: usersForRole.map((u) {
+                            final isSelected = selectedUserIds.contains(u.id);
+                            return InkWell(
+                              onTap: () {
+                                setDialogState(() {
+                                  if (isSelected) {
+                                    selectedUserIds.remove(u.id);
+                                  } else {
+                                    selectedUserIds.add(u.id);
+                                  }
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(12.r),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                                decoration: BoxDecoration(
+                                  color: isSelected 
+                                      ? AppColors.primary.withValues(alpha: 0.1) 
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  border: Border.all(
+                                    color: isSelected 
+                                        ? AppColors.primary 
+                                        : const Color(0xFFE2E8F0),
+                                    width: isSelected ? 1.8 : 1.0,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _initialsAvatar(u.fullName, 26, isSelected ? AppColors.primary : Colors.grey),
+                                    SizedBox(width: 8.w),
+                                    Text(
+                                      u.fullName,
+                                      style: TextStyle(
+                                        fontSize: 13.sp,
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                        color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    if (isSelected) ...[
+                                      SizedBox(width: 6.w),
+                                      const Icon(Icons.check_circle, size: 16, color: AppColors.primary),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
                         ),
                         SizedBox(height: 22.h),
                       ] else ...[
@@ -2262,38 +2308,58 @@ class _TasksPageState extends State<TasksPage> with SingleTickerProviderStateMix
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(14.r),
                                   onTap: () {
-                                    if (titleCon.text.isNotEmpty) {
-                                      var ownerId = '4';
-                                      if (assignMode == 'Individual' && selectedUserId != null) ownerId = selectedUserId!;
-                                      if (assignMode == 'Team' && selectedTeamId != null) {
-                                        ownerId = db.teams.firstWhere((t) => t.id == selectedTeamId).leaderId;
-                                      }
-                                      setState(() {
-                                        db.addTask(MockTask(
-                                          id: DateTime.now().millisecondsSinceEpoch.toString(),
-                                          ticketId: 'tic1',
-                                          title: titleCon.text,
-                                          description: titleCon.text,
-                                          assignedMemberId: ownerId,
-                                          deadline: DateFormat('yyyy-MM-dd').format(dueDate),
-                                          estimatedHours: int.tryParse(durationCon.text) ?? 8,
-                                          priority: priority,
-                                          status: status,
-                                          assignmentMode: assignMode,
-                                          assignedTeamId: selectedTeamId,
-                                          assignedRole: selectedRole,
-                                          startDate: DateFormat('yyyy-MM-dd').format(startDate),
-                                          startTime: '${startTime.hour}:${startTime.minute}',
-                                          dueTime: '${dueTime.hour}:${dueTime.minute}',
-                                          allowReassignment: allowReassignment,
-                                          assignedById: currentUserId,
-                                          currentOwnerId: ownerId,
-                                          taskDepartment: taskDept,
-                                          taskType: assignMode == 'Team' ? 'Team Task' : 'Individual Task',
-                                        ));
-                                      });
-                                      Navigator.pop(context);
+                                    if (titleCon.text.isEmpty) {
+                                      return;
                                     }
+                                    if (assignMode == 'Individual' && selectedUserIds.isEmpty) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Please select at least one assignee'.tr(context)),
+                                          backgroundColor: AppColors.danger,
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    var ownerId = '4';
+                                    var customIds = <String>[];
+                                    var typeOfTask = 'Individual Task';
+                                    if (assignMode == 'Individual') {
+                                      ownerId = selectedUserIds.first;
+                                      if (selectedUserIds.length > 1) {
+                                        customIds = selectedUserIds.toList();
+                                        typeOfTask = 'Custom / Multiple';
+                                      }
+                                    } else if (assignMode == 'Team' && selectedTeamId != null) {
+                                      ownerId = db.teams.firstWhere((t) => t.id == selectedTeamId).leaderId;
+                                      typeOfTask = 'Team Task';
+                                    }
+                                    final teamId = assignMode == 'Team' ? selectedTeamId : null;
+                                    setState(() {
+                                      db.addTask(MockTask(
+                                        id: DateTime.now().millisecondsSinceEpoch.toString(),
+                                        ticketId: 'tic1',
+                                        title: titleCon.text,
+                                        description: titleCon.text,
+                                        assignedMemberId: ownerId,
+                                        deadline: DateFormat('yyyy-MM-dd').format(dueDate),
+                                        estimatedHours: int.tryParse(durationCon.text) ?? 8,
+                                        priority: priority,
+                                        status: status,
+                                        assignmentMode: assignMode,
+                                        assignedTeamId: teamId,
+                                        assignedRole: selectedRole,
+                                        startDate: DateFormat('yyyy-MM-dd').format(startDate),
+                                        startTime: '${startTime.hour}:${startTime.minute}',
+                                        dueTime: '${dueTime.hour}:${dueTime.minute}',
+                                        allowReassignment: allowReassignment,
+                                        assignedById: currentUserId,
+                                        currentOwnerId: ownerId,
+                                        taskDepartment: taskDept,
+                                        taskType: typeOfTask,
+                                        customAssigneeIds: customIds,
+                                      ));
+                                    });
+                                    Navigator.pop(context);
                                   },
                                   child: Center(
                                     child: Text(

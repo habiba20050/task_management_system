@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -375,6 +375,20 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> with SingleTickerProv
       orElse: () => MockUser(id: '', email: '', fullName: 'System', role: '', department: ''),
     );
 
+    final List<String> assigneeNames = [];
+    if (task.customAssigneeIds.isNotEmpty) {
+      for (final id in task.customAssigneeIds) {
+        final u = db.users.firstWhere(
+          (usr) => usr.id == id,
+          orElse: () => MockUser(id: '', email: '', fullName: 'Unknown', role: '', department: ''),
+        );
+        if (u.fullName.isNotEmpty && u.fullName != 'Unknown') {
+          assigneeNames.add(u.fullName);
+        }
+      }
+    }
+    final String ownerName = assigneeNames.isNotEmpty ? assigneeNames.join(', ') : owner.fullName;
+
     final int doneCount = task.checklist.where((c) => c.isDone).length;
     final int totalCount = task.checklist.length;
     final double checklistProgress = totalCount == 0 ? 0.0 : (doneCount / totalCount);
@@ -391,7 +405,7 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> with SingleTickerProv
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(flex: 3, child: _buildTaskDetailsCard(task, owner, creator)),
+                    Expanded(flex: 3, child: _buildTaskDetailsCard(task, ownerName, creator)),
                     SizedBox(width: 16.w),
                     Expanded(flex: 2, child: _buildDeadlineCard(task)),
                   ],
@@ -399,7 +413,7 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> with SingleTickerProv
               }
               return Column(
                 children: [
-                  _buildTaskDetailsCard(task, owner, creator),
+                  _buildTaskDetailsCard(task, ownerName, creator),
                   SizedBox(height: 16.h),
                   _buildDeadlineCard(task),
                 ],
@@ -417,7 +431,7 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> with SingleTickerProv
     );
   }
 
-  Widget _buildTaskDetailsCard(MockTask task, MockUser owner, MockUser creator) {
+  Widget _buildTaskDetailsCard(MockTask task, String ownerName, MockUser creator) {
     return Container(
       padding: EdgeInsets.all(18.w),
       decoration: _modernCardDecoration(),
@@ -437,7 +451,7 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> with SingleTickerProv
             Divider(height: 24.h, color: const Color(0xFFE2E8F0)),
           ],
           _detailRow(Icons.person_outline, 'Assigned By', creator.fullName),
-          _detailRow(Icons.person_pin_outlined, 'Current Owner', owner.fullName),
+          _detailRow(Icons.person_pin_outlined, 'Current Owner', ownerName),
           _detailRow(Icons.business_outlined, 'Department', task.taskDepartment.tr(context)),
           _detailRow(Icons.flag_outlined, 'Priority', task.priority.tr(context)),
           _detailRow(Icons.calendar_today_outlined, 'Start Date & Time', '${task.startDate} | ${task.startTime}'),
@@ -2191,12 +2205,12 @@ class _TaskDetailsPageState extends State<TaskDetailsPage> with SingleTickerProv
 
   BoxDecoration _modernCardDecoration() => BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18.r),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: const Color(0xFFE2E8F0).withOpacity(0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],

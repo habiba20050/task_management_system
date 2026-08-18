@@ -365,7 +365,8 @@ class _DashboardPageState extends State<DashboardPage> {
     final high = db.tasks.where((t) => t.priority == 'HIGH').length;
     final med = db.tasks.where((t) => t.priority == 'MEDIUM').length;
     final low = db.tasks.where((t) => t.priority == 'LOW').length;
-    final double total = (high + med + low).toDouble();
+    final critical = db.tasks.where((t) => t.priority == 'CRITICAL' || t.priority == 'URGENT').length;
+    final double total = (high + med + low + critical).toDouble();
 
     return AppCard(
       child: Column(
@@ -377,16 +378,29 @@ class _DashboardPageState extends State<DashboardPage> {
             height: 140.h,
             child: total == 0
                 ? Center(child: Text('No tasks available.'.tr(context)))
-                : PieChart(
-                    PieChartData(
-                      sectionsSpace: 2,
-                      centerSpaceRadius: 26.r,
-                      sections: [
-                        PieChartSectionData(color: AppColors.danger, value: high.toDouble(), radius: 30.r, title: 'H', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
-                        PieChartSectionData(color: AppColors.primary, value: med.toDouble(), radius: 30.r, title: 'M', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
-                        PieChartSectionData(color: AppColors.success, value: low.toDouble(), radius: 30.r, title: 'L', titleStyle: TextStyle(fontSize: 8.sp, color: Colors.white)),
-                      ],
-                    ),
+                : Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 36.r,
+                          sections: [
+                            PieChartSectionData(color: AppColors.success, value: low == 0 ? 1 : low.toDouble(), radius: 18.r, showTitle: false),
+                            PieChartSectionData(color: Colors.amber, value: med.toDouble(), radius: 18.r, showTitle: false),
+                            PieChartSectionData(color: AppColors.danger, value: high.toDouble(), radius: 18.r, showTitle: false),
+                            PieChartSectionData(color: Colors.purple, value: critical.toDouble(), radius: 18.r, showTitle: false),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('${total.toInt()}', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                          Text('Tasks'.tr(context), style: TextStyle(fontSize: 8.sp, color: Colors.grey)),
+                        ],
+                      ),
+                    ],
                   ),
           ),
         ],

@@ -323,6 +323,10 @@ extension TranslateExtension on String {
         return localizations.assignSubTaskFor;
       case 'Assign to Member':
         return localizations.assignToMember;
+      case 'Assign To (Select one or more)':
+        return localizations.localeName == 'ar' ? 'إسناد إلى (اختر شخصاً أو أكثر)' : 'Assign To (Select one or more)';
+      case 'Please select at least one assignee':
+        return localizations.localeName == 'ar' ? 'يرجى اختيار شخص واحد على الأقل' : 'Please select at least one assignee';
       case 'Sub-Task Title':
         return localizations.subTaskTitle;
       case 'Task Details':

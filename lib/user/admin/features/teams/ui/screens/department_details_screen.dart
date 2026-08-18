@@ -6,6 +6,7 @@ import '../../../../../../core/localization/translate_extension.dart';
 import '../../../../../../core/colors/app_colors.dart';
 import '../../../../../../responsive/responsive_layout.dart';
 import 'team_details_screen.dart';
+import '../../../../../../core/widgets/cards/app_cards.dart';
 
 class DepartmentDetailsScreen extends StatelessWidget {
   final MockDepartment department;
@@ -193,12 +194,46 @@ class DepartmentDetailsScreen extends StatelessWidget {
                 title: 'Overview'.tr(context),
                 icon: Icons.insights_outlined,
                 iconColor: AppColors.primary,
-                child: _statsRow(
-                  context,
-                  _statBox('Employees'.tr(context), '${employees.length}', Icons.people_outline, AppColors.primary),
-                  _statBox('Teams'.tr(context), '${teams.length}', Icons.groups_outlined, Colors.green),
-                  _statBox('Team Members'.tr(context), '$teamMembersCount', Icons.group_outlined, Colors.indigo),
-                  _statBox('Assigned Tasks'.tr(context), '$teamTasksCount', Icons.assignment_outlined, Colors.orange),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final cols = constraints.maxWidth < 600 ? 2 : 4;
+                    return GridView(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: cols,
+                        crossAxisSpacing: 12.w,
+                        mainAxisSpacing: 12.h,
+                        mainAxisExtent: 82.h,
+                      ),
+                      children: [
+                        StatCard(
+                          title: 'Employees'.tr(context),
+                          value: employees.length.toString(),
+                          icon: Icons.people_outline,
+                          accentColor: AppColors.primary,
+                        ),
+                        StatCard(
+                          title: 'Teams'.tr(context),
+                          value: teams.length.toString(),
+                          icon: Icons.groups_outlined,
+                          accentColor: Colors.green,
+                        ),
+                        StatCard(
+                          title: 'Team Members'.tr(context),
+                          value: teamMembersCount.toString(),
+                          icon: Icons.group_outlined,
+                          accentColor: Colors.indigo,
+                        ),
+                        StatCard(
+                          title: 'Assigned Tasks'.tr(context),
+                          value: teamTasksCount.toString(),
+                          icon: Icons.assignment_outlined,
+                          accentColor: Colors.orange,
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
               SizedBox(height: 16.h),

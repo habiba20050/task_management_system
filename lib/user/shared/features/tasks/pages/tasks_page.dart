@@ -335,78 +335,258 @@ class _TasksPageState extends State<TasksPage> {
   Widget _buildFilterBar(BuildContext context) {
     final db = MockDatabase.instance;
     return AppCard(
-      child: Column(
-        children: [
-          Row(
+      padding: EdgeInsets.all(18.w),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          const gap = 14.0;
+          final cols = constraints.maxWidth < 600
+              ? 2
+              : constraints.maxWidth < 1000
+                  ? 3
+                  : 4;
+          final fieldWidth = (constraints.maxWidth - gap * (cols - 1)) / cols;
+
+          return Wrap(
+            spacing: gap,
+            runSpacing: 14.h,
+            crossAxisAlignment: WrapCrossAlignment.end,
             children: [
-              Expanded(
-                flex: 2,
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10.w),
-                  decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(AppRadius.md.r), border: Border.all(color: AppColors.border)),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Search'.tr(context) + '...',
-                      border: InputBorder.none,
-                      icon: const Icon(Icons.search, color: Colors.grey),
-                      isDense: true,
+              // Search Input
+              SizedBox(
+                width: fieldWidth,
+                child: _buildFilterField(
+                  label: 'Search'.tr(context),
+                  child: Container(
+                    height: 48.h,
+                    padding: EdgeInsets.symmetric(horizontal: 12.w),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(14.r),
                     ),
-                    onChanged: (val) => setState(() => _searchQuery = val),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Search tasks...'.tr(context),
+                        border: InputBorder.none,
+                        icon: const Icon(Icons.search, size: 18, color: AppColors.textSecondary),
+                        isDense: true,
+                      ),
+                      style: TextStyle(fontSize: 12.5.sp, color: AppColors.textPrimary),
+                      onChanged: (val) => setState(() => _searchQuery = val),
+                    ),
                   ),
                 ),
               ),
-              SizedBox(width: 10.w),
-              _buildDropdown('Department'.tr(context), _selectedDept, ['All', 'Computer Science', 'Engineering', 'IT Services'], (val) => setState(() => _selectedDept = val!)),
-              SizedBox(width: 10.w),
-              _buildDropdown('Team'.tr(context), _selectedTeam, ['All', ...db.teams.map((t) => t.name)], (val) => setState(() => _selectedTeam = val!)),
-            ],
-          ),
-          SizedBox(height: 8.h),
-          Row(
-            children: [
-              _buildDropdown('Priority'.tr(context), _selectedPriority, ['All', 'HIGH', 'MEDIUM', 'LOW'], (val) => setState(() => _selectedPriority = val!)),
-              SizedBox(width: 10.w),
-              _buildDropdown('Status'.tr(context), _selectedStatus, ['All', 'Pending', 'Assigned', 'In Progress', 'Submitted', 'Under Review', 'Approved', 'Completed', 'Needs Changes', 'Rejected', 'Overdue'], (val) => setState(() => _selectedStatus = val!)),
-              SizedBox(width: 10.w),
-              _buildDropdown('Assigned To'.tr(context), _selectedOwner, ['All', ...db.users.map((u) => u.id)], (val) => setState(() => _selectedOwner = val!), labelMap: {'All': 'All'.tr(context), ...{for (var u in db.users) u.id: u.fullName}}),
-              SizedBox(width: 10.w),
-              Expanded(
-                child: TextButton.icon(
-                  onPressed: () async {
-                    final range = await showDateRangePicker(context: context, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
-                    if (range != null) setState(() => _selectedDateRange = range);
-                  },
-                  icon: const Icon(Icons.date_range, size: 14),
-                  label: Text(_selectedDateRange == null ? 'Date Range'.tr(context) : 'Selected', style: TextStyle(fontSize: 10.sp)),
-                  style: TextButton.styleFrom(side: const BorderSide(color: AppColors.border)),
+
+              // Department
+              SizedBox(
+                width: fieldWidth,
+                child: _buildFilterField(
+                  label: 'Department'.tr(context),
+                  child: _buildEnlargedDropdownBox(
+                    icon: Icons.business_outlined,
+                    value: _selectedDept,
+                    items: ['All', 'Computer Science', 'Engineering', 'IT Services'],
+                    labelMap: {'All': 'All Departments'.tr(context)},
+                    onChanged: (val) => setState(() => _selectedDept = val),
+                  ),
                 ),
               ),
-              if (_selectedDateRange != null) ...[
-                IconButton(icon: const Icon(Icons.clear, color: AppColors.danger), onPressed: () => setState(() => _selectedDateRange = null))
-              ]
+
+              // Team
+              SizedBox(
+                width: fieldWidth,
+                child: _buildFilterField(
+                  label: 'Team'.tr(context),
+                  child: _buildEnlargedDropdownBox(
+                    icon: Icons.group_outlined,
+                    value: _selectedTeam,
+                    items: ['All', ...db.teams.map((t) => t.name)],
+                    labelMap: {'All': 'All Teams'.tr(context)},
+                    onChanged: (val) => setState(() => _selectedTeam = val),
+                  ),
+                ),
+              ),
+
+              // Priority
+              SizedBox(
+                width: fieldWidth,
+                child: _buildFilterField(
+                  label: 'Priority'.tr(context),
+                  child: _buildEnlargedDropdownBox(
+                    icon: Icons.flag_outlined,
+                    value: _selectedPriority,
+                    items: ['All', 'HIGH', 'MEDIUM', 'LOW'],
+                    labelMap: {'All': 'All Priorities'.tr(context)},
+                    onChanged: (val) => setState(() => _selectedPriority = val),
+                  ),
+                ),
+              ),
+
+              // Status
+              SizedBox(
+                width: fieldWidth,
+                child: _buildFilterField(
+                  label: 'Task Status'.tr(context),
+                  child: _buildEnlargedDropdownBox(
+                    icon: Icons.circle_outlined,
+                    value: _selectedStatus,
+                    items: ['All', 'Pending', 'Assigned', 'In Progress', 'Submitted', 'Under Review', 'Approved', 'Completed', 'Needs Changes', 'Rejected', 'Overdue'],
+                    labelMap: {'All': 'All Statuses'.tr(context)},
+                    onChanged: (val) => setState(() => _selectedStatus = val),
+                  ),
+                ),
+              ),
+
+              // Assigned To
+              SizedBox(
+                width: fieldWidth,
+                child: _buildFilterField(
+                  label: 'Assigned To'.tr(context),
+                  child: _buildEnlargedDropdownBox(
+                    icon: Icons.person_outline,
+                    value: _selectedOwner,
+                    items: ['All', ...db.users.map((u) => u.id)],
+                    labelMap: {'All': 'All Users'.tr(context), ...{for (var u in db.users) u.id: u.fullName}},
+                    onChanged: (val) => setState(() => _selectedOwner = val),
+                  ),
+                ),
+              ),
+
+              // Date Range
+              SizedBox(
+                width: fieldWidth,
+                child: _buildFilterField(
+                  label: 'Date Range'.tr(context),
+                  child: InkWell(
+                    onTap: () async {
+                      final range = await showDateRangePicker(context: context, firstDate: DateTime(2026, 1, 1), lastDate: DateTime(2027, 12, 31));
+                      if (range != null) setState(() => _selectedDateRange = range);
+                    },
+                    borderRadius: BorderRadius.circular(14.r),
+                    child: Container(
+                      height: 48.h,
+                      padding: EdgeInsets.symmetric(horizontal: 12.w),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(14.r),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.primary),
+                          SizedBox(width: 6.w),
+                          Expanded(
+                            child: Text(
+                              _selectedDateRange == null
+                                  ? 'Select'.tr(context)
+                                  : '${DateFormat('dd MMM').format(_selectedDateRange!.start)} - ${DateFormat('dd MMM').format(_selectedDateRange!.end)}',
+                              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // Reset
+              if (_selectedDateRange != null || _selectedDept != 'All' || _selectedTeam != 'All' || _selectedPriority != 'All' || _selectedStatus != 'All' || _selectedOwner != 'All' || _searchQuery.isNotEmpty) ...[
+                SizedBox(
+                  width: fieldWidth,
+                  height: 48.h,
+                  child: TextButton.icon(
+                    onPressed: () => setState(() {
+                      _searchQuery = '';
+                      _selectedDept = 'All';
+                      _selectedTeam = 'All';
+                      _selectedPriority = 'All';
+                      _selectedStatus = 'All';
+                      _selectedOwner = 'All';
+                      _selectedDateRange = null;
+                    }),
+                    icon: const Icon(Icons.refresh, size: 16, color: AppColors.textSecondary),
+                    label: Text('Reset'.tr(context), style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 12.w),
+                    ),
+                  ),
+                ),
+              ],
             ],
-          )
-        ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildDropdown(String label, String value, List<String> options, ValueChanged<String?> onChanged, {Map<String, String>? labelMap}) {
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 8.w),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.md.r), border: Border.all(color: AppColors.border)),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: value,
-            isExpanded: true,
-            hint: Text(label, style: TextStyle(fontSize: 11.sp)),
-            items: options.map((o) {
-              final text = labelMap != null ? (labelMap[o] ?? o) : o.tr(context);
-              return DropdownMenuItem(value: o, child: Text(text, style: TextStyle(fontSize: 11.sp)));
-            }).toList(),
-            onChanged: onChanged,
+  Widget _buildFilterField({required String label, required Widget child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+        ),
+        SizedBox(height: 6.h),
+        child,
+      ],
+    );
+  }
+
+  Widget _buildEnlargedDropdownBox({
+    required IconData icon,
+    required String value,
+    required List<String> items,
+    required Map<String, String> labelMap,
+    required ValueChanged<String> onChanged,
+  }) {
+    final displayValue = labelMap[value] ?? value.tr(context);
+    return PopupMenuButton<String>(
+      initialValue: items.contains(value) ? value : items.first,
+      onSelected: onChanged,
+      offset: Offset(0, 48.h),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+      itemBuilder: (context) => items.map((o) {
+        final text = labelMap[o] ?? o.tr(context);
+        final isSelected = o == value;
+        return PopupMenuItem(
+          value: o,
+          height: 38.h,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isSelected) const Icon(Icons.check, size: 16, color: AppColors.primary) else const SizedBox(width: 16),
+              const SizedBox(width: 8),
+              Text(text, style: TextStyle(fontSize: 13.sp, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+            ],
           ),
+        );
+      }).toList(),
+      child: Container(
+        width: double.infinity,
+        height: 48.h,
+        padding: EdgeInsets.symmetric(horizontal: 12.w),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(14.r),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                displayValue,
+                style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
+          ],
         ),
       ),
     );

@@ -6,6 +6,7 @@ import '../../../../../../core/network/mock_database.dart';
 import '../../../../../../core/localization/translate_extension.dart';
 import '../../../../../../core/colors/app_colors.dart';
 import '../../../../../../responsive/responsive_layout.dart';
+import '../../../../../../core/widgets/cards/app_cards.dart';
 
 class TeamDetailsScreen extends StatelessWidget {
   final TeamModel team;
@@ -254,31 +255,46 @@ class TeamDetailsScreen extends StatelessWidget {
                 title: 'Task Overview'.tr(context),
                 icon: Icons.insights_outlined,
                 iconColor: AppColors.primary,
-                child: _statsRow(context,
-                  _statBox(
-                    'Total Tasks'.tr(context),
-                    '$totalTasksCount',
-                    Icons.assignment_outlined,
-                    AppColors.primary,
-                  ),
-                  _statBox(
-                    'Completed'.tr(context),
-                    '$completedTasksCount',
-                    Icons.check_circle_outline,
-                    AppColors.success,
-                  ),
-                  _statBox(
-                    'In Progress'.tr(context),
-                    '${inProgressTasks.length}',
-                    Icons.hourglass_top_outlined,
-                    Colors.orange,
-                  ),
-                  _statBox(
-                    'Pending'.tr(context),
-                    '${pendingTasks.length}',
-                    Icons.schedule_outlined,
-                    AppColors.textSecondary,
-                  ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final cols = constraints.maxWidth < 600 ? 2 : 4;
+                    return GridView(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: cols,
+                        crossAxisSpacing: 12.w,
+                        mainAxisSpacing: 12.h,
+                        mainAxisExtent: 82.h,
+                      ),
+                      children: [
+                        StatCard(
+                          title: 'Total Tasks'.tr(context),
+                          value: totalTasksCount.toString(),
+                          icon: Icons.assignment_outlined,
+                          accentColor: AppColors.primary,
+                        ),
+                        StatCard(
+                          title: 'Completed'.tr(context),
+                          value: completedTasksCount.toString(),
+                          icon: Icons.check_circle_outline,
+                          accentColor: AppColors.success,
+                        ),
+                        StatCard(
+                          title: 'In Progress'.tr(context),
+                          value: inProgressTasks.length.toString(),
+                          icon: Icons.hourglass_top_outlined,
+                          accentColor: Colors.orange,
+                        ),
+                        StatCard(
+                          title: 'Pending'.tr(context),
+                          value: pendingTasks.length.toString(),
+                          icon: Icons.schedule_outlined,
+                          accentColor: AppColors.textSecondary,
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
               SizedBox(height: 16.h),

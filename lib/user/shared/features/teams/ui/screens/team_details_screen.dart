@@ -56,7 +56,11 @@ class TeamDetailsScreen extends StatelessWidget {
 
     // Fetch team tasks (tasks explicitly assigned to this team or assigned to team members)
     final memberIdsSet = mockTeam.memberIds.toSet();
-    final tasks = db.tasks.where((t) => t.assignedTeamId == mockTeam.id || (t.assignedMemberId.isNotEmpty && memberIdsSet.contains(t.assignedMemberId))).toList();
+    final tasks = db.tasks.where((t) =>
+      t.assignedTeamId == mockTeam.id ||
+      (t.assignedMemberId.isNotEmpty && memberIdsSet.contains(t.assignedMemberId)) ||
+      t.customAssigneeIds.any((id) => memberIdsSet.contains(id))
+    ).toList();
     final completedTasks = tasks.where((t) => t.status == 'Completed' || t.status == 'Approved' || t.status == 'Approved With Suggestions').toList();
     final totalTasksCount = tasks.length;
     final completedTasksCount = completedTasks.length;
@@ -163,7 +167,14 @@ class TeamDetailsScreen extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -256,7 +267,14 @@ class TeamDetailsScreen extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,7 +352,14 @@ class TeamDetailsScreen extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -362,7 +387,7 @@ class TeamDetailsScreen extends StatelessWidget {
               itemBuilder: (context, index) {
                 final member = members[index];
                 final initials = member.fullName.split(' ').map((e) => e.isNotEmpty ? e[0] : '').take(2).join().toUpperCase();
-                final memberTasks = tasks.where((t) => t.assignedMemberId == member.id).toList();
+                final memberTasks = tasks.where((t) => t.assignedMemberId == member.id || t.customAssigneeIds.contains(member.id)).toList();
 
                 return ListTile(
                   leading: CircleAvatar(
@@ -401,7 +426,14 @@ class TeamDetailsScreen extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -437,6 +469,16 @@ class TeamDetailsScreen extends StatelessWidget {
                   (u) => u.id == task.assignedMemberId,
                   orElse: () => MockUser(id: '', email: '', fullName: 'Unassigned', role: '', department: ''),
                 );
+                var assigneeNames = 'Unassigned';
+                if (task.taskType == 'Custom / Multiple' && task.customAssigneeIds.isNotEmpty) {
+                  final names = task.customAssigneeIds.map((id) {
+                    final u = MockDatabase.instance.users.firstWhere((user) => user.id == id, orElse: () => MockUser(id: '', email: '', fullName: 'Unknown', role: '', department: ''));
+                    return u.fullName;
+                  }).toList();
+                  assigneeNames = names.join(', ');
+                } else {
+                  assigneeNames = assignee.fullName;
+                }
 
                 return ListTile(
                   onTap: () {
@@ -448,7 +490,7 @@ class TeamDetailsScreen extends StatelessWidget {
                     task.title,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text('${'Assigned to'.tr(context)}: ${assignee.fullName} | ${'Deadline'.tr(context)}: ${task.deadline}'),
+                  subtitle: Text('${'Assigned to'.tr(context)}: $assigneeNames | ${'Deadline'.tr(context)}: ${task.deadline}'),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(

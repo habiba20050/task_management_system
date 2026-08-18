@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
@@ -13,6 +13,7 @@ import '../../../../../../responsive/responsive_layout.dart';
 import '../../../../../shared/features/teams/model/team_model.dart';
 import '../../../../../../core/network/mock_database.dart';
 import 'package:task_management_system/auth/cubit/auth_cubit.dart';
+import '../../../../../../core/widgets/cards/app_cards.dart';
 
 class TeamsDashboardScreen extends StatefulWidget {
   const TeamsDashboardScreen({super.key});
@@ -197,21 +198,81 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen>
                   final avgProgress = allTeams.isEmpty
                       ? 0.0
                       : allTeams.fold<double>(0, (s, t) => s + t.completionPercentage) / allTeams.length;
-                  return _statsRow([
-                    _statCard('Active Teams'.tr(context), '${allTeams.length}', Icons.groups_outlined, Colors.blue),
-                    _statCard('Total Members'.tr(context), '$totalMembers', Icons.person_outline, Colors.green),
-                    _statCard('Avg Completion'.tr(context), '${avgProgress.toInt()}%', Icons.trending_up, Colors.purple),
-                  ]);
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final cols = constraints.maxWidth < 600 ? 1 : 3;
+                      return GridView(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: cols,
+                          crossAxisSpacing: 12.w,
+                          mainAxisSpacing: 12.h,
+                          mainAxisExtent: 82.h,
+                        ),
+                        children: [
+                          StatCard(
+                            title: 'Active Teams'.tr(context),
+                            value: allTeams.length.toString(),
+                            icon: Icons.groups_outlined,
+                            accentColor: Colors.blue,
+                          ),
+                          StatCard(
+                            title: 'Total Members'.tr(context),
+                            value: totalMembers.toString(),
+                            icon: Icons.person_outline,
+                            accentColor: Colors.green,
+                          ),
+                          StatCard(
+                            title: 'Avg Completion'.tr(context),
+                            value: '${avgProgress.toInt()}%',
+                            icon: Icons.trending_up,
+                            accentColor: Colors.purple,
+                          ),
+                        ],
+                      );
+                    },
+                  );
                 }
                 return const SizedBox.shrink();
               },
             )
           else
-            _statsRow([
-              _statCard('Total Departments'.tr(context), '${db.departments.length}', Icons.business_outlined, Colors.blue),
-              _statCard('Total Teams'.tr(context), '${db.teams.length}', Icons.groups_outlined, Colors.green),
-              _statCard('Total Managers'.tr(context), '${db.users.where((u) => u.role == 'Manager').length}', Icons.supervisor_account_outlined, Colors.purple),
-            ]),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final cols = constraints.maxWidth < 600 ? 1 : 3;
+                return GridView(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    crossAxisSpacing: 12.w,
+                    mainAxisSpacing: 12.h,
+                    mainAxisExtent: 82.h,
+                  ),
+                  children: [
+                    StatCard(
+                      title: 'Total Departments'.tr(context),
+                      value: db.departments.length.toString(),
+                      icon: Icons.business_outlined,
+                      accentColor: Colors.blue,
+                    ),
+                    StatCard(
+                      title: 'Total Teams'.tr(context),
+                      value: db.teams.length.toString(),
+                      icon: Icons.groups_outlined,
+                      accentColor: Colors.green,
+                    ),
+                    StatCard(
+                      title: 'Total Managers'.tr(context),
+                      value: db.users.where((u) => u.role == 'Manager').length.toString(),
+                      icon: Icons.supervisor_account_outlined,
+                      accentColor: Colors.purple,
+                    ),
+                  ],
+                );
+              },
+            ),
           SizedBox(height: 16.h),
 
           // ── Search ────────────────────────────────────────────────

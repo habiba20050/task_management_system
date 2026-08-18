@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -171,14 +171,40 @@ class _EvaluationsPageState extends State<EvaluationsPage> {
     final top = sorted.isNotEmpty ? sorted.first.fullName : 'N/A';
     final lowest = sorted.isNotEmpty ? sorted.last.fullName : 'N/A';
 
-    return AppCard(
-      child: Row(
-        children: [
-          Expanded(child: _buildMetricTile('Top Employee', top, Icons.emoji_events, Colors.amber)),
-          Expanded(child: _buildMetricTile('Lowest Performance', lowest, Icons.trending_down, AppColors.danger)),
-          Expanded(child: _buildMetricTile('Average Department Score', '84.2%', Icons.business, AppColors.primary)),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = constraints.maxWidth < 600 ? 1 : 3;
+        return GridView(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: cols,
+            crossAxisSpacing: 12.w,
+            mainAxisSpacing: 12.h,
+            mainAxisExtent: 82.h,
+          ),
+          children: [
+            StatCard(
+              title: 'Top Employee'.tr(context),
+              value: top,
+              icon: Icons.emoji_events,
+              accentColor: Colors.amber,
+            ),
+            StatCard(
+              title: 'Lowest Performance'.tr(context),
+              value: lowest,
+              icon: Icons.trending_down,
+              accentColor: AppColors.danger,
+            ),
+            StatCard(
+              title: 'Average Department Score'.tr(context),
+              value: '84.2%',
+              icon: Icons.business,
+              accentColor: AppColors.primary,
+            ),
+          ],
+        );
+      },
     );
   }
 

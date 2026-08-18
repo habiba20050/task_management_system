@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +8,7 @@ import '../../../../../core/network/mock_database.dart';
 import '../../../../../responsive/responsive_layout.dart';
 import 'package:task_management_system/auth/cubit/auth_cubit.dart';
 import 'package:task_management_system/auth/model/user_model.dart';
+import '../../../../../core/widgets/cards/app_cards.dart';
 
 class EvaluationsPage extends StatefulWidget {
   const EvaluationsPage({super.key});
@@ -72,12 +73,12 @@ class _EvaluationsPageState extends State<EvaluationsPage>
 
   BoxDecoration _modernCardDecoration() => BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18.r),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: const Color(0xFFE2E8F0).withOpacity(0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -515,26 +516,46 @@ class _EvaluationsPageState extends State<EvaluationsPage>
           LayoutBuilder(builder: (context, constraints) {
             final w = constraints.maxWidth;
             final cols = w < 600 ? 2 : (w < 1000 ? 3 : 5);
-            return GridView.count(
+            return GridView(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: cols,
-              crossAxisSpacing: 12.w,
-              mainAxisSpacing: 12.h,
-              childAspectRatio: 2.0,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: cols,
+                crossAxisSpacing: 12.w,
+                mainAxisSpacing: 12.h,
+                mainAxisExtent: 82.h,
+              ),
               children: [
-                _kpiCard(context, 'Teams'.tr(context), deptTeams.length.toString(),
-                    Icons.group_work_outlined, AppColors.primary),
-                _kpiCard(context, 'Team Leaders'.tr(context), sortedLeaders.length.toString(),
-                    Icons.supervisor_account_outlined, Colors.indigo),
-                _kpiCard(context, 'Members'.tr(context), sortedMembers.length.toString(),
-                    Icons.person_outlined, Colors.blueGrey),
-                _kpiCard(context, 'Avg Member Score'.tr(context),
-                    '${avgScore.toStringAsFixed(1)}%', Icons.analytics_outlined,
-                    _getScoreColor(avgScore)),
-                _kpiCard(context, 'Avg Leader Score'.tr(context),
-                    '${avgLeaderScore.toStringAsFixed(1)}%', Icons.star_border_outlined,
-                    _getScoreColor(avgLeaderScore)),
+                StatCard(
+                  title: 'Teams'.tr(context),
+                  value: deptTeams.length.toString(),
+                  icon: Icons.group_work_outlined,
+                  accentColor: AppColors.primary,
+                ),
+                StatCard(
+                  title: 'Team Leaders'.tr(context),
+                  value: sortedLeaders.length.toString(),
+                  icon: Icons.supervisor_account_outlined,
+                  accentColor: Colors.indigo,
+                ),
+                StatCard(
+                  title: 'Members'.tr(context),
+                  value: sortedMembers.length.toString(),
+                  icon: Icons.person_outlined,
+                  accentColor: Colors.blueGrey,
+                ),
+                StatCard(
+                  title: 'Avg Member Score'.tr(context),
+                  value: '${avgScore.toStringAsFixed(1)}%',
+                  icon: Icons.analytics_outlined,
+                  accentColor: _getScoreColor(avgScore),
+                ),
+                StatCard(
+                  title: 'Avg Leader Score'.tr(context),
+                  value: '${avgLeaderScore.toStringAsFixed(1)}%',
+                  icon: Icons.star_border_outlined,
+                  accentColor: _getScoreColor(avgLeaderScore),
+                ),
               ],
             );
           }),
@@ -907,10 +928,10 @@ class _EvaluationsPageState extends State<EvaluationsPage>
     final scoreColor = _getScoreColor(managerMock.finalScore);
     final db = MockDatabase.instance;
     final completedTasks = db.tasks
-        .where((t) => t.currentOwnerId == managerMock.id && (t.status == 'Completed' || t.status == 'Approved'))
+        .where((t) => (t.currentOwnerId == managerMock.id || (t.customAssigneeIds != null && t.customAssigneeIds!.contains(managerMock.id))) && (t.status == 'Completed' || t.status == 'Approved'))
         .length;
     final activeTasks = db.tasks
-        .where((t) => t.currentOwnerId == managerMock.id && t.status != 'Completed' && t.status != 'Approved')
+        .where((t) => (t.currentOwnerId == managerMock.id || (t.customAssigneeIds != null && t.customAssigneeIds!.contains(managerMock.id))) && t.status != 'Completed' && t.status != 'Approved')
         .length;
     final evalHistory =
         db.evaluations.where((e) => e.employeeId == managerMock.id).toList();
@@ -1037,7 +1058,7 @@ class _EvaluationsPageState extends State<EvaluationsPage>
                 crossAxisCount: cols,
                 crossAxisSpacing: 12.w,
                 mainAxisSpacing: 12.h,
-                mainAxisExtent: 132.h,
+                mainAxisExtent: 86.h,
               ),
               itemCount: metrics.length,
               itemBuilder: (context, i) {
@@ -1048,34 +1069,11 @@ class _EvaluationsPageState extends State<EvaluationsPage>
                     : isTaskMetric
                         ? (m.label == 'Tasks Done'.tr(context) ? completedTasks.toString() : activeTasks.toString())
                         : '${m.value.toStringAsFixed(1)}%';
-                return Container(
-                  padding: EdgeInsets.all(14.w),
-                  decoration: _modernCardDecoration(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _gradientChip(m.icon, m.color, size: 36),
-                      SizedBox(height: 10.h),
-                      Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            displayVal,
-                            maxLines: 1,
-                            style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.bold, color: m.color),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        m.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 9.5.sp, color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
+                return StatCard(
+                  title: m.label,
+                  value: displayVal,
+                  icon: m.icon,
+                  accentColor: m.color,
                 );
               },
             );

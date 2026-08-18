@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../../core/colors/app_colors.dart';
@@ -16,11 +16,29 @@ class UsersRolesScreen extends StatefulWidget {
   State<UsersRolesScreen> createState() => _UsersRolesScreenState();
 }
 
-class _UsersRolesScreenState extends State<UsersRolesScreen> {
+class _UsersRolesScreenState extends State<UsersRolesScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   String _searchQuery = '';
   String _selectedDept = 'All';
   String _selectedRoleFilter = 'All';
   bool _showUsersView = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      setState(() {
+        _showUsersView = _tabController.index == 0;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,21 +113,80 @@ class _UsersRolesScreenState extends State<UsersRolesScreen> {
               ),
               SizedBox(height: 16.h),
 
-              // Segmented Toggle Button
-              Row(
-                children: [
-                  _buildSegmentButton(
-                    label: 'Users'.tr(context),
-                    isSelected: _showUsersView,
-                    onTap: () => setState(() => _showUsersView = true),
+              // Tab Bar matching Teams Dashboard
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 6.h),
+                child: TabBar(
+                  controller: _tabController,
+                  isScrollable: ResponsiveLayout.isMobile(context),
+                  tabAlignment:
+                      ResponsiveLayout.isMobile(context) ? TabAlignment.center : TabAlignment.fill,
+                  indicator: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(10.r),
                   ),
-                  SizedBox(width: 12.w),
-                  _buildSegmentButton(
-                    label: 'Roles'.tr(context),
-                    isSelected: !_showUsersView,
-                    onTap: () => setState(() => _showUsersView = false),
-                  ),
-                ],
+                  labelColor: Colors.white,
+                  unselectedLabelColor: AppColors.textSecondary,
+                  labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp),
+                  unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 13.sp),
+                  dividerColor: Colors.transparent,
+                  tabs: [
+                    Tab(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8.w),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.people_outline, size: 16),
+                            SizedBox(width: 8.w),
+                            Text('Users'.tr(context)),
+                            SizedBox(width: 8.w),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.h),
+                              decoration: BoxDecoration(
+                                color: _showUsersView ? Colors.white.withOpacity(0.3) : AppColors.primary.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(20.r),
+                              ),
+                              child: Text('${db.users.length}',
+                                  style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold,
+                                      color: _showUsersView ? Colors.white : AppColors.primary)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Tab(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8.w),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.security, size: 16),
+                            SizedBox(width: 8.w),
+                            Text('Roles'.tr(context)),
+                            SizedBox(width: 8.w),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.h),
+                              decoration: BoxDecoration(
+                                color: !_showUsersView ? Colors.white.withOpacity(0.3) : AppColors.primary.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(20.r),
+                              ),
+                              child: Text('${db.roles.length}',
+                                  style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold,
+                                      color: !_showUsersView ? Colors.white : AppColors.primary)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               SizedBox(height: 24.h),
 
@@ -321,29 +398,7 @@ class _UsersRolesScreenState extends State<UsersRolesScreen> {
     );
   }
 
-  Widget _buildSegmentButton({required String label, required bool isSelected, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20.r),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 10.h),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(20.r),
-          border: Border.all(color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0)),
-          boxShadow: isSelected ? AppShadow.soft : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : AppColors.textSecondary,
-            fontWeight: FontWeight.bold,
-            fontSize: 13.sp,
-          ),
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildStatWidget(
     String label,

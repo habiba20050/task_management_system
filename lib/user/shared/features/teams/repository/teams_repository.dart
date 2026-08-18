@@ -11,7 +11,10 @@ class TeamsRepository {
         orElse: () => MockUser(id: '', email: '', fullName: t.leaderId, role: '', department: ''),
       );
 
-      final teamTasks = db.tasks.where((tsk) => t.memberIds.contains(tsk.assignedMemberId)).toList();
+      final teamTasks = db.tasks.where((tsk) =>
+        t.memberIds.contains(tsk.assignedMemberId) ||
+        tsk.customAssigneeIds.any((id) => t.memberIds.contains(id))
+      ).toList();
       final completed = teamTasks.where((tsk) => tsk.status == 'Completed' || tsk.status == 'Approved' || tsk.status == 'Approved With Suggestions').length;
 
       return TeamModel(

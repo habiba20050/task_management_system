@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +7,7 @@ import '../../../../../core/network/mock_database.dart';
 import 'package:task_management_system/auth/cubit/auth_cubit.dart';
 import '../../../../../core/localization/translate_extension.dart';
 import '../../../../../responsive/responsive_layout.dart';
+import '../../../../../core/widgets/cards/app_cards.dart';
 
 class ComplaintsPage extends StatefulWidget {
   const ComplaintsPage({super.key});
@@ -87,12 +88,12 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
 
   BoxDecoration _modernCardDecoration() => BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18.r),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: const Color(0xFFE2E8F0).withOpacity(0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -302,58 +303,46 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
               SizedBox(height: 14.h),
 
               // Analytics Summary
-              Container(
-                padding: EdgeInsets.all(14.w),
-                decoration: _modernCardDecoration(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        _gradientChip(Icons.insights_outlined, AppColors.primary, size: 32),
-                        SizedBox(width: 10.w),
-                        Text(
-                          'Complaint Analytics'.tr(context),
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ],
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final cols = constraints.maxWidth < 600 ? 2 : 4;
+                  return GridView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: cols,
+                      crossAxisSpacing: 12.w,
+                      mainAxisSpacing: 12.h,
+                      mainAxisExtent: 82.h,
                     ),
-                    SizedBox(height: 14.h),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        const gap = 12.0;
-                        final cols = constraints.maxWidth < 500 ? 2 : 4;
-                        final w = (constraints.maxWidth - gap * (cols - 1)) / cols;
-                        return Wrap(
-                          spacing: gap,
-                          runSpacing: 12.h,
-                          children: [
-                            SizedBox(
-                              width: w,
-                              child: _statTile('Resolved'.tr(context), resolvedCount, AppColors.success, Icons.check_circle_outline),
-                            ),
-                            SizedBox(
-                              width: w,
-                              child: _statTile('Pending'.tr(context), pendingCount, AppColors.danger, Icons.pending_outlined),
-                            ),
-                            SizedBox(
-                              width: w,
-                              child: _statTile('Computer Science'.tr(context), csCount, AppColors.primary, Icons.school_outlined),
-                            ),
-                            SizedBox(
-                              width: w,
-                              child: _statTile('Engineering'.tr(context), engCount, Colors.indigo, Icons.engineering_outlined),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                    children: [
+                      StatCard(
+                        title: 'Resolved'.tr(context),
+                        value: resolvedCount.toString(),
+                        icon: Icons.check_circle_outline,
+                        accentColor: AppColors.success,
+                      ),
+                      StatCard(
+                        title: 'Pending'.tr(context),
+                        value: pendingCount.toString(),
+                        icon: Icons.pending_outlined,
+                        accentColor: AppColors.danger,
+                      ),
+                      StatCard(
+                        title: 'Computer Science'.tr(context),
+                        value: csCount.toString(),
+                        icon: Icons.school_outlined,
+                        accentColor: AppColors.primary,
+                      ),
+                      StatCard(
+                        title: 'Engineering'.tr(context),
+                        value: engCount.toString(),
+                        icon: Icons.engineering_outlined,
+                        accentColor: Colors.indigo,
+                      ),
+                    ],
+                  );
+                },
               ),
               SizedBox(height: 16.h),
 

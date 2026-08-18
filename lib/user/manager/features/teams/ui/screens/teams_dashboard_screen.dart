@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../../shared/features/teams/cubit/teams_cubit.dart';
@@ -12,6 +12,7 @@ import '../../../../../../responsive/responsive_layout.dart';
 import '../../../../../shared/features/teams/model/team_model.dart';
 import '../../../../../../core/network/mock_database.dart';
 import 'package:task_management_system/auth/cubit/auth_cubit.dart';
+import '../../../../../../core/widgets/cards/app_cards.dart';
 
 class TeamsDashboardScreen extends StatefulWidget {
   const TeamsDashboardScreen({super.key});
@@ -290,21 +291,81 @@ class _TeamsDashboardScreenState extends State<TeamsDashboardScreen>
                       final myTeams = state.teams.where((t) => myRawTeamIds.contains(t.id)).toList();
                       final totalMembers = myTeams.fold<int>(0, (s, t) => s + t.membersCount);
                       final avgProgress  = myTeams.isEmpty ? 0.0 : myTeams.fold<double>(0, (s, t) => s + t.completionPercentage) / myTeams.length;
-                      return _statsRow([
-                        _statCard('My Teams'.tr(context),      '${myTeams.length}', Icons.groups_outlined, Colors.blue),
-                        _statCard('Total Members'.tr(context), '$totalMembers',     Icons.person_outline,   Colors.green),
-                        _statCard('Avg Completion'.tr(context),'${avgProgress.toInt()}%', Icons.trending_up, Colors.purple),
-                      ]);
+                      return LayoutBuilder(
+                        builder: (context, constraints) {
+                          final cols = constraints.maxWidth < 600 ? 1 : 3;
+                          return GridView(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: cols,
+                              crossAxisSpacing: 12.w,
+                              mainAxisSpacing: 12.h,
+                              mainAxisExtent: 82.h,
+                            ),
+                            children: [
+                              StatCard(
+                                title: 'My Teams'.tr(context),
+                                value: myTeams.length.toString(),
+                                icon: Icons.groups_outlined,
+                                accentColor: Colors.blue,
+                              ),
+                              StatCard(
+                                title: 'Total Members'.tr(context),
+                                value: totalMembers.toString(),
+                                icon: Icons.person_outline,
+                                accentColor: Colors.green,
+                              ),
+                              StatCard(
+                                title: 'Avg Completion'.tr(context),
+                                value: '${avgProgress.toInt()}%',
+                                icon: Icons.trending_up,
+                                accentColor: Colors.purple,
+                              ),
+                            ],
+                          );
+                        },
+                      );
                     }
                     return const SizedBox.shrink();
                   },
                 )
               else
-                _statsRow([
-                  _statCard('Team Leaders'.tr(context), '${myLeaderIds.length}', Icons.supervisor_account_outlined, Colors.indigo),
-                  _statCard('Team Members'.tr(context), '${myMemberIds.length}', Icons.person_outline, Colors.teal),
-                  _statCard('Total'.tr(context),        '${myEmployees.length}', Icons.people, Colors.blue),
-                ]),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final cols = constraints.maxWidth < 600 ? 1 : 3;
+                    return GridView(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: cols,
+                        crossAxisSpacing: 12.w,
+                        mainAxisSpacing: 12.h,
+                        mainAxisExtent: 82.h,
+                      ),
+                      children: [
+                        StatCard(
+                          title: 'Team Leaders'.tr(context),
+                          value: myLeaderIds.length.toString(),
+                          icon: Icons.supervisor_account_outlined,
+                          accentColor: Colors.indigo,
+                        ),
+                        StatCard(
+                          title: 'Team Members'.tr(context),
+                          value: myMemberIds.length.toString(),
+                          icon: Icons.person_outline,
+                          accentColor: Colors.teal,
+                        ),
+                        StatCard(
+                          title: 'Total'.tr(context),
+                          value: myEmployees.length.toString(),
+                          icon: Icons.people,
+                          accentColor: Colors.blue,
+                        ),
+                      ],
+                    );
+                  },
+                ),
               SizedBox(height: 16.h),
 
               // ── Search ────────────────────────────────────────────

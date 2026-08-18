@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:task_management_system/user/admin/features/users/pages/users_page.dart' as admin_users;
+import 'package:task_management_system/user/admin/features/users/ui/screens/users_roles_screen.dart' as admin_users;
 import '../../user/admin/features/teams/ui/screens/teams_dashboard_screen.dart' as admin_teams;
 import '../../user/manager/features/teams/ui/screens/teams_dashboard_screen.dart' as manager_teams;
 import 'package:task_management_system/auth/pages/login_page.dart';
@@ -186,7 +186,7 @@ class AppRouter {
           GoRoute(
             path: usersRoles,
             name: 'usersRoles',
-            builder: (context, state) => const admin_users.UsersPage(),
+            builder: (context, state) => const admin_users.UsersRolesScreen(),
           ),
           GoRoute(
             path: complaints,

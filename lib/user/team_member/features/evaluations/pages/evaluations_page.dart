@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +8,7 @@ import '../../../../../core/network/mock_database.dart';
 import '../../../../../responsive/responsive_layout.dart';
 import 'package:task_management_system/auth/cubit/auth_cubit.dart';
 import 'package:task_management_system/auth/model/user_model.dart';
+import '../../../../../core/widgets/cards/app_cards.dart';
 
 class EvaluationsPage extends StatefulWidget {
   const EvaluationsPage({super.key});
@@ -68,12 +69,12 @@ class _EvaluationsPageState extends State<EvaluationsPage>
 
   BoxDecoration _modernCardDecoration() => BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18.r),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: const Color(0xFFE2E8F0).withOpacity(0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -336,10 +337,10 @@ class _EvaluationsPageState extends State<EvaluationsPage>
     final scoreColor = _getScoreColor(u.finalScore);
     final db = MockDatabase.instance;
     final completedTasks = db.tasks
-        .where((t) => t.currentOwnerId == u.id && (t.status == 'Completed' || t.status == 'Approved'))
+        .where((t) => (t.currentOwnerId == u.id || (t.customAssigneeIds != null && t.customAssigneeIds!.contains(u.id))) && (t.status == 'Completed' || t.status == 'Approved'))
         .length;
     final activeTasks = db.tasks
-        .where((t) => t.currentOwnerId == u.id && t.status != 'Completed' && t.status != 'Approved')
+        .where((t) => (t.currentOwnerId == u.id || (t.customAssigneeIds != null && t.customAssigneeIds!.contains(u.id))) && t.status != 'Completed' && t.status != 'Approved')
         .length;
 
     return SingleChildScrollView(
@@ -464,7 +465,7 @@ class _EvaluationsPageState extends State<EvaluationsPage>
                 crossAxisCount: cols,
                 crossAxisSpacing: 12.w,
                 mainAxisSpacing: 12.h,
-                mainAxisExtent: 132.h,
+                mainAxisExtent: 86.h,
               ),
               itemCount: metrics.length,
               itemBuilder: (context, i) {
@@ -475,34 +476,11 @@ class _EvaluationsPageState extends State<EvaluationsPage>
                     : isTaskMetric
                         ? (m.label == 'Tasks Done'.tr(context) ? completedTasks.toString() : activeTasks.toString())
                         : '${m.value.toStringAsFixed(1)}%';
-                return Container(
-                  padding: EdgeInsets.all(14.w),
-                  decoration: _modernCardDecoration(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _gradientChip(m.icon, m.color, size: 36),
-                      SizedBox(height: 10.h),
-                      Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            displayVal,
-                            maxLines: 1,
-                            style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.bold, color: m.color),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        m.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 9.5.sp, color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
+                return StatCard(
+                  title: m.label,
+                  value: displayVal,
+                  icon: m.icon,
+                  accentColor: m.color,
                 );
               },
             );

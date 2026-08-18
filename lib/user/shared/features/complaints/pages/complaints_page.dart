@@ -111,41 +111,88 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
               ),
               SizedBox(height: 16.h),
 
-              // Search
-              Container(
-                height: 40.h,
-                padding: EdgeInsets.symmetric(horizontal: 10.w),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.md.r), border: Border.all(color: AppColors.border)),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    hintText: 'Search complaints...'.tr(context),
-                    border: InputBorder.none,
-                    icon: const Icon(Icons.search),
-                    isDense: true,
-                  ),
+              // Search & Filter Bar
+              AppCard(
+                padding: EdgeInsets.all(16.w),
+                child: Wrap(
+                  spacing: 14.w,
+                  runSpacing: 14.h,
+                  crossAxisAlignment: WrapCrossAlignment.end,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Search'.tr(context),
+                          style: TextStyle(fontSize: 11.5.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                        ),
+                        SizedBox(height: 6.h),
+                        Container(
+                          height: 48.h,
+                          constraints: BoxConstraints(minWidth: 240.w, maxWidth: 360.w),
+                          padding: EdgeInsets.symmetric(horizontal: 12.w),
+                          decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(AppRadius.md.r), border: Border.all(color: AppColors.border)),
+                          child: TextField(
+                            controller: _searchController,
+                            onChanged: (_) => setState(() {}),
+                            decoration: InputDecoration(
+                              hintText: 'Search complaints...'.tr(context),
+                              border: InputBorder.none,
+                              icon: const Icon(Icons.search, size: 18, color: AppColors.textSecondary),
+                              isDense: true,
+                            ),
+                            style: TextStyle(fontSize: 12.5.sp, color: AppColors.textPrimary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
               SizedBox(height: 16.h),
 
               // Analytics Summary section
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Complaint Analytics'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp)),
-                    const Divider(),
-                    Row(
-                      children: [
-                        Expanded(child: _buildSmallStat('Resolved complaints', resolvedCount.toString(), AppColors.success)),
-                        Expanded(child: _buildSmallStat('Pending complaints', pendingCount.toString(), AppColors.danger)),
-                        Expanded(child: _buildSmallStat('Computer Science Issues', csCount.toString(), AppColors.primary)),
-                        Expanded(child: _buildSmallStat('Engineering Issues', engCount.toString(), Colors.indigo)),
-                      ],
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final cols = constraints.maxWidth < 600 ? 2 : 4;
+                  return GridView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: cols,
+                      crossAxisSpacing: 12.w,
+                      mainAxisSpacing: 12.h,
+                      mainAxisExtent: 82.h,
                     ),
-                  ],
-                ),
+                    children: [
+                      StatCard(
+                        title: 'Resolved complaints'.tr(context),
+                        value: resolvedCount.toString(),
+                        icon: Icons.check_circle_outline,
+                        accentColor: AppColors.success,
+                      ),
+                      StatCard(
+                        title: 'Pending complaints'.tr(context),
+                        value: pendingCount.toString(),
+                        icon: Icons.pending_outlined,
+                        accentColor: AppColors.danger,
+                      ),
+                      StatCard(
+                        title: 'Computer Science Issues'.tr(context),
+                        value: csCount.toString(),
+                        icon: Icons.school_outlined,
+                        accentColor: AppColors.primary,
+                      ),
+                      StatCard(
+                        title: 'Engineering Issues'.tr(context),
+                        value: engCount.toString(),
+                        icon: Icons.engineering_outlined,
+                        accentColor: Colors.indigo,
+                      ),
+                    ],
+                  );
+                },
               ),
               SizedBox(height: 16.h),
 

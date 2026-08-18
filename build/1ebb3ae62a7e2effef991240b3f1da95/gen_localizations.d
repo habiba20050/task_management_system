@@ -1,1 +1,0 @@
- W:\\task_management_system\\lib\\l10n\\app_localizations_ar.dart W:\\task_management_system\\lib\\l10n\\app_localizations_en.dart W:\\task_management_system\\lib\\l10n\\app_localizations.dart:  W:\\task_management_system\\l10n.yaml W:\\task_management_system\\lib\\l10n\\app_ar.arb W:\\task_management_system\\lib\\l10n\\app_en.arb

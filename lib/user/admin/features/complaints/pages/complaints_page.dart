@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -130,22 +130,46 @@ class _ComplaintsPageState extends State<ComplaintsPage> {
               SizedBox(height: 16.h),
 
               // Analytics Summary section
-              AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Complaint Analytics'.tr(context), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp)),
-                    const Divider(),
-                    Row(
-                      children: [
-                        Expanded(child: _buildSmallStat('Resolved complaints', resolvedCount.toString(), AppColors.success)),
-                        Expanded(child: _buildSmallStat('Pending complaints', pendingCount.toString(), AppColors.danger)),
-                        Expanded(child: _buildSmallStat('Computer Science Issues', csCount.toString(), AppColors.primary)),
-                        Expanded(child: _buildSmallStat('Engineering Issues', engCount.toString(), Colors.indigo)),
-                      ],
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final cols = constraints.maxWidth < 600 ? 2 : 4;
+                  return GridView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: cols,
+                      crossAxisSpacing: 12.w,
+                      mainAxisSpacing: 12.h,
+                      mainAxisExtent: 82.h,
                     ),
-                  ],
-                ),
+                    children: [
+                      StatCard(
+                        title: 'Resolved complaints'.tr(context),
+                        value: resolvedCount.toString(),
+                        icon: Icons.check_circle_outline,
+                        accentColor: AppColors.success,
+                      ),
+                      StatCard(
+                        title: 'Pending complaints'.tr(context),
+                        value: pendingCount.toString(),
+                        icon: Icons.pending_outlined,
+                        accentColor: AppColors.danger,
+                      ),
+                      StatCard(
+                        title: 'Computer Science Issues'.tr(context),
+                        value: csCount.toString(),
+                        icon: Icons.school_outlined,
+                        accentColor: AppColors.primary,
+                      ),
+                      StatCard(
+                        title: 'Engineering Issues'.tr(context),
+                        value: engCount.toString(),
+                        icon: Icons.engineering_outlined,
+                        accentColor: Colors.indigo,
+                      ),
+                    ],
+                  );
+                },
               ),
               SizedBox(height: 16.h),
 
