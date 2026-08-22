@@ -1,11 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../../core/colors/app_colors.dart';
 import '../../../../../responsive/responsive_layout.dart';
-import 'package:task_management_system/widgets/custom_button.dart';
-import 'package:task_management_system/widgets/notification_drawer.dart';
-import '../../../../shared/features/profile/cubit/profile_cubit.dart';
+import '../../../../../user/shared/features/profile/cubit/profile_cubit.dart';
+import 'package:task_management_system/auth/cubit/auth_cubit.dart';
+import '../../../../../core/localization/translate_extension.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -22,11 +22,9 @@ class _ProfilePageState extends State<ProfilePage> {
   final TextEditingController _phoneController = TextEditingController();
 
   // Form 2 Controllers
-  final TextEditingController _currentPasswordController =
-      TextEditingController();
+  final TextEditingController _currentPasswordController = TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   // Locked fields
   String _username = '';
@@ -72,22 +70,149 @@ class _ProfilePageState extends State<ProfilePage> {
     return name.isNotEmpty ? name[0].toUpperCase() : '?';
   }
 
+  Color _darker(Color c, [double f = 0.18]) {
+    final hsl = HSLColor.fromColor(c);
+    return hsl.withLightness((hsl.lightness - f).clamp(0.0, 1.0)).toColor();
+  }
+
+  BoxDecoration _modernCardDecoration() => BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: const Color(0xFFE2E8F0).withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      );
+
+  Widget _gradientChip(IconData icon, Color color, {double size = 44}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color, _darker(color)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(size * 0.32),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.28),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Icon(icon, color: Colors.white, size: size * 0.48),
+    );
+  }
+
+  InputDecoration _fieldDecoration(String hint, {Widget? prefixIcon}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: AppColors.textHint, fontSize: 13),
+      fillColor: const Color(0xFFF1F5F9),
+      filled: true,
+      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+      prefixIcon: prefixIcon,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+      ),
+    );
+  }
+
+  Widget _gradientButton({
+    required String label,
+    required IconData icon,
+    required List<Color> colors,
+    required VoidCallback? onTap,
+    bool isLoading = false,
+  }) {
+    return SizedBox(
+      height: 48.h,
+      width: double.infinity,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12.r),
+          onTap: onTap,
+          child: Ink(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: onTap == null ? [Colors.grey, Colors.grey.shade600] : colors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12.r),
+              boxShadow: onTap == null
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: colors.first.withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (isLoading)
+                  SizedBox(
+                    width: 20.sp,
+                    height: 20.sp,
+                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                  )
+                else ...[
+                  Icon(icon, color: Colors.white, size: 18.sp),
+                  SizedBox(width: 8.w),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14.sp,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDesktop = ResponsiveLayout.isDesktop(context);
+    final authState = context.watch<AuthCubit>().state;
+    final userRole = authState is AuthSuccess ? authState.user.role : 'Team Leader';
 
-    return Scaffold(
-      backgroundColor: AppColors.dashboardBg,
-      endDrawer: const NotificationDrawer(),
-      body: SafeArea(
+    return Container(
+      color: AppColors.dashboardBg,
+      child: SafeArea(
         child: BlocConsumer<ProfileCubit, ProfileState>(
           listener: (context, state) {
             if (state is ProfileLoaded) {
               _populateControllers(state);
             } else if (state is PasswordChangeSuccess) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Password updated successfully!'),
+                SnackBar(
+                  content: Text('Password updated successfully!'.tr(context)),
                   backgroundColor: AppColors.success,
                 ),
               );
@@ -96,8 +221,8 @@ class _ProfilePageState extends State<ProfilePage> {
               _confirmPasswordController.clear();
             } else if (state is UpdateProfileSuccess) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Personal information updated successfully!'),
+                SnackBar(
+                  content: Text('Personal information updated successfully!'.tr(context)),
                   backgroundColor: AppColors.success,
                 ),
               );
@@ -135,10 +260,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 16.h),
-                    CustomButton(
-                      text: 'Retry',
-                      onPressed: () =>
-                          context.read<ProfileCubit>().loadProfile(),
+                    ElevatedButton(
+                      onPressed: () => context.read<ProfileCubit>().loadProfile(),
+                      child: Text('Retry'.tr(context)),
                     ),
                   ],
                 ),
@@ -155,7 +279,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 children: [
                   _buildHeader(context),
                   SizedBox(height: 24.h),
-                  _buildProfileSummaryCard(context),
+                  _buildProfileSummaryCard(context, userRole),
                   SizedBox(height: 24.h),
                   _buildPersonalInformationForm(context, state),
                   SizedBox(height: 24.h),
@@ -170,54 +294,62 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    final isDesktop = ResponsiveLayout.isDesktop(context);
-
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Profile Settings',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: isDesktop ? 22.sp : 18.sp,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        SizedBox(height: 4.h),
-        Text(
-          'Update your personal profile, email, and security settings',
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: isDesktop ? 13.sp : 11.sp,
+        _gradientChip(Icons.person_outline, AppColors.primary, size: 44),
+        SizedBox(width: 12.w),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Profile Settings'.tr(context),
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 22.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 3.h),
+              Text(
+                'Update your personal profile, email, and security settings'.tr(context),
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13.sp,
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildProfileSummaryCard(BuildContext context) {
+  Widget _buildProfileSummaryCard(BuildContext context, String userRole) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(24.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: _modernCardDecoration(),
       child: Row(
         children: [
           Container(
-            width: 72.w,
-            height: 72.h,
-            decoration: const BoxDecoration(
-              color: Color(0xFF051B33),
+            width: 72.r,
+            height: 72.r,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppColors.primary, _darker(AppColors.primary)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             alignment: Alignment.center,
             child: Text(
@@ -246,34 +378,42 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 SizedBox(height: 4.h),
                 Text(
-                  'Team Leader — ${_deptController.text.isNotEmpty ? _deptController.text : 'N/A'}',
+                  '${userRole.tr(context)} — ${_deptController.text.isNotEmpty ? _deptController.text : 'N/A'.tr(context)}',
                   style: TextStyle(
-                    color: Colors.grey[500],
+                    color: AppColors.textSecondary,
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 SizedBox(height: 8.h),
-                Row(
-                  children: [
-                    Container(
-                      width: 8.w,
-                      height: 8.h,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF27AE60),
-                        shape: BoxShape.circle,
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8.r,
+                        height: 8.r,
+                        decoration: const BoxDecoration(
+                          color: AppColors.success,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                    SizedBox(width: 6.w),
-                    Text(
-                      'Active account',
-                      style: TextStyle(
-                        color: const Color(0xFF27AE60),
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.bold,
+                      SizedBox(width: 6.w),
+                      Text(
+                        'Active account'.tr(context),
+                        style: TextStyle(
+                          color: AppColors.success,
+                          fontSize: 11.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -293,81 +433,69 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(24.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: _modernCardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Personal Information',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 16.sp,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            children: [
+              _gradientChip(Icons.badge_outlined, Colors.indigo, size: 36),
+              SizedBox(width: 12.w),
+              Text(
+                'Personal Information'.tr(context),
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
           SizedBox(height: 20.h),
           if (isDesktop) ...[
             Row(
               children: [
-                Expanded(
-                  child: _buildLockedField('Username (locked)', _username),
-                ),
+                Expanded(child: _buildLockedField('Username (locked)', _username, Icons.account_circle_outlined)),
                 SizedBox(width: 24.w),
-                Expanded(
-                  child: _buildLockedField('Email Address (locked)', _email),
-                ),
+                Expanded(child: _buildLockedField('Email Address (locked)', _email, Icons.email_outlined)),
               ],
             ),
             SizedBox(height: 16.h),
             Row(
               children: [
-                Expanded(
-                  child: _buildInputField('Full Name', _fullNameController),
-                ),
+                Expanded(child: _buildInputField('Full Name', _fullNameController, Icons.person_outline)),
                 SizedBox(width: 24.w),
-                Expanded(
-                  child: _buildInputField('Job Title', _jobTitleController),
-                ),
+                Expanded(child: _buildInputField('Job Title', _jobTitleController, Icons.work_outline)),
               ],
             ),
             SizedBox(height: 16.h),
             Row(
               children: [
-                Expanded(
-                  child: _buildInputField('Department', _deptController),
-                ),
+                Expanded(child: _buildInputField('Department', _deptController, Icons.business_outlined)),
                 SizedBox(width: 24.w),
-                Expanded(
-                  child: _buildInputField('Phone Number', _phoneController),
-                ),
+                Expanded(child: _buildInputField('Phone Number', _phoneController, Icons.phone_outlined)),
               ],
             ),
           ] else ...[
-            _buildLockedField('Username (locked)', _username),
+            _buildLockedField('Username (locked)', _username, Icons.account_circle_outlined),
             SizedBox(height: 16.h),
-            _buildLockedField('Email Address (locked)', _email),
+            _buildLockedField('Email Address (locked)', _email, Icons.email_outlined),
             SizedBox(height: 16.h),
-            _buildInputField('Full Name', _fullNameController),
+            _buildInputField('Full Name', _fullNameController, Icons.person_outline),
             SizedBox(height: 16.h),
-            _buildInputField('Job Title', _jobTitleController),
+            _buildInputField('Job Title', _jobTitleController, Icons.work_outline),
             SizedBox(height: 16.h),
-            _buildInputField('Department', _deptController),
+            _buildInputField('Department', _deptController, Icons.business_outlined),
             SizedBox(height: 16.h),
-            _buildInputField('Phone Number', _phoneController),
+            _buildInputField('Phone Number', _phoneController, Icons.phone_outlined),
           ],
           SizedBox(height: 24.h),
-          ElevatedButton(
-            onPressed: isUpdateLoading
+          _gradientButton(
+            label: 'Save Changes'.tr(context),
+            icon: Icons.save_outlined,
+            colors: [AppColors.primary, _darker(AppColors.primary)],
+            isLoading: isUpdateLoading,
+            onTap: isUpdateLoading
                 ? null
                 : () {
                     context.read<ProfileCubit>().updateProfile(
@@ -377,30 +505,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       jobTitle: _jobTitleController.text,
                     );
                   },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0A448C),
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8.r),
-              ),
-            ),
-            child: isUpdateLoading
-                ? SizedBox(
-                    width: 20.w,
-                    height: 20.h,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.w,
-                      color: Colors.white,
-                    ),
-                  )
-                : Text(
-                    'Save Changes',
-                    style: TextStyle(
-                      fontSize: 13.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
           ),
         ],
       ),
@@ -414,30 +518,16 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(24.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.r),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: _modernCardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.lock_outline,
-                color: const Color(0xFF0A448C),
-                size: 20.sp,
-              ),
-              SizedBox(width: 8.w),
+              _gradientChip(Icons.lock_outline, Colors.teal, size: 36),
+              SizedBox(width: 12.w),
               Text(
-                'Change Password',
+                'Security Settings'.tr(context),
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 16.sp,
@@ -447,87 +537,64 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
           SizedBox(height: 20.h),
-          _buildPasswordField(
-            'Current Password',
-            _currentPasswordController,
-            'Enter your current password',
-          ),
+          _buildPasswordField('Current Password', _currentPasswordController, 'Enter your current password'),
           SizedBox(height: 16.h),
           if (isDesktop) ...[
             Row(
               children: [
-                Expanded(
-                  child: _buildPasswordField(
-                    'New Password',
-                    _newPasswordController,
-                    'New password',
-                  ),
-                ),
+                Expanded(child: _buildPasswordField('New Password', _newPasswordController, 'New password')),
                 SizedBox(width: 24.w),
-                Expanded(
-                  child: _buildPasswordField(
-                    'Confirm New Password',
-                    _confirmPasswordController,
-                    'Confirm new password',
-                  ),
-                ),
+                Expanded(child: _buildPasswordField('Confirm New Password', _confirmPasswordController, 'Confirm new password')),
               ],
             ),
           ] else ...[
-            _buildPasswordField(
-              'New Password',
-              _newPasswordController,
-              'New password',
-            ),
+            _buildPasswordField('New Password', _newPasswordController, 'New password'),
             SizedBox(height: 16.h),
-            _buildPasswordField(
-              'Confirm New Password',
-              _confirmPasswordController,
-              'Confirm new password',
-            ),
+            _buildPasswordField('Confirm New Password', _confirmPasswordController, 'Confirm new password'),
           ],
           SizedBox(height: 20.h),
           Container(
             width: double.infinity,
             padding: EdgeInsets.all(16.w),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF9E6),
-              borderRadius: BorderRadius.circular(8.r),
-              border: Border.all(
-                color: const Color(0xFFF2C94C).withValues(alpha: 0.2),
-              ),
+              color: Colors.amber.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
             ),
-            child: Text(
-              'Password must be at least 8 characters, include at least one uppercase letter, one number, and one special character (@, #, !, etc.).',
-              style: TextStyle(
-                color: const Color(0xFF8C731F),
-                fontSize: 12.sp,
-                height: 1.4,
-                fontWeight: FontWeight.w600,
-              ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_outline, color: Colors.amber.shade800, size: 20.sp),
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: Text(
+                    'Password must be at least 8 characters, include at least one uppercase letter, one number, and one special character (@, #, !, etc.).'.tr(context),
+                    style: TextStyle(
+                      color: Colors.amber.shade900,
+                      fontSize: 12.sp,
+                      height: 1.4,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           SizedBox(height: 24.h),
-          ElevatedButton(
-            onPressed: isPasswordLoading
+          _gradientButton(
+            label: 'Update Password'.tr(context),
+            icon: Icons.key_outlined,
+            colors: [Colors.teal, _darker(Colors.teal)],
+            isLoading: isPasswordLoading,
+            onTap: isPasswordLoading
                 ? null
                 : () {
-                    if (_currentPasswordController.text.isEmpty ||
-                        _newPasswordController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please fill all password fields.'),
-                        ),
-                      );
+                    if (_currentPasswordController.text.isEmpty || _newPasswordController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please fill all password fields.'.tr(context))));
                       return;
                     }
-                    if (_newPasswordController.text !=
-                        _confirmPasswordController.text) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Passwords do not match.'),
-                        ),
-                      );
+                    if (_newPasswordController.text != _confirmPasswordController.text) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Passwords do not match.'.tr(context))));
                       return;
                     }
                     context.read<ProfileCubit>().changePassword(
@@ -535,55 +602,20 @@ class _ProfilePageState extends State<ProfilePage> {
                       newPassword: _newPasswordController.text,
                     );
                   },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0A448C),
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8.r),
-              ),
-            ),
-            child: isPasswordLoading
-                ? SizedBox(
-                    width: 20.w,
-                    height: 20.h,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.w,
-                      color: Colors.white,
-                    ),
-                  )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.lock_outline,
-                        size: 16.sp,
-                        color: Colors.white,
-                      ),
-                      SizedBox(width: 8.w),
-                      Text(
-                        'Update Password',
-                        style: TextStyle(
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildLockedField(String label, String value) {
+  Widget _buildLockedField(String label, String value, IconData icon) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style: TextStyle(
-            color: Colors.grey[500],
+            color: AppColors.textSecondary,
             fontSize: 12.sp,
             fontWeight: FontWeight.bold,
           ),
@@ -591,26 +623,27 @@ class _ProfilePageState extends State<ProfilePage> {
         SizedBox(height: 8.h),
         Container(
           width: double.infinity,
-          height: 44.h,
-          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
           decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(8.r),
-            border: Border.all(color: Colors.grey[200]!),
+            color: const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
-          alignment: Alignment.centerLeft,
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                value,
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w500,
+              Icon(icon, color: AppColors.textHint, size: 18.sp),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              Icon(Icons.lock_outline, color: Colors.grey[400], size: 16.sp),
+              Icon(Icons.lock_outline, color: AppColors.textHint, size: 16.sp),
             ],
           ),
         ),
@@ -618,7 +651,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildInputField(String label, TextEditingController controller) {
+  Widget _buildInputField(String label, TextEditingController controller, IconData icon) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -631,26 +664,10 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
         SizedBox(height: 8.h),
-        Container(
-          height: 44.h,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8.r),
-            border: Border.all(color: Colors.grey[300]!),
-          ),
-          child: TextField(
-            controller: controller,
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 16.w,
-                vertical: 10.h,
-              ),
-            ),
-            style: TextStyle(fontSize: 13.sp, color: AppColors.textPrimary),
-          ),
+        TextField(
+          controller: controller,
+          decoration: _fieldDecoration(label, prefixIcon: Icon(icon, color: AppColors.textHint, size: 18.sp)),
+          style: TextStyle(fontSize: 13.sp, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
         ),
       ],
     );
@@ -673,29 +690,11 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ),
         SizedBox(height: 8.h),
-        Container(
-          height: 44.h,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8.r),
-            border: Border.all(color: Colors.grey[300]!),
-          ),
-          child: TextField(
-            controller: controller,
-            obscureText: true,
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13.sp),
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 16.w,
-                vertical: 10.h,
-              ),
-            ),
-            style: TextStyle(fontSize: 13.sp, color: AppColors.textPrimary),
-          ),
+        TextField(
+          controller: controller,
+          obscureText: true,
+          decoration: _fieldDecoration(hint, prefixIcon: Icon(Icons.password_outlined, color: AppColors.textHint, size: 18.sp)),
+          style: TextStyle(fontSize: 13.sp, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
         ),
       ],
     );

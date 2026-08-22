@@ -1,18 +1,25 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'config/dependency_injection/service_locator.dart';
 import 'config/routes/app_router.dart';
 import 'package:task_management_system/auth/cubit/auth_cubit.dart';
 import 'package:task_management_system/language/cubit/language_cubit.dart';
-import 'l10n/app_localizations.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await EasyLocalization.ensureInitialized();
   await ServiceLocator.init();
-  runApp(const MyApp());
+  runApp(
+    EasyLocalization(
+      supportedLocales: const [Locale('en'), Locale('ar')],
+      path: 'assets/lang',
+      fallbackLocale: const Locale('en'),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatefulWidget {
@@ -27,6 +34,13 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     getIt<AuthCubit>().checkAuthStatus();
+    // Sync EasyLocalization saved locale → LanguageCubit on startup
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final locale = context.locale;
+      final langCode = locale.languageCode.toUpperCase();
+      getIt<LanguageCubit>().changeLanguage(langCode);
+    });
   }
 
   @override
@@ -35,7 +49,7 @@ class _MyAppState extends State<MyApp> {
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < 600;
         final isTablet = constraints.maxWidth >= 600 && constraints.maxWidth < 1024;
-        
+
         Size designSize;
         if (isMobile) {
           designSize = const Size(375, 812);
@@ -60,17 +74,10 @@ class _MyAppState extends State<MyApp> {
                   return MaterialApp.router(
                     title: 'AITU Task Management',
                     debugShowCheckedModeBanner: false,
-                    locale: Locale(lang.toLowerCase()),
-                    supportedLocales: const [
-                      Locale('en'),
-                      Locale('ar'),
-                    ],
-                    localizationsDelegates: const [
-                      AppLocalizations.delegate,
-                      GlobalMaterialLocalizations.delegate,
-                      GlobalWidgetsLocalizations.delegate,
-                      GlobalCupertinoLocalizations.delegate,
-                    ],
+                    localizationsDelegates: context.localizationDelegates,
+                    supportedLocales: context.supportedLocales,
+                    // Use EasyLocalization's locale as the single source of truth
+                    locale: context.locale,
                     theme: AppTheme.getTheme(langCode: lang, isDark: false),
                     darkTheme: AppTheme.getTheme(langCode: lang, isDark: true),
                     themeMode: ThemeMode.light,

@@ -26,6 +26,7 @@ import '/user/manager/features/reports/pages/reports_page.dart' as manager_repor
 import '/user/admin/features/reports/pages/reports_page.dart' as admin_reports;
 import '../../user/manager/features/audit_log/pages/audit_log_page.dart' as manager_audit;
 import '../../user/shared/features/audit_log/pages/audit_log_page.dart' as shared_audit;
+import '../../user/admin/features/audit_log/pages/audit_log_page.dart' as admin_audit;
 import '../dependency_injection/service_locator.dart';
 import 'package:task_management_system/auth/cubit/auth_cubit.dart';
 import '../../user/team_member/features/complaints/pages/complaints_page.dart' as member_complaints;
@@ -440,8 +441,12 @@ class _AuditLogsResolver extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthCubit>().state;
-    if (authState is AuthSuccess && authState.user.role == 'Manager') {
-      return const manager_audit.AuditLogPage();
+    if (authState is AuthSuccess) {
+      if (authState.user.role == 'Manager') {
+        return const manager_audit.AuditLogPage();
+      } else if (authState.user.role == 'Admin') {
+        return const admin_audit.AuditLogPage();
+      }
     }
     return const shared_audit.AuditLogPage();
   }

@@ -7,7 +7,7 @@ import '../../../responsive/responsive_layout.dart';
 import '../widgets/sidebar.dart';
 import 'notification_drawer.dart';
 import '../features/language/cubit/language_cubit.dart';
-import '../../../core/localization/translate_extension.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import '../features/auth/cubit/auth_cubit.dart';
 import '../../../core/network/mock_database.dart';
 
@@ -77,6 +77,7 @@ class MainLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.locale;
     final lang = context.watch<LanguageCubit>().state;
     final isRtl = lang == 'AR';
     final textDir = isRtl ? TextDirection.rtl : TextDirection.ltr;
@@ -96,7 +97,7 @@ class MainLayout extends StatelessWidget {
     breadcrumbItems.add(
       GestureDetector(
         onTap: () => context.go('/dashboard'),
-        child: Text('Home'.tr(context), style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+        child: Text('Home'.tr(), style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
       ),
     );
 
@@ -105,7 +106,7 @@ class MainLayout extends StatelessWidget {
       final label = paths[i].replaceAll('-', ' ').toUpperCase();
       breadcrumbItems.add(
         Text(
-          label.tr(context),
+          label.tr(),
           style: TextStyle(
             fontSize: 11.sp, 
             color: i == paths.length - 1 ? AppColors.primary : AppColors.textSecondary,
@@ -186,6 +187,7 @@ class MainLayout extends StatelessWidget {
                 onTap: () {
                   final nextLang = lang == 'EN' ? 'AR' : 'EN';
                   context.read<LanguageCubit>().changeLanguage(nextLang);
+                  context.setLocale(Locale(nextLang.toLowerCase()));
                 },
                 borderRadius: BorderRadius.circular(12.r),
                 child: Container(
@@ -228,7 +230,7 @@ class MainLayout extends StatelessWidget {
                         .map((r) => DropdownMenuItem(
                               value: r,
                               child: Text(
-                                r.tr(context),
+                                r.tr(),
                                 style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.bold, color: AppColors.primary),
                               ),
                             ))
@@ -302,7 +304,7 @@ class MainLayout extends StatelessWidget {
                       children: [
                         const Icon(Icons.person_outline, size: 16),
                         SizedBox(width: 8.w),
-                        Text('Profile Settings'.tr(context)),
+                        Text('Profile Settings'.tr()),
                       ],
                     ),
                   ),
@@ -312,7 +314,7 @@ class MainLayout extends StatelessWidget {
                       children: [
                         const Icon(Icons.logout, size: 16, color: AppColors.error),
                         SizedBox(width: 8.w),
-                        Text('Logout'.tr(context), style: const TextStyle(color: AppColors.error)),
+                        Text('Logout'.tr(), style: const TextStyle(color: AppColors.error)),
                       ],
                     ),
                   ),
@@ -347,7 +349,7 @@ class MainLayout extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(userFullName, style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                          Text(userRole.tr(context), style: TextStyle(fontSize: 8.5.sp, color: AppColors.textSecondary)),
+                          Text(userRole.tr(), style: TextStyle(fontSize: 8.5.sp, color: AppColors.textSecondary)),
                         ],
                       ),
                     const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
@@ -434,6 +436,7 @@ class MainLayout extends StatelessWidget {
                 onPressed: () {
                   final nextLang = lang == 'EN' ? 'AR' : 'EN';
                   context.read<LanguageCubit>().changeLanguage(nextLang);
+                  context.setLocale(Locale(nextLang.toLowerCase()));
                 },
               ),
               IconButton(
@@ -466,7 +469,7 @@ class MainLayout extends StatelessWidget {
                 .map((r) => NavigationDestination(
                       icon: Icon(r.icon),
                       selectedIcon: Icon(r.activeIcon),
-                      label: r.label.tr(context),
+                      label: r.label.tr(),
                     ))
                 .toList(),
           ),
